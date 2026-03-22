@@ -1,0 +1,8 @@
+# Xcode user-specific data
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+
+# Xcode workspace user settings
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
