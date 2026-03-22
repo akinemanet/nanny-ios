@@ -9,7 +9,7 @@ import Combine
 
 @MainActor
 final class ProviderOnboardingViewModel: ObservableObject {
-    @Published var account: ProviderAccount? = nil
+    @Published var account: ProviderAccount?
 
     @Published var address = ""
     @Published var contactName = ""
@@ -19,10 +19,15 @@ final class ProviderOnboardingViewModel: ObservableObject {
     @Published var storeName = ""
     @Published var iban = ""
     @Published var identityNumber = ""
+    @Published var educationLevel = ""
+    @Published var about = ""
+    @Published var selectedCategories: [String] = []
+    @Published var profilePhotoName = ""
+    @Published var criminalRecordFileName = ""
 
     @Published var isLoading = false
-    @Published var message: String? = nil
-    @Published var errorMessage: String? = nil
+    @Published var message: String?
+    @Published var errorMessage: String?
 
     private let service: ProviderService
 
@@ -37,9 +42,9 @@ final class ProviderOnboardingViewModel: ObservableObject {
         errorMessage = nil
 
         do {
-            let res = try await service.getPayoutAccount()
-            account = res.account
-            if let acc = res.account {
+            let summary = try await service.getOnboardingSummary()
+            account = summary.account
+            if let acc = summary.account {
                 address = acc.address
                 contactName = acc.contactName
                 contactSurname = acc.contactSurname
@@ -49,92 +54,96 @@ final class ProviderOnboardingViewModel: ObservableObject {
                 iban = acc.iban
                 identityNumber = acc.identityNumber
             }
+            educationLevel = summary.profile.educationLevel
+            about = summary.profile.about
+            selectedCategories = summary.profile.categories
+            profilePhotoName = summary.profile.profilePhotoName
+            criminalRecordFileName = summary.profile.criminalRecordFileName
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Payout account okunamadı"
+            errorMessage = "Kayıt bilgileri şu anda alınamadı. Formu doldurup tekrar deneyebilirsin."
         }
     }
 
     func save() async {
-        isLoading = true
-        defer { isLoading = false }
-        message = nil
         errorMessage = nil
+        message = nil
 
-        // normalize
-        let normEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let normIBAN = normalizeIBAN(iban)
-        let normTCKN = onlyDigits(identityNumber, max: 11)
-        let normGSM = normalizePhone(gsmNumber)
-
-        guard !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !contactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !contactSurname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !normEmail.isEmpty,
-              !normGSM.isEmpty,
-              !storeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !normIBAN.isEmpty,
-              !normTCKN.isEmpty else {
-            errorMessage = "Lütfen tüm alanları doldur."
+        guard !profilePhotoName.isEmpty else {
+            errorMessage = "Lütfen profil fotoğrafı ekle."
             return
         }
 
-        let req = UpsertPayoutAccountRequest(
-            address: address,
-            contactName: contactName,
-            contactSurname: contactSurname,
-            email: normEmail,
-            gsmNumber: normGSM,
-            name: storeName,
-            iban: normIBAN,
-            identityNumber: normTCKN
-        )
+        guard !educationLevel.isEmpty else {
+            errorMessage = "Lütfen eğitim durumunu seç."
+            return
+        }
 
+        guard !about.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            errorMessage = "Lütfen hakkında alanını doldur."
+            return
+        }
+
+        guard !selectedCategories.isEmpty else {
+            errorMessage = "Lütfen en az bir kategori seç."
+            return
+        }
+
+        guard !criminalRecordFileName.isEmpty else {
+            errorMessage = "Lütfen PDF sabıka kaydını ekle."
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
         do {
+            let req = UpsertPayoutAccountRequest(
+                address: address,
+                contactName: contactName,
+                contactSurname: contactSurname,
+                email: email,
+                gsmNumber: gsmNumber,
+                name: storeName,
+                iban: iban.replacingOccurrences(of: " ", with: ""),
+                identityNumber: identityNumber
+            )
+            let profileReq = UpsertProviderOnboardingProfileRequest(
+                educationLevel: educationLevel,
+                about: about,
+                categories: selectedCategories,
+                profilePhotoName: profilePhotoName,
+                criminalRecordFileName: criminalRecordFileName
+            )
+
             let res = try await service.upsertPayoutAccount(req)
             account = res.account
-            // kaydetten sonra formu normalize edilmiş hale çek
-            email = normEmail
-            iban = prettyIBAN(normIBAN)
-            identityNumber = normTCKN
-            gsmNumber = normGSM
-            message = "Kaydedildi ✅"
+            do {
+                if let summary = try await service.upsertOnboardingProfile(profileReq) {
+                    if let account = summary.account {
+                        self.account = account
+                    }
+                    educationLevel = summary.profile.educationLevel
+                    about = summary.profile.about
+                    selectedCategories = summary.profile.categories
+                    profilePhotoName = summary.profile.profilePhotoName
+                    criminalRecordFileName = summary.profile.criminalRecordFileName
+                    message = "Kaydedildi ve onboarding profili backend ile eszamanlandi."
+                } else {
+                    message = "Kaydedildi. Onboarding profil endpoint'i hazir oldugunda ek alanlar da backend'e tasinacak."
+                }
+            } catch let error as APIError {
+                switch error {
+                case .http(let code, _):
+                    if code == 404 || code == 405 {
+                        message = "Kaydedildi. Onboarding profil endpoint'i hazir degil; ek alanlar simdilik cihaz tarafinda tutuluyor."
+                    } else {
+                        throw error
+                    }
+                default:
+                    throw error
+                }
+            }
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Kaydetme başarısız"
+            errorMessage = "Bilgiler şu anda kaydedilemedi. Lütfen alanları kontrol edip tekrar dene."
         }
-    }
-
-    // MARK: - Helpers
-
-    private func onlyDigits(_ s: String, max: Int) -> String {
-        let digits = s.filter { $0.isNumber }
-        return String(digits.prefix(max))
-    }
-
-    private func normalizeIBAN(_ s: String) -> String {
-        let up = s.uppercased()
-        let cleaned = up.filter { $0.isNumber || ($0 >= "A" && $0 <= "Z") }
-        return cleaned
-    }
-
-    func prettyIBAN(_ iban: String) -> String {
-        let clean = normalizeIBAN(iban)
-        return stride(from: 0, to: clean.count, by: 4).map { i in
-            let start = clean.index(clean.startIndex, offsetBy: i)
-            let end = clean.index(start, offsetBy: min(4, clean.count - i))
-            return String(clean[start..<end])
-        }.joined(separator: " ")
-    }
-
-    private func normalizePhone(_ s: String) -> String {
-        // + ve rakam kalsın, diğerleri gitsin
-        var cleaned = s.filter { $0.isNumber || $0 == "+" }
-        // başta + yoksa ekleme yapma zorunlu değil ama TR için genelde +90
-        // İstersen burada otomatik +90 ekleyebiliriz.
-        // örnek: 0555... -> +90555...
-        if cleaned.hasPrefix("0"), cleaned.count >= 10 {
-            cleaned.removeFirst()
-            cleaned = "+90" + cleaned
-        }
-        return cleaned
     }
 }

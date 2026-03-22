@@ -44,7 +44,7 @@ struct ProviderOnboardingView: View {
 
                 statusCard
                 mediaCard
-                contactCard
+                basicInfoCard
                 educationCard
                 aboutCard
                 categoriesCard
@@ -139,8 +139,11 @@ struct ProviderOnboardingView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
+                    let photoButtonTitle = vm.profilePhotoName.isEmpty ? "Fotoğraf Yükle" : "Fotoğrafı Değiştir"
+                    let photoFileName = vm.profilePhotoName.isEmpty ? "Profil fotoğrafı seçilmedi." : vm.profilePhotoName
+
                     PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        Text(vm.profilePhotoName.isEmpty ? "Fotoğraf Yükle" : "Fotoğrafı Değiştir")
+                        Text(photoButtonTitle)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(DS.Colors.primary)
                             .padding(.horizontal, 14)
@@ -148,7 +151,7 @@ struct ProviderOnboardingView: View {
                             .background(DS.Colors.primary.opacity(0.12), in: Capsule())
                     }
 
-                    Text(vm.profilePhotoName.isEmpty ? "Profil fotoğrafı seçilmedi." : vm.profilePhotoName)
+                    Text(photoFileName)
                         .font(.footnote)
                         .foregroundStyle(DS.Colors.textSecondary)
                         .lineLimit(2)
@@ -157,21 +160,21 @@ struct ProviderOnboardingView: View {
         }
     }
 
-    private var contactCard: some View {
+    private var basicInfoCard: some View {
         AppCard {
-            Text("İletişim")
+            Text("Temel Bilgiler")
                 .font(.headline)
                 .foregroundStyle(DS.Colors.textPrimary)
 
-            TextField("Adres", text: $vm.address)
+            labeledField("Ad", text: $vm.contactName)
             Divider()
-            TextField("Ad", text: $vm.contactName)
+            labeledField("Soyad", text: $vm.contactSurname)
             Divider()
-            TextField("Soyad", text: $vm.contactSurname)
+            labeledField("Adres", text: $vm.address)
             Divider()
-            TextField("E-posta", text: $vm.email)
+            labeledField("E-posta", text: $vm.email)
             Divider()
-            TextField("Telefon", text: $vm.gsmNumber)
+            labeledField("Telefon", text: $vm.gsmNumber)
         }
     }
 
@@ -283,11 +286,11 @@ struct ProviderOnboardingView: View {
                 .font(.headline)
                 .foregroundStyle(DS.Colors.textPrimary)
 
-            TextField("Mağaza/İşletme Adı", text: $vm.storeName)
+            labeledField("IBAN", text: $vm.iban)
             Divider()
-            TextField("IBAN", text: $vm.iban)
+            labeledField("Mağaza/İşletme Adı", text: $vm.storeName)
             Divider()
-            TextField("TCKN", text: $vm.identityNumber)
+            labeledField("TCKN", text: $vm.identityNumber)
         }
     }
 
@@ -330,6 +333,16 @@ struct ProviderOnboardingView: View {
             vm.selectedCategories.removeAll { $0 == category }
         } else {
             vm.selectedCategories.append(category)
+        }
+    }
+
+    private func labeledField(_ title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(DS.Colors.textSecondary)
+            TextField(title, text: text)
+                .foregroundStyle(DS.Colors.textPrimary)
         }
     }
 
