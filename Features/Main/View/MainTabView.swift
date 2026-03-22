@@ -1,5 +1,5 @@
 //
-//  MainAppView.swift
+//  MainTabView.swift
 //  APIEnvironment
 //
 //  Created by Click Ajans on 12.03.2026.
@@ -7,33 +7,37 @@
 
 import SwiftUI
 
-struct MainAppView: View {
+struct MainTabView: View {
     var body: some View {
         TabView {
             HomeView()
                 .tabItem {
-                    Label("Browse", systemImage: "house")
+                    Label("Ana Sayfa", systemImage: "house")
                 }
 
-            MapSearchView()
+            BrowseView()
                 .tabItem {
-                    Label("Map Search", systemImage: "map")
+                    Label("Keşfet", systemImage: "magnifyingglass")
                 }
 
-            BookingsView()
+            BookingListView()
                 .tabItem {
-                    Label("Booking", systemImage: "calendar")
+                    Label("Rezervasyonlar", systemImage: "calendar")
                 }
 
-            ChatView()
+            ChatListView()
                 .tabItem {
-                    Label("Chat", systemImage: "message")
+                    Label("Bağlan", systemImage: "message")
                 }
 
             AccountView()
                 .tabItem {
-                    Label("Account", systemImage: "person")
+                    Label("Hesap", systemImage: "person")
                 }
         }
+        .tint(DS.Colors.primary)
+        .toolbarBackground(.white, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarColorScheme(.light, for: .tabBar)
     }
 }

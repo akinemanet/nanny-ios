@@ -8,6 +8,7 @@ import SwiftUI
 
 @main
 struct YourApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var session = SessionStore(deps: AppDependencies.live())
     @AppStorage("didSeeOnboarding") private var didSeeOnboarding = false
 

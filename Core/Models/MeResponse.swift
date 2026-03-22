@@ -7,14 +7,6 @@
 
 import Foundation
 
-struct MeResponse: Codable {
-    struct User: Codable {
-        let id: String
-        let role: String
-        let phone: String
-        let email: String?
-        let isActive: Bool
-    }
-
+struct MeResponse: Decodable {
     let user: User
 }

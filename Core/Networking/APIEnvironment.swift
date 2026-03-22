@@ -7,6 +7,6 @@
 
 import Foundation
 
-enum APIEnvironment {
+enum AppAPIEnvironment {
     static let baseURL = URL(string: "https://api.clickajans.net")!
 }

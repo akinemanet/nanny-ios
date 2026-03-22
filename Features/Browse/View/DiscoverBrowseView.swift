@@ -1,22 +1,28 @@
 import SwiftUI
 
+struct DiscoverCriteria {
+    var location = ""
+    var date = Date()
+    var time = Date()
+    var category = ""
+    var gender = "Farketmez"
+    var hasSelectedLocation = false
+    var hasSelectedDate = false
+    var hasSelectedTime = false
+    var hasSelectedCategory = false
+    var hasSelectedGender = false
+
+    static let `default` = DiscoverCriteria()
+}
+
 struct DiscoverBrowseView: View {
+    let providers: [BrowseProvider]
+    let resultCount: Int
     @Environment(\.dismiss) private var dismiss
+    @Binding var criteria: DiscoverCriteria
     @State private var selectedTab = 0
-    @State private var selectedLocation = "San Francisco, California"
-    @State private var selectedDate = Date()
-    @State private var selectedTime = Date()
-    @State private var selectedCategory = "Bebek"
-    @State private var selectedGender = "Farketmez"
     @State private var activePicker: PickerField?
 
-    private let locations = [
-        "San Francisco, California",
-        "Los Angeles, California",
-        "Chicago, Illinois",
-        "New York, New York"
-    ]
-    private let categories = ["Bebek", "Yürümeye Başlayan", "Okul Öncesi", "Anaokulu", "İlkokul"]
     private let genders = ["Farketmez", "Kadın", "Erkek"]
 
     private enum PickerField: String, Identifiable {
@@ -27,6 +33,14 @@ struct DiscoverBrowseView: View {
         case gender
 
         var id: String { rawValue }
+    }
+
+    private var locations: [String] {
+        Array(Set(providers.map(\.locationName))).sorted()
+    }
+
+    private var categories: [String] {
+        Array(Set(providers.flatMap(\.categories))).sorted()
     }
 
     var body: some View {
@@ -40,19 +54,34 @@ struct DiscoverBrowseView: View {
             .padding(.bottom, 8)
 
             if selectedTab == 0 {
-                buttonField(icon: "mappin.circle.fill", text: selectedLocation) {
+                buttonField(
+                    icon: "mappin.circle.fill",
+                    text: criteria.hasSelectedLocation ? criteria.location : "Konum Seç"
+                ) {
                     activePicker = .location
                 }
-                buttonField(icon: "calendar", text: formattedDate(selectedDate)) {
+                buttonField(
+                    icon: "calendar",
+                    text: criteria.hasSelectedDate ? formattedDate(criteria.date) : "Tarih Seç"
+                ) {
                     activePicker = .date
                 }
-                buttonField(icon: "clock.fill", text: formattedTime(selectedTime)) {
+                buttonField(
+                    icon: "clock.fill",
+                    text: criteria.hasSelectedTime ? formattedTime(criteria.time) : "Saat Seç"
+                ) {
                     activePicker = .time
                 }
-                buttonField(icon: "basket.fill", text: selectedCategory) {
+                buttonField(
+                    icon: "basket.fill",
+                    text: criteria.hasSelectedCategory ? criteria.category : "Kategori Seç"
+                ) {
                     activePicker = .category
                 }
-                buttonField(icon: "person.2.fill", text: selectedGender) {
+                buttonField(
+                    icon: "person.2.fill",
+                    text: criteria.hasSelectedGender ? criteria.gender : "Cinsiyet Seç"
+                ) {
                     activePicker = .gender
                 }
             } else {
@@ -64,12 +93,17 @@ struct DiscoverBrowseView: View {
             Button {
                 dismiss()
             } label: {
-                Text("Bakıcı Bul")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(DS.Colors.primary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                VStack(spacing: 4) {
+                    Text("Bakıcı Bul")
+                        .font(.headline)
+                    Text("\(resultCount) sonuç")
+                        .font(.caption.weight(.medium))
+                        .opacity(0.9)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(DS.Colors.primary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
         .padding(20)
@@ -110,20 +144,29 @@ struct DiscoverBrowseView: View {
             selectionListSheet(
                 title: "Konum",
                 options: locations,
-                selected: selectedLocation
-            ) { selectedLocation = $0 }
+                selected: criteria.location
+            ) {
+                criteria.location = $0
+                criteria.hasSelectedLocation = true
+            }
         case .category:
             selectionListSheet(
                 title: "Kategori",
                 options: categories,
-                selected: selectedCategory
-            ) { selectedCategory = $0 }
+                selected: criteria.category
+            ) {
+                criteria.category = $0
+                criteria.hasSelectedCategory = true
+            }
         case .gender:
             selectionListSheet(
                 title: "Cinsiyet",
                 options: genders,
-                selected: selectedGender
-            ) { selectedGender = $0 }
+                selected: criteria.gender
+            ) {
+                criteria.gender = $0
+                criteria.hasSelectedGender = $0 != "Farketmez"
+            }
         case .date:
             VStack(alignment: .leading, spacing: 20) {
                 Text("Tarih")
@@ -131,7 +174,7 @@ struct DiscoverBrowseView: View {
                     .foregroundStyle(DS.Colors.textPrimary)
                 DatePicker(
                     "Tarih",
-                    selection: $selectedDate,
+                    selection: $criteria.date,
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
@@ -141,7 +184,10 @@ struct DiscoverBrowseView: View {
             .padding(20)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Tamam") { activePicker = nil }
+                    Button("Tamam") {
+                        criteria.hasSelectedDate = true
+                        activePicker = nil
+                    }
                 }
             }
         case .time:
@@ -151,7 +197,7 @@ struct DiscoverBrowseView: View {
                     .foregroundStyle(DS.Colors.textPrimary)
                 DatePicker(
                     "Saat",
-                    selection: $selectedTime,
+                    selection: $criteria.time,
                     displayedComponents: .hourAndMinute
                 )
                 .datePickerStyle(.wheel)
@@ -161,7 +207,10 @@ struct DiscoverBrowseView: View {
             .padding(20)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Tamam") { activePicker = nil }
+                    Button("Tamam") {
+                        criteria.hasSelectedTime = true
+                        activePicker = nil
+                    }
                 }
             }
         }
@@ -207,7 +256,7 @@ struct DiscoverBrowseView: View {
 
     private var recentSearches: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(["Barbara Michelle", "Amber Julia", "Kristina Clark"], id: \.self) { item in
+            ForEach(providers.prefix(3).map(\.displayName), id: \.self) { item in
                 Button {
                     selectedTab = 0
                 } label: {

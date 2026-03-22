@@ -7,14 +7,34 @@
 import Foundation
 
 struct AppDependencies {
-    let tokenStore: TokenStore
     let api: APIClient
     let auth: AuthService
+    let tokenStore: TokenStore
+    let bookingService: BookingService
+    let chatService: ChatService
+    let notificationService: NotificationService
+    let paymentService: PaymentService
+    let providerService: ProviderService
 
     static func live() -> AppDependencies {
         let tokenStore = KeychainTokenStore()
         let api = APIClient(tokenStore: tokenStore)
         let auth = AuthService(api: api, tokenStore: tokenStore)
-        return .init(tokenStore: tokenStore, api: api, auth: auth)
+        let bookingService = BookingService(api: api)
+        let chatService = ChatService(api: api)
+        let notificationService = NotificationService(api: api)
+        let paymentService = PaymentService(api: api)
+        let providerService = ProviderService(api: api)
+
+        return AppDependencies(
+            api: api,
+            auth: auth,
+            tokenStore: tokenStore,
+            bookingService: bookingService,
+            chatService: chatService,
+            notificationService: notificationService,
+            paymentService: paymentService,
+            providerService: providerService
+        )
     }
 }

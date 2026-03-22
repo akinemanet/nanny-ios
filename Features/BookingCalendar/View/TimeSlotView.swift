@@ -9,18 +9,16 @@ import SwiftUI
 
 struct TimeSlotView: View {
     let time: String
-
-    @State private var selected = false
+    let isSelected: Bool
+    let onTap: () -> Void
 
     var body: some View {
         Text(time)
             .frame(maxWidth: .infinity)
             .padding(12)
-            .background(selected ? .blue : .gray.opacity(0.2))
-            .foregroundStyle(selected ? .white : .primary)
+            .background(isSelected ? .blue : .gray.opacity(0.2))
+            .foregroundStyle(isSelected ? .white : .primary)
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            .onTapGesture {
-                selected.toggle()
-            }
+            .onTapGesture(perform: onTap)
     }
 }

@@ -32,6 +32,8 @@ struct AppTextArea: View {
                 .scrollContentBackground(.hidden)
                 .textInputAutocapitalization(.sentences)
                 .autocorrectionDisabled()
+                .foregroundStyle(DS.Colors.textPrimary)
+                .tint(DS.Colors.textPrimary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(Color.clear)

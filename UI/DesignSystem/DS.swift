@@ -1,79 +1,28 @@
 //
-//  ProviderUIComponents.swift
+//  DS.swift
 //  APIEnvironment
 //
 //  Created by Click Ajans on 12.03.2026.
 //
 import SwiftUI
-import UIKit
 
-struct StatusPill: View {
-    let status: String
-
-    private var style: (title: String, systemImage: String, color: Color, detail: String) {
-        switch status.uppercased() {
-        case "APPROVED":
-            return ("Onaylandı", "checkmark.seal.fill", .green,
-                    "Ödeme alma ve payout hesabı aktif.")
-        case "FAILED":
-            return ("Hata", "xmark.octagon.fill", .red,
-                    "Onboarding başarısız. Hata detayını kontrol et.")
-        case "PENDING":
-            return ("Beklemede", "clock.fill", .orange,
-                    "Bilgiler kaydedildi. Iyzico tarafı onayı bekleniyor veya anahtarlar eksik.")
-        default:
-            return (status, "info.circle.fill", .blue,
-                    "Durum bilgisi mevcut.")
-        }
+enum DS {
+    enum Colors {
+        static let primary = Color(red: 0.12, green: 0.47, blue: 0.74)
+        static let accent = Color(red: 0.98, green: 0.56, blue: 0.18)
+        static let background = Color(red: 0.96, green: 0.96, blue: 0.97)
+        static let surface = Color.white
+        static let textPrimary = Color.black.opacity(0.88)
+        static let textSecondary = Color.black.opacity(0.62)
+        static let border = Color.black.opacity(0.06)
     }
 
-    var body: some View {
-        let s = style
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: s.systemImage)
-                Text(s.title).font(.headline)
-            }
-            .foregroundStyle(s.color)
-
-            Text(s.detail)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 4)
+    enum Radius {
+        static let medium: CGFloat = 18
     }
-}
 
-struct CopyRow: View {
-    let title: String
-    let value: String
-
-    @State private var copied = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
-
-            HStack(alignment: .top, spacing: 10) {
-                Text(value)
-                    .font(.subheadline)
-                    .textSelection(.enabled)
-                    .lineLimit(3)
-
-                Spacer()
-
-                Button {
-                    UIPasteboard.general.string = value
-                    copied = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                        copied = false
-                    }
-                } label: {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Kopyala")
-            }
-        }
+    enum Size {
+        static let fieldHeight: CGFloat = 56
+        static let buttonHeight: CGFloat = 54
     }
 }

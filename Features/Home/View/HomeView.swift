@@ -5,21 +5,1124 @@
 //  Created by Click Ajans on 12.03.2026.
 //
 import SwiftUI
+import Combine
 
 struct HomeView: View {
     @EnvironmentObject private var session: SessionStore
+    @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
+    @AppStorage("accountPreferenceQuietHoursStart") private var quietHoursStart = "22:00"
+    @AppStorage("accountPreferenceQuietHoursEnd") private var quietHoursEnd = "07:00"
+    @AppStorage("accountProfileDisplayName") private var familyDisplayName = ""
+    @AppStorage("accountProfileAboutFamily") private var familyAbout = ""
+    @AppStorage(StoredLocationKeys.name) private var familyLocationName = StoredLocation.fallback.name
+    @StateObject private var viewModel: HomeDashboardViewModel
+    @State private var showBookingList = false
+    @State private var showChatList = false
+    @State private var selectedConversation: ConversationItem?
+    @State private var selectedConversationContextBadge: String?
+    @State private var showNotifications = false
+    @State private var selectedBooking: BookingItem?
+    @State private var selectedBookingContextBadge: String?
+    @State private var checkoutURL: URL?
+    @State private var checkoutError: String?
+    @State private var isLoadingCheckout = false
+    @State private var checkoutBookingID: String?
+    @State private var showCheckout = false
+
+    @MainActor
+    init() {
+        let deps = AppDependencies.live()
+        _viewModel = StateObject(wrappedValue: HomeDashboardViewModel(
+            bookingService: deps.bookingService,
+            providerService: deps.providerService,
+            notificationService: deps.notificationService,
+            chatService: deps.chatService
+        ))
+    }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Text("Parent Home")
-                    .font(.title.bold())
-
-                Button("Çıkış") {
-                    session.logout()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    welcomeCard
+                    summaryGrid
+                    quickActions
+                    upcomingSection
+                    conversationsSection
+                    favoritesSection
+                    notificationsSection
+                }
+                .padding()
+            }
+            .background(DS.Colors.background.ignoresSafeArea())
+            .navigationTitle("Ana Sayfa")
+            .navigationDestination(isPresented: $showBookingList) {
+                BookingListView()
+            }
+            .navigationDestination(isPresented: $showChatList) {
+                ChatListView()
+            }
+            .navigationDestination(isPresented: $showNotifications) {
+                NotificationsView()
+            }
+            .navigationDestination(item: $selectedBooking) { booking in
+                BookingDetailView(
+                    booking: booking,
+                    contextBadgeText: selectedBookingContextBadge
+                ) { updatedBooking in
+                    viewModel.applyBookingUpdate(updatedBooking)
+                    if updatedBooking.status.uppercased() == "CANCELED" || updatedBooking.status.uppercased() == "CANCELLED" {
+                        selectedBooking = updatedBooking
+                    }
                 }
             }
-            .padding()
+            .navigationDestination(item: $selectedConversation) { conversation in
+                ChatView(
+                    chatID: conversation.id,
+                    title: conversation.participantName,
+                    contextBadgeText: selectedConversationContextBadge,
+                    onConversationRead: {
+                        viewModel.markConversationReadLocally(chatID: conversation.id)
+                    },
+                    onConversationUpdated: { updatedConversation in
+                        viewModel.applyConversationUpdate(updatedConversation)
+                    }
+                )
+            }
+            .sheet(isPresented: $showCheckout, onDismiss: {
+                Task {
+                    await viewModel.load()
+                }
+            }) {
+                NavigationStack {
+                    if let checkoutURL {
+                        CheckoutView(url: checkoutURL) { completion in
+                            if completion == .success || completion == .cancelled {
+                                showCheckout = false
+                            }
+                        }
+                            .navigationTitle("Odeme")
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
+                }
+            }
+            .task {
+                viewModel.replaceServicesIfNeeded(
+                    bookingService: session.deps.bookingService,
+                    providerService: session.deps.providerService,
+                    notificationService: session.deps.notificationService,
+                    chatService: session.deps.chatService
+                )
+                await viewModel.load()
+            }
+            .refreshable {
+                viewModel.replaceServicesIfNeeded(
+                    bookingService: session.deps.bookingService,
+                    providerService: session.deps.providerService,
+                    notificationService: session.deps.notificationService,
+                    chatService: session.deps.chatService
+                )
+                await viewModel.load()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .appDidOpenRemoteNotification)) { payload in
+                guard let notification = payload.object as? AppNotification else { return }
+                Task {
+                    await handleRemoteNotificationOpen(notification)
+                }
+            }
         }
+    }
+
+    private var welcomeCard: some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(greetingTitle)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("Bugunku planini, rezervasyonlarini ve yeni bildirimlerini tek ekranda takip et.")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.92))
+
+                HStack(spacing: 12) {
+                    homeBadge(title: "Rol", value: session.me?.user.role == "PROVIDER" ? "Bakici" : "Aile")
+                    homeBadge(title: "Telefon", value: session.me?.user.phone ?? "-")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(4)
+            .background(
+                LinearGradient(
+                    colors: [DS.Colors.primary, DS.Colors.accent],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            )
+        }
+        .background(Color.clear)
+        .overlay(Color.clear)
+    }
+
+    private var summaryGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            summaryCard(
+                title: "Aktif Rezervasyon",
+                value: "\(viewModel.activeBookings.count)",
+                systemImage: "calendar.badge.clock",
+                tint: DS.Colors.primary
+            )
+
+            summaryCard(
+                title: "Tamamlanan",
+                value: "\(viewModel.completedBookings.count)",
+                systemImage: "checkmark.circle",
+                tint: .green
+            )
+
+            summaryCard(
+                title: "Favoriler",
+                value: "\(viewModel.favorites.count)",
+                systemImage: "heart.fill",
+                tint: .pink
+            )
+
+            summaryCard(
+                title: isQuietHoursActive ? "Sessiz Mod" : "Okunmamis",
+                value: "\(viewModel.unreadNotifications)",
+                systemImage: isQuietHoursActive ? "moon.zzz.fill" : "bell.badge.fill",
+                tint: isQuietHoursActive ? .indigo : DS.Colors.accent
+            )
+        }
+    }
+
+    private var quickActions: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Hizli Islemler")
+
+            HStack(spacing: 12) {
+                NavigationLink {
+                    BrowseView()
+                } label: {
+                    quickActionCard(
+                        title: "Bakici Kesfet",
+                        subtitle: "Yeni profillere goz at",
+                        systemImage: "magnifyingglass"
+                    )
+                }
+                .buttonStyle(.plain)
+
+                NavigationLink {
+                    BookingListView()
+                } label: {
+                    quickActionCard(
+                        title: "Rezervasyonlar",
+                        subtitle: "Takvimini kontrol et",
+                        systemImage: "calendar"
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 12) {
+                NavigationLink {
+                    NotificationsView()
+                } label: {
+                    quickActionCard(
+                        title: "Bildirimler",
+                        subtitle: "Guncel gelismeleri gor",
+                        systemImage: "bell"
+                    )
+                }
+                .buttonStyle(.plain)
+
+                NavigationLink {
+                    AccountView()
+                } label: {
+                    quickActionCard(
+                        title: "Hesabim",
+                        subtitle: "Kartlar ve ayarlar",
+                        systemImage: "person.crop.circle"
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var upcomingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Siradaki Rezervasyonlar")
+
+            if viewModel.isLoading && viewModel.bookings.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 16)
+            } else if let errorMessage = viewModel.errorMessage, viewModel.bookings.isEmpty {
+                errorCard(message: errorMessage)
+            } else if viewModel.activeBookings.isEmpty {
+                emptyCard(
+                    title: "Planlanmis rezervasyonun yok",
+                    message: "Uygun bakicilari kesfedip yeni bir rezervasyon olusturabilirsin.",
+                    systemImage: "calendar.badge.exclamationmark"
+                )
+            } else {
+                ForEach(viewModel.activeBookings.prefix(3)) { booking in
+                    bookingCard(for: booking)
+                }
+            }
+        }
+    }
+
+    private var favoritesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Favori Bakicilar")
+
+            if viewModel.favorites.isEmpty {
+                emptyCard(
+                    title: "Favori bakici eklemedin",
+                    message: "Begendigin profilleri favorilere ekleyip burada hizlica ulasabilirsin.",
+                    systemImage: "heart"
+                )
+            } else {
+                ForEach(viewModel.favorites.prefix(3)) { favorite in
+                    AppCard {
+                        HStack(spacing: 14) {
+                            Circle()
+                                .fill(.pink.opacity(0.14))
+                                .frame(width: 48, height: 48)
+                                .overlay {
+                                    Image(systemName: "heart.fill")
+                                        .foregroundStyle(.pink)
+                                }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(favorite.displayName)
+                                    .font(.headline)
+                                    .foregroundStyle(DS.Colors.textPrimary)
+                                Text("Puan: \(String(format: "%.1f", favorite.rating))")
+                                    .font(.subheadline)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                            }
+
+                            Spacer()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var conversationsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                sectionTitle("Son Konusmalar")
+                Spacer()
+                Button("Tumunu Gor") {
+                    showChatList = true
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(DS.Colors.primary)
+            }
+
+            if viewModel.conversations.isEmpty {
+                emptyCard(
+                    title: "Aktif konusma yok",
+                    message: "Mesajlasmalarin basladiginda son konusmalar burada gorunecek.",
+                    systemImage: "bubble.left.and.bubble.right"
+                )
+            } else {
+                ForEach(viewModel.conversations.prefix(3)) { conversation in
+                    Button {
+                        selectedConversation = conversation
+                    } label: {
+                        AppCard {
+                            HStack(alignment: .top, spacing: 12) {
+                                Circle()
+                                    .fill(conversationAccent(for: conversation).opacity(0.14))
+                                    .frame(width: 46, height: 46)
+                                    .overlay {
+                                        Text(conversationInitials(for: conversation))
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(conversationAccent(for: conversation))
+                                    }
+
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack(spacing: 8) {
+                                        Text(conversation.participantName)
+                                            .font(.headline)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                            .lineLimit(1)
+                                        if conversation.unreadCount > 0 {
+                                            Text("\(conversation.unreadCount)")
+                                                .font(.caption2.bold())
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(dashboardUnreadConversationBackground)
+                                                .foregroundStyle(dashboardUnreadConversationTint)
+                                                .clipShape(Capsule())
+                                        }
+                                    }
+
+                                    if let badge = conversationBadge(for: conversation) {
+                                        Text(badge)
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(conversationAccent(for: conversation).opacity(0.14))
+                                            .foregroundStyle(conversationAccent(for: conversation))
+                                            .clipShape(Capsule())
+                                    }
+
+                                    Text(conversation.lastMessage)
+                                        .font(.subheadline)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                        .lineLimit(2)
+
+                                    Text(formattedConversationTime(conversation.lastMessageAt))
+                                        .font(.caption)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+
+                                Spacer()
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var notificationsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                sectionTitle("Son Bildirimler")
+                Spacer()
+                Button("Tumunu Gor") {
+                    showNotifications = true
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(DS.Colors.primary)
+            }
+
+            if isQuietHoursActive {
+                HStack(spacing: 10) {
+                    Image(systemName: "moon.zzz.fill")
+                        .foregroundStyle(.indigo)
+                    Text("Sessiz saatler aktif. Bildirimler burada ozetleniyor, ama banner ve ses azaltildi.")
+                        .font(.footnote)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                }
+                .padding(12)
+                .background(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+
+            if viewModel.notifications.isEmpty {
+                emptyCard(
+                    title: "Yeni bildirim yok",
+                    message: "Rezervasyon ve mesaj gelismeleri burada gorunecek.",
+                    systemImage: "bell.slash"
+                )
+            } else {
+                ForEach(viewModel.notifications.prefix(3)) { item in
+                    Button {
+                        openDestination(for: item)
+                    } label: {
+                        AppCard {
+                            HStack(alignment: .top, spacing: 12) {
+                                Circle()
+                                    .fill(item.read ? DS.Colors.border : dashboardNotificationBackground(for: item))
+                                    .frame(width: 42, height: 42)
+                                    .overlay {
+                                        Image(systemName: item.read ? "bell" : dashboardNotificationIcon(for: item))
+                                            .foregroundStyle(item.read ? DS.Colors.textSecondary : dashboardNotificationTint(for: item))
+                                    }
+
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack(spacing: 8) {
+                                        Text(item.title)
+                                            .font(.headline)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                        if !item.read {
+                                            Text(dashboardNotificationBadgeText(for: item))
+                                                .font(.caption2.bold())
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(dashboardNotificationTint(for: item).opacity(0.14))
+                                                .foregroundStyle(dashboardNotificationTint(for: item))
+                                                .clipShape(Capsule())
+                                        }
+                                    }
+                                    Text(item.body)
+                                        .font(.subheadline)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                        .lineLimit(2)
+                                    if let highlight = dashboardNotificationPresentation(for: item).highlightText {
+                                        Label(highlight, systemImage: "sparkles")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(dashboardNotificationTint(for: item))
+                                    }
+                                    if let proximityBadge = dashboardNotificationProximityBadge(for: item) {
+                                        Text(proximityBadge)
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(dashboardNotificationTint(for: item).opacity(0.12))
+                                            .foregroundStyle(dashboardNotificationTint(for: item))
+                                            .clipShape(Capsule())
+                                    }
+                                    familyContextLine
+                                    Text(item.createdAt)
+                                        .font(.caption)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+
+                                Spacer()
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.bottom, 8)
+    }
+
+    private var greetingTitle: String {
+        if let email = session.me?.user.email, !email.isEmpty {
+            return "Hos geldin, \(email)"
+        }
+        return "Hos geldin"
+    }
+
+    private var isQuietHoursActive: Bool {
+        QuietHoursLogic.isActive(
+            enabled: quietHoursEnabled,
+            start: quietHoursStart,
+            end: quietHoursEnd
+        )
+    }
+
+    private var unreadNotificationTint: Color {
+        isQuietHoursActive ? .indigo : DS.Colors.accent
+    }
+
+    private var familyPreviewText: String {
+        let trimmedAbout = familyAbout.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedAbout.isEmpty {
+            return trimmedAbout
+        }
+        if !familyDisplayName.isEmpty {
+            return "\(familyDisplayName) • \(familyLocationName)"
+        }
+        return familyLocationName
+    }
+
+    private var familyContextLine: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "person.text.rectangle")
+            Text(familyPreviewText)
+                .lineLimit(1)
+        }
+        .font(.caption)
+        .foregroundStyle(DS.Colors.textSecondary)
+    }
+
+    private func dashboardNotificationTint(for item: AppNotification) -> Color {
+        switch dashboardNotificationPresentation(for: item).tintKey {
+        case "green":
+            return .green
+        case "red":
+            return .red
+        case "blue":
+            return .blue
+        default:
+            return unreadNotificationTint
+        }
+    }
+
+    private func dashboardNotificationBackground(for item: AppNotification) -> Color {
+        dashboardNotificationTint(for: item).opacity(isQuietHoursActive ? 0.12 : 0.18)
+    }
+
+    private func dashboardNotificationIcon(for item: AppNotification) -> String {
+        if isQuietHoursActive {
+            return "moon.zzz.fill"
+        }
+
+        return dashboardNotificationPresentation(for: item).icon
+    }
+
+    private func dashboardNotificationBadgeText(for item: AppNotification) -> String {
+        dashboardNotificationPresentation(for: item).badgeText
+    }
+
+    private func dashboardNotificationPresentation(for item: AppNotification) -> FamilyNotificationPresentation {
+        FamilyNotificationPresentation.make(type: item.type)
+    }
+
+    private func dashboardNotificationProximityBadge(for item: AppNotification) -> String? {
+        FamilyNotificationPresentation.proximityBadgeText(from: item.body)
+    }
+
+    private var unreadNotificationBackground: Color {
+        isQuietHoursActive ? DS.Colors.primary.opacity(0.12) : DS.Colors.accent.opacity(0.18)
+    }
+
+    private var unreadNotificationIcon: String {
+        isQuietHoursActive ? "moon.zzz.fill" : "bell.badge.fill"
+    }
+
+    private var dashboardUnreadConversationTint: Color {
+        isQuietHoursActive ? .indigo : DS.Colors.accent
+    }
+
+    private var dashboardUnreadConversationBackground: Color {
+        isQuietHoursActive ? .indigo.opacity(0.14) : DS.Colors.accent.opacity(0.16)
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.title3.bold())
+            .foregroundStyle(DS.Colors.textPrimary)
+    }
+
+    private func summaryCard(title: String, value: String, systemImage: String, tint: Color) -> some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.title3)
+                    .foregroundStyle(tint)
+
+                Text(value)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(DS.Colors.textPrimary)
+
+                Text(title)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(DS.Colors.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func quickActionCard(title: String, subtitle: String, systemImage: String) -> some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.title3)
+                    .foregroundStyle(DS.Colors.primary)
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 118, alignment: .leading)
+        }
+    }
+
+    private func homeBadge(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased())
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white.opacity(0.72))
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.white.opacity(0.14))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func bookingCard(for booking: BookingItem) -> some View {
+        let presentation = bookingPresentation(for: booking)
+        return AppCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 14) {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(DS.Colors.primary.opacity(0.12))
+                        .frame(width: 56, height: 56)
+                        .overlay {
+                            Image(systemName: "calendar")
+                                .foregroundStyle(DS.Colors.primary)
+                        }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(localizedService(booking.service))
+                            .font(.headline)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text(booking.provider.displayName)
+                            .font(.subheadline)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Text("\(formattedDate(booking.startTime)) • \(formattedTime(booking.startTime))")
+                            .font(.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        familyContextLine
+                    }
+
+                    Spacer()
+
+                    Text(presentation.localizedStatus)
+                        .font(.caption.bold())
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(toneBackground(for: presentation.statusTone))
+                        .foregroundStyle(toneColor(for: presentation.statusTone))
+                        .clipShape(Capsule())
+                }
+
+                HStack(spacing: 10) {
+                    secondaryActionButton(
+                        title: "Rezervasyonu Ac",
+                        systemImage: "arrow.right.circle"
+                    ) {
+                        selectedBookingContextBadge = nil
+                        selectedBooking = booking
+                    }
+
+                    secondaryActionButton(
+                        title: "Mesaja Git",
+                        systemImage: "message"
+                    ) {
+                        openConversation(for: booking)
+                    }
+                }
+
+                if presentation.canPay {
+                    Button {
+                        Task {
+                            await openCheckout(for: booking)
+                        }
+                    } label: {
+                        HStack {
+                            if isLoadingCheckout, checkoutBookingID == booking.id {
+                                ProgressView()
+                                    .tint(.white)
+                            }
+                            Text(isLoadingCheckout && checkoutBookingID == booking.id ? "Baglanti Hazirlaniyor" : "Odemeye Devam Et")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .frame(height: DS.Size.buttonHeight)
+                    }
+                    .background(DS.Colors.primary)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
+                    .disabled(isLoadingCheckout)
+                }
+
+                if checkoutBookingID == booking.id, let checkoutError {
+                    Text(checkoutError)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+
+    private func emptyCard(title: String, message: String, systemImage: String) -> some View {
+        AppCard {
+            VStack(alignment: .center, spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 30))
+                    .foregroundStyle(DS.Colors.accent)
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                    .multilineTextAlignment(.center)
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+        }
+    }
+
+    private func errorCard(message: String) -> some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Veriler yuklenemedi")
+                    .font(.headline)
+                    .foregroundStyle(.red)
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                Button("Tekrar Dene") {
+                    Task {
+                        await viewModel.load()
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(DS.Colors.primary)
+            }
+        }
+    }
+
+    private func secondaryActionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                Text(title)
+                    .lineLimit(1)
+            }
+            .font(.subheadline.weight(.semibold))
+            .frame(maxWidth: .infinity)
+            .frame(height: 42)
+            .background(DS.Colors.background)
+            .foregroundStyle(DS.Colors.primary)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func formattedDate(_ value: String) -> String {
+        let iso = ISO8601DateFormatter()
+        let out = DateFormatter()
+        out.locale = Locale(identifier: "tr_TR")
+        out.dateStyle = .medium
+        if let date = iso.date(from: value) {
+            return out.string(from: date)
+        }
+        return value
+    }
+
+    private func formattedTime(_ value: String) -> String {
+        let iso = ISO8601DateFormatter()
+        let out = DateFormatter()
+        out.locale = Locale(identifier: "tr_TR")
+        out.timeStyle = .short
+        if let date = iso.date(from: value) {
+            return out.string(from: date)
+        }
+        return value
+    }
+
+    private func formattedConversationTime(_ value: String) -> String {
+        let iso = ISO8601DateFormatter()
+        guard let date = iso.date(from: value) else { return value }
+
+        let calendar = Calendar(identifier: .gregorian)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+
+        if calendar.isDateInToday(date) {
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return formatter.string(from: date)
+        }
+
+        formatter.dateStyle = .short
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
+    private func conversationInitials(for conversation: ConversationItem) -> String {
+        let parts = conversation.participantName
+            .split(separator: " ")
+            .prefix(2)
+        let initials = parts.compactMap { $0.first }.map(String.init).joined()
+        return initials.isEmpty ? "?" : initials
+    }
+
+    private func conversationBadge(for conversation: ConversationItem) -> String? {
+        if let participantID = conversation.participantID,
+           viewModel.activeBookings.contains(where: { $0.provider.id == participantID }) {
+            return "Aktif Rezervasyon"
+        }
+
+        if let participantID = conversation.participantID,
+           viewModel.favorites.contains(where: { $0.providerId == participantID }) {
+            return "Favori Bakici"
+        }
+
+        return nil
+    }
+
+    private func conversationAccent(for conversation: ConversationItem) -> Color {
+        if let participantID = conversation.participantID,
+           viewModel.activeBookings.contains(where: { $0.provider.id == participantID }) {
+            return DS.Colors.primary
+        }
+
+        if let participantID = conversation.participantID,
+           viewModel.favorites.contains(where: { $0.providerId == participantID }) {
+            return .pink
+        }
+
+        return DS.Colors.accent
+    }
+
+    private func localizedService(_ service: String) -> String {
+        service
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
+            .replacingOccurrences(of: "Babysitting", with: "Bebek Bakimi")
+            .replacingOccurrences(of: "Tutoring", with: "Ozel Ders")
+    }
+
+    private func bookingPresentation(for booking: BookingItem) -> BookingStatusPresentation {
+        BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus)
+    }
+
+    private func toneColor(for tone: BookingPresentationTone) -> Color {
+        switch tone {
+        case .primary:
+            return DS.Colors.primary
+        case .accent:
+            return DS.Colors.accent
+        case .danger:
+            return .red
+        case .neutral:
+            return .gray
+        }
+    }
+
+    private func toneBackground(for tone: BookingPresentationTone) -> Color {
+        toneColor(for: tone).opacity(tone == .neutral ? 0.2 : 0.14)
+    }
+
+    private func openCheckout(for booking: BookingItem) async {
+        checkoutBookingID = booking.id
+        checkoutError = nil
+        isLoadingCheckout = true
+        defer { isLoadingCheckout = false }
+
+        do {
+            let urlString = try await session.deps.paymentService.checkout(bookingID: booking.id)
+            guard let url = URL(string: urlString) else {
+                checkoutError = "Odeme baglantisi gecersiz."
+                return
+            }
+            checkoutURL = url
+            showCheckout = true
+        } catch {
+            let message = error.localizedDescription
+            if message.localizedCaseInsensitiveContains("iyzico keys not configured") {
+                checkoutError = "Odeme su anda kullanilamiyor. Odeme saglayicisi backend tarafinda henuz yapilandirilmamis."
+            } else if message.localizedCaseInsensitiveContains("http 500") {
+                checkoutError = "Odeme baglantisi su anda olusturulamiyor. Lutfen daha sonra tekrar dene."
+            } else {
+                checkoutError = message
+            }
+        }
+    }
+
+    private func openConversation(for booking: BookingItem) {
+        if let conversation = viewModel.conversation(
+            providerID: booking.provider.id,
+            participantName: booking.provider.displayName
+        ) {
+            clearNotificationContext()
+            selectedConversation = conversation
+        } else {
+            showChatList = true
+        }
+    }
+
+    private func openDestination(for notification: AppNotification) {
+        switch viewModel.destination(for: notification) {
+        case .conversation(let conversation):
+            selectedConversationContextBadge = dashboardNotificationProximityBadge(for: notification)
+            selectedBookingContextBadge = nil
+            selectedConversation = conversation
+        case .bookingDetail(let bookingID):
+            if let booking = viewModel.bookings.first(where: { $0.id == bookingID }) {
+                selectedConversationContextBadge = nil
+                selectedBookingContextBadge = dashboardNotificationProximityBadge(for: notification)
+                selectedBooking = booking
+            } else {
+                clearNotificationContext()
+                showBookingList = true
+            }
+        case .bookings:
+            clearNotificationContext()
+            showBookingList = true
+        case .chatList:
+            clearNotificationContext()
+            showChatList = true
+        case .notifications:
+            clearNotificationContext()
+            showNotifications = true
+        }
+    }
+
+    @MainActor
+    private func handleRemoteNotificationOpen(_ notification: AppNotification) async {
+        switch viewModel.destination(for: notification) {
+        case .bookingDetail(let bookingID):
+            selectedConversationContextBadge = nil
+            selectedBookingContextBadge = dashboardNotificationProximityBadge(for: notification)
+            if let booking = viewModel.bookings.first(where: { $0.id == bookingID }) {
+                selectedBooking = booking
+                return
+            }
+
+            do {
+                if let booking = try await session.deps.bookingService.booking(id: bookingID) {
+                    selectedBooking = booking
+                } else {
+                    clearNotificationContext()
+                    showBookingList = true
+                }
+            } catch {
+                clearNotificationContext()
+                showBookingList = true
+            }
+        default:
+            openDestination(for: notification)
+        }
+    }
+
+    private func clearNotificationContext() {
+        selectedConversationContextBadge = nil
+        selectedBookingContextBadge = nil
+    }
+}
+
+@MainActor
+final class HomeDashboardViewModel: ObservableObject {
+    @Published var bookings: [BookingItem] = []
+    @Published var favorites: [FavoriteItem] = []
+    @Published var notifications: [AppNotification] = []
+    @Published var conversations: [ConversationItem] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    private var bookingService: BookingService
+    private var providerService: ProviderService
+    private var notificationService: NotificationService
+    private var chatService: ChatService
+
+    init(
+        bookingService: BookingService,
+        providerService: ProviderService,
+        notificationService: NotificationService,
+        chatService: ChatService
+    ) {
+        self.bookingService = bookingService
+        self.providerService = providerService
+        self.notificationService = notificationService
+        self.chatService = chatService
+    }
+
+    var activeBookings: [BookingItem] {
+        HomeDashboardSnapshot(
+            bookings: bookings,
+            favorites: favorites,
+            notifications: notifications,
+            conversations: conversations
+        ).activeBookings
+    }
+
+    var completedBookings: [BookingItem] {
+        HomeDashboardSnapshot(
+            bookings: bookings,
+            favorites: favorites,
+            notifications: notifications,
+            conversations: conversations
+        ).completedBookings
+    }
+
+    var unreadNotifications: Int {
+        HomeDashboardSnapshot(
+            bookings: bookings,
+            favorites: favorites,
+            notifications: notifications,
+            conversations: conversations
+        ).unreadNotifications
+    }
+
+    func replaceServicesIfNeeded(
+        bookingService: BookingService,
+        providerService: ProviderService,
+        notificationService: NotificationService,
+        chatService: ChatService
+    ) {
+        self.bookingService = bookingService
+        self.providerService = providerService
+        self.notificationService = notificationService
+        self.chatService = chatService
+    }
+
+    func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        async let bookingsTask = bookingService.listBookings()
+        async let favoritesTask = providerService.listFavorites()
+        async let notificationsTask = notificationService.listNotifications()
+        async let conversationsTask = chatService.listConversations()
+
+        do {
+            let (bookings, favoritesResponse, notificationsResponse, conversationsResponse) = try await (
+                bookingsTask,
+                favoritesTask,
+                notificationsTask,
+                conversationsTask
+            )
+            let snapshot = HomeDashboardSnapshot.make(
+                bookings: bookings,
+                favoritesResponse: favoritesResponse,
+                notificationsResponse: notificationsResponse,
+                conversationsResponse: conversationsResponse
+            )
+            self.bookings = snapshot.bookings
+            favorites = snapshot.favorites
+            notifications = snapshot.notifications
+            conversations = snapshot.conversations
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func conversation(providerID: String, participantName: String) -> ConversationItem? {
+        DashboardRouting.conversation(
+            forProviderID: providerID,
+            participantName: participantName,
+            conversations: conversations
+        )
+    }
+
+    func conversation(matching notification: AppNotification) -> ConversationItem? {
+        DashboardRouting.conversation(matching: notification, conversations: conversations)
+    }
+
+    func destination(for notification: AppNotification) -> DashboardNotificationDestination {
+        DashboardRouting.destination(for: notification, conversations: conversations)
+    }
+
+    func applyBookingUpdate(_ updatedBooking: BookingItem) {
+        guard let index = bookings.firstIndex(where: { $0.id == updatedBooking.id }) else { return }
+        bookings[index] = updatedBooking
+    }
+
+    func markConversationReadLocally(chatID: String) {
+        conversations = conversations.map { conversation in
+            guard conversation.id == chatID else { return conversation }
+            return ConversationItem(
+                id: conversation.id,
+                participantID: conversation.participantID,
+                participantName: conversation.participantName,
+                lastMessage: conversation.lastMessage,
+                lastMessageAt: conversation.lastMessageAt,
+                unreadCount: 0
+            )
+        }
+    }
+
+    func applyConversationUpdate(_ updatedConversation: ConversationItem) {
+        guard let index = conversations.firstIndex(where: { $0.id == updatedConversation.id }) else { return }
+        conversations.remove(at: index)
+        conversations.insert(updatedConversation, at: 0)
     }
 }

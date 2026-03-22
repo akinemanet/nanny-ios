@@ -21,16 +21,13 @@ struct PrimaryButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous)
+                RoundedRectangle(cornerRadius: DS.Radius.medium)
                     .fill(DS.Colors.primary)
                     .frame(height: DS.Size.buttonHeight)
-
                 if isLoading {
                     ProgressView().tint(.white)
                 } else {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(.white)
+                    Text(title).font(.headline).foregroundStyle(.white)
                 }
             }
         }

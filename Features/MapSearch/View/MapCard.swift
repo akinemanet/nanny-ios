@@ -11,21 +11,20 @@ struct MapCard: View {
     let nanny: NannyLocation
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.gray.opacity(0.2))
-                .frame(width: 180, height: 110)
+                .frame(width: 200, height: 120)
 
-            Text("Nearby Nanny")
+            Text("Sofya")
                 .font(.headline)
 
-            Text("$\(nanny.price) / hr")
-                .font(.subheadline)
+            Text("\(nanny.price) $/saat")
                 .foregroundStyle(.secondary)
         }
         .padding()
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(radius: 4)
+        .shadow(radius: 3)
     }
 }

@@ -1,17 +1,19 @@
 import Foundation
 
 struct CheckoutReq: Codable {
-
-    let booking_id: String
+    let bookingId: String
 }
 
 struct CheckoutRes: Codable {
+    let checkoutUrl: String?
+    let checkoutURL: String?
 
-    let checkout_url: String
+    var resolvedURL: String? {
+        checkoutUrl ?? checkoutURL
+    }
 }
 
 final class PaymentService {
-
     let api: APIClient
 
     init(api: APIClient) {
@@ -19,14 +21,36 @@ final class PaymentService {
     }
 
     func checkout(bookingID: String) async throws -> String {
-
         let res: CheckoutRes = try await api.request(
-            "v1/payments/checkout",
+            "v1/payments/checkout-init",
             method: "POST",
-            body: CheckoutReq(booking_id: bookingID),
+            body: CheckoutReq(bookingId: bookingID),
             needsAuth: true
         )
 
-        return res.checkout_url
+        if let url = res.resolvedURL, !url.isEmpty {
+            return url
+        }
+
+        throw APIError.invalidURL
+    }
+
+    func listPaymentMethods() async throws -> PaymentMethodsResponse {
+        struct Empty: Encodable {}
+        return try await api.request(
+            "v1/payment-methods",
+            method: "GET",
+            body: Optional<Empty>.none,
+            needsAuth: true
+        )
+    }
+
+    func createPaymentMethod(_ req: CreatePaymentMethodReq) async throws -> PaymentMethodItem {
+        try await api.request(
+            "v1/payment-methods",
+            method: "POST",
+            body: req,
+            needsAuth: true
+        )
     }
 }

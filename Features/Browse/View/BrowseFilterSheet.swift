@@ -1,13 +1,19 @@
 import SwiftUI
 
+struct BrowseFilters {
+    var sortSelection = "Popülerlik"
+    var genderSelection = "Tümü"
+    var experienceSelection: String?
+    var maxPrice: Double = 800
+    var ratingSelection = 1
+    var showNearby = false
+
+    static let `default` = BrowseFilters()
+}
+
 struct BrowseFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var sortSelection = "En Yüksek Puan"
-    @State private var genderSelection = "Kadın"
-    @State private var experienceSelection = "Yürümeye Başlayan"
-    @State private var price: Double = 45
-    @State private var ratingSelection = 1
-    @State private var showNearby = true
+    @Binding var filters: BrowseFilters
 
     private let sortOptions = [
         "Popülerlik",
@@ -26,8 +32,13 @@ struct BrowseFilterSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    Toggle("Yakınımda Göster", isOn: $showNearby)
-                        .tint(DS.Colors.primary)
+                    filterTopBar
+
+                    Toggle(isOn: $filters.showNearby) {
+                        Text("Yakınımda Göster")
+                            .foregroundStyle(DS.Colors.textPrimary)
+                    }
+                    .tint(DS.Colors.primary)
 
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Sıralama")
@@ -39,11 +50,11 @@ struct BrowseFilterSheet: View {
                                 Text(option)
                                     .foregroundStyle(DS.Colors.textPrimary)
                                 Spacer()
-                                Image(systemName: sortSelection == option ? "largecircle.fill.circle" : "circle")
-                                    .foregroundStyle(sortSelection == option ? DS.Colors.accent : DS.Colors.textSecondary)
+                                Image(systemName: filters.sortSelection == option ? "largecircle.fill.circle" : "circle")
+                                    .foregroundStyle(filters.sortSelection == option ? DS.Colors.accent : DS.Colors.textSecondary)
                             }
                             .contentShape(Rectangle())
-                            .onTapGesture { sortSelection = option }
+                            .onTapGesture { filters.sortSelection = option }
                         }
                     }
 
@@ -52,16 +63,16 @@ struct BrowseFilterSheet: View {
                             .font(.headline)
                             .foregroundStyle(DS.Colors.textPrimary)
 
-                        ForEach(["Erkek", "Kadın"], id: \.self) { option in
+                        ForEach(["Tümü", "Erkek", "Kadın"], id: \.self) { option in
                             HStack {
                                 Text(option)
                                     .foregroundStyle(DS.Colors.textPrimary)
                                 Spacer()
-                                Image(systemName: genderSelection == option ? "largecircle.fill.circle" : "circle")
-                                    .foregroundStyle(genderSelection == option ? DS.Colors.accent : DS.Colors.textSecondary)
+                                Image(systemName: filters.genderSelection == option ? "largecircle.fill.circle" : "circle")
+                                    .foregroundStyle(filters.genderSelection == option ? DS.Colors.accent : DS.Colors.textSecondary)
                             }
                             .contentShape(Rectangle())
-                            .onTapGesture { genderSelection = option }
+                            .onTapGesture { filters.genderSelection = option }
                         }
                     }
 
@@ -74,18 +85,20 @@ struct BrowseFilterSheet: View {
                             ForEach(experiences, id: \.self) { item in
                                 Text(item)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(experienceSelection == item ? DS.Colors.primary : DS.Colors.textSecondary)
+                                    .foregroundStyle(filters.experienceSelection == item ? DS.Colors.primary : DS.Colors.textSecondary)
                                     .padding(.vertical, 12)
                                     .frame(maxWidth: .infinity)
                                     .background(
                                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .fill(experienceSelection == item ? DS.Colors.primary.opacity(0.12) : .white)
+                                            .fill(filters.experienceSelection == item ? DS.Colors.primary.opacity(0.12) : .white)
                                     )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(experienceSelection == item ? DS.Colors.primary : DS.Colors.border, lineWidth: 1)
+                                            .stroke(filters.experienceSelection == item ? DS.Colors.primary : DS.Colors.border, lineWidth: 1)
                                     )
-                                    .onTapGesture { experienceSelection = item }
+                                    .onTapGesture {
+                                        filters.experienceSelection = filters.experienceSelection == item ? nil : item
+                                    }
                             }
                         }
                     }
@@ -95,15 +108,15 @@ struct BrowseFilterSheet: View {
                             .font(.headline)
                             .foregroundStyle(DS.Colors.textPrimary)
 
-                        Text("₺10 - ₺87")
+                        Text("₺300 - ₺800")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(DS.Colors.textPrimary)
 
-                        Text("Ortalama fiyat ₺45")
+                        Text("Seçili üst sınır ₺\(Int(filters.maxPrice))")
                             .font(.caption)
                             .foregroundStyle(DS.Colors.textSecondary)
 
-                        Slider(value: $price, in: 10...87)
+                        Slider(value: $filters.maxPrice, in: 300...800, step: 25)
                             .tint(DS.Colors.primary)
                     }
 
@@ -116,14 +129,14 @@ struct BrowseFilterSheet: View {
                             ForEach(ratings, id: \.self) { item in
                                 Text("\(item) ★")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(ratingSelection == item ? .white : DS.Colors.accent)
+                                    .foregroundStyle(filters.ratingSelection == item ? .white : DS.Colors.accent)
                                     .padding(.vertical, 10)
                                     .frame(maxWidth: .infinity)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .fill(ratingSelection == item ? DS.Colors.primary : DS.Colors.accent.opacity(0.08))
+                                            .fill(filters.ratingSelection == item ? DS.Colors.primary : DS.Colors.accent.opacity(0.08))
                                     )
-                                    .onTapGesture { ratingSelection = item }
+                                    .onTapGesture { filters.ratingSelection = item }
                             }
                         }
                     }
@@ -142,21 +155,29 @@ struct BrowseFilterSheet: View {
                 .padding(20)
             }
             .background(DS.Colors.background.ignoresSafeArea())
-            .navigationTitle("Filtre")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sıfırla") {
-                        sortSelection = "En Yüksek Puan"
-                        genderSelection = "Kadın"
-                        experienceSelection = "Yürümeye Başlayan"
-                        price = 45
-                        ratingSelection = 1
-                        showNearby = true
-                    }
-                    .foregroundStyle(DS.Colors.textSecondary)
-                }
+            .navigationBarBackButtonHidden(true)
+        }
+    }
+
+    private var filterTopBar: some View {
+        HStack {
+            Color.clear.frame(width: 42, height: 42)
+
+            Spacer()
+
+            Text("Filtre")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            Spacer()
+
+            Button("Sıfırla") {
+                filters = .default
             }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(DS.Colors.textSecondary)
+            .frame(width: 64, height: 42)
+            .background(.white, in: Capsule())
         }
     }
 }

@@ -14,7 +14,7 @@ enum UserRole: String, Codable, CaseIterable {
     var titleTR: String {
         switch self {
         case .parent: return "Aile"
-        case .provider: return "Bakici"
+        case .provider: return "Bakıcı"
         }
     }
 }

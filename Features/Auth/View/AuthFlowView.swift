@@ -9,11 +9,7 @@ import SwiftUI
 
 struct AuthFlowView: View {
     @EnvironmentObject private var session: SessionStore
-    @StateObject private var viewModel: AuthViewModel
-
-    init() {
-        _viewModel = StateObject(wrappedValue: AuthViewModel.placeholder())
-    }
+    @StateObject private var viewModel = AuthViewModel.placeholder()
 
     var body: some View {
         NavigationStack {

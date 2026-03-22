@@ -8,6 +8,10 @@
 import Foundation
 
 final class APIClient {
+    private enum APIConfig {
+        static let baseURL = URL(string: "https://api.clickajans.net")!
+    }
+
     private let tokenStore: TokenStore
     private let session: URLSession
 
@@ -22,7 +26,7 @@ final class APIClient {
         body: B? = nil,
         needsAuth: Bool = false
     ) async throws -> T {
-        guard let url = URL(string: path, relativeTo: APIEnvironment.baseURL) else {
+        guard let url = URL(string: path, relativeTo: APIConfig.baseURL) else {
             throw APIError.invalidURL
         }
 

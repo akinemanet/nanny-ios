@@ -14,7 +14,15 @@ struct CategoriesBrowseView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
+            VStack(alignment: .leading, spacing: 18) {
+                topBar
+                categoryHeader
+
+                Text("İhtiyacına uygun bakım kategorisini seç.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .padding(.horizontal, 16)
+
                 ForEach(categories, id: \.0) { category in
                     Button {
                         selectedCategory = category.0
@@ -24,16 +32,18 @@ struct CategoriesBrowseView: View {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .fill(
                                     LinearGradient(
-                                        colors: [Color.black.opacity(0.1), Color.black.opacity(0.55)],
-                                        startPoint: .top,
-                                        endPoint: .bottom
+                                        colors: [
+                                            DS.Colors.primary.opacity(0.65),
+                                            DS.Colors.accent.opacity(0.82)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
                                     )
                                 )
                                 .frame(height: 140)
                                 .overlay {
-                                    Text("343 x 122")
-                                        .font(.system(size: 26, weight: .heavy, design: .rounded))
-                                        .foregroundStyle(.black.opacity(0.22))
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(.white.opacity(0.18), lineWidth: 1)
                                 }
 
                             VStack(alignment: .leading, spacing: 6) {
@@ -45,6 +55,14 @@ struct CategoriesBrowseView: View {
                                     .foregroundStyle(.white.opacity(0.9))
                             }
                             .padding(20)
+
+                            HStack {
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.headline.bold())
+                                    .foregroundStyle(.white.opacity(0.9))
+                                    .padding(18)
+                            }
                         }
                     }
                     .buttonStyle(.plain)
@@ -53,7 +71,44 @@ struct CategoriesBrowseView: View {
             .padding(16)
         }
         .background(DS.Colors.background.ignoresSafeArea())
-        .navigationTitle("Kategoriler")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarBackButtonHidden(true)
+    }
+
+    private var categoryHeader: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Bakım Türleri")
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundStyle(DS.Colors.textPrimary)
+            Text("Ailen için en uygun destek alanını seçerek sonuçları daralt.")
+                .font(.subheadline)
+                .foregroundStyle(DS.Colors.textSecondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+    }
+
+    private var topBar: some View {
+        HStack {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(DS.Colors.textPrimary)
+                    .frame(width: 42, height: 42)
+                    .background(.white, in: Circle())
+                    .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
+            }
+
+            Spacer()
+
+            Text("Kategoriler")
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            Spacer()
+            Color.clear.frame(width: 42, height: 42)
+        }
+        .padding(.horizontal, 16)
     }
 }
