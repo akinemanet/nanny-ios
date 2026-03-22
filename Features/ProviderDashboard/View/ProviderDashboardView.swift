@@ -9,9 +9,9 @@ import SwiftUI
 
 private enum ProviderRequestFilter: String, CaseIterable {
     case all = "Hepsi"
-    case veryNearby = "Cok Yakin"
+    case veryNearby = "Çok Yakın"
     case withNotes = "Notu Olanlar"
-    case nearbyFamilies = "Yakindaki Aileler"
+    case nearbyFamilies = "Yakındaki Aileler"
 }
 
 struct ProviderDashboardView: View {
@@ -65,7 +65,7 @@ struct ProviderDashboardView: View {
 
                     HStack(spacing: 14) {
                         DashboardCard(
-                            title: "Okunmamis Mesaj",
+                            title: "Okunmamış Mesaj",
                             value: "\(unreadMessages)"
                         )
 
@@ -82,14 +82,14 @@ struct ProviderDashboardView: View {
                         )
 
                         DashboardCard(
-                            title: "Siradaki Musaitlik",
+                            title: "Sıradaki Müsaitlik",
                             value: nextAvailabilityLabel
                         )
                     }
 
                     HStack(spacing: 14) {
                         DashboardCard(
-                            title: "Bugunku Kazanc",
+                            title: "Bugünkü Kazanç",
                             value: CurrencyFormatting.formattedAmount(
                                 earningsSummary.todayEarnings,
                                 currencyCode: account?.currency ?? "TRY"
@@ -97,7 +97,7 @@ struct ProviderDashboardView: View {
                         )
 
                         DashboardCard(
-                            title: "Bekleyen Odeme",
+                            title: "Bekleyen Ödeme",
                             value: CurrencyFormatting.formattedAmount(
                                 earningsSummary.pendingPayout,
                                 currencyCode: account?.currency ?? "TRY"
@@ -107,7 +107,7 @@ struct ProviderDashboardView: View {
 
                     HStack(spacing: 14) {
                         DashboardCard(
-                            title: "Tamamlanan Is",
+                            title: "Tamamlanan İş",
                             value: "\(earningsSummary.completedTodayCount)"
                         )
 
@@ -171,11 +171,11 @@ struct ProviderDashboardView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Bugunku Odak")
+                        Text("Bugünkü Odak")
                             .font(.headline)
-                        bullet("Musaitlik takvimini guncel tut ve yeni slotlarini kaydet.")
-                        bullet("Okunmamis mesajlari hizlica kontrol et.")
-                        bullet("Odeme onboarding ve IBAN bilgisini guncel tut.")
+                        bullet("Müsaitlik takvimini güncel tut ve yeni slotlarını kaydet.")
+                        bullet("Okunmamış mesajları hızlıca kontrol et.")
+                        bullet("Ödeme onboarding ve IBAN bilgisini güncel tut.")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
@@ -228,13 +228,13 @@ struct ProviderDashboardView: View {
 
     private var providerScheduleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Bugunku Program")
+            Text("Bugünkü Program")
                 .font(.headline)
 
             if todaysBookings.isEmpty {
                 emptyProviderCard(
                     title: "Bugun planlanmis is yok",
-                    message: "Musaitlik takvimini guncel tutarak yeni talepler alabilirsin.",
+                    message: "Müsaitlik takvimini güncel tutarak yeni talepler alabilirsin.",
                     systemImage: "calendar.badge.clock"
                 )
             } else {
@@ -252,7 +252,7 @@ struct ProviderDashboardView: View {
 
     private var providerRequestsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Yaklasan Talepler")
+            Text("Yaklaşan Talepler")
                 .font(.headline)
 
             if selectedRequestFilter == .all, !veryNearbyPendingRequests.isEmpty {
@@ -265,7 +265,7 @@ struct ProviderDashboardView: View {
                         providerBookingCard(
                             booking,
                             accent: DS.Colors.primary,
-                            label: "Cok Yakin",
+                            label: "Çok Yakın",
                             showActions: true,
                             priorityHighlight: true
                         )
@@ -504,7 +504,7 @@ struct ProviderDashboardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "bolt.badge.clock.fill")
                         .foregroundStyle(DS.Colors.primary)
-                    Text("Bu talep sana cok yakin. Hizli donus avantaj saglar.")
+                    Text("Bu talep sana çok yakın. Hızlı dönüş avantaj sağlar.")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(DS.Colors.primary)
                     Spacer()
@@ -518,7 +518,7 @@ struct ProviderDashboardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
-                    Text("Hizli onay gonderildi")
+                    Text("Hızlı onay gönderildi")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.green)
                     Spacer()
@@ -887,8 +887,8 @@ struct ProviderDashboardView: View {
                 : "Hizmet baslatildi."
         case "COMPLETED":
             return fallback
-                ? "Hizmet lokal olarak tamamlandi. Kazanc ozeti guncellendi."
-                : "Hizmet tamamlandi. Kazanc ozeti guncellendi."
+                ? "Hizmet lokal olarak tamamlandı. Kazanç özeti güncellendi."
+                : "Hizmet tamamlandı. Kazanç özeti güncellendi."
         default:
             return fallback
                 ? "Durum lokal olarak guncellendi."
@@ -902,7 +902,7 @@ struct ProviderDashboardView: View {
             return ""
         }
         guard let parentUserID = booking.parentUserID, !parentUserID.isEmpty else {
-            return " Aile bildirimi icin parent user bilgisi bulunamadi."
+            return " Aile bildirimi için parent user bilgisi bulunamadı."
         }
 
         do {
@@ -939,16 +939,16 @@ struct ProviderDashboardView: View {
         switch status {
         case "CONFIRMED":
             return fallback
-                ? " Aile onay bildirimi endpoint'i hazir degil."
-                : " Aileye onay bildirimi gonderildi."
+                ? " Aile onay bildirimi endpoint'i hazır değil."
+                : " Aileye onay bildirimi gönderildi."
         case "CANCELED":
             return fallback
-                ? " Aile red bildirimi endpoint'i hazir degil."
-                : " Aileye red bildirimi gonderildi."
+                ? " Aile red bildirimi endpoint'i hazır değil."
+                : " Aileye red bildirimi gönderildi."
         default:
             return fallback
-                ? " Aile tamamlanma bildirimi endpoint'i hazir degil."
-                : " Aileye tamamlanma bildirimi gonderildi."
+                ? " Aile tamamlanma bildirimi endpoint'i hazır değil."
+                : " Aileye tamamlanma bildirimi gönderildi."
         }
     }
 
@@ -1056,7 +1056,7 @@ private struct ProviderBookingDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                 detailCard("Durum", BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus).localizedStatus)
-                detailCard("Odeme", BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus).paymentSummaryText)
+                detailCard("Ödeme", BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus).paymentSummaryText)
                 detailCard("Tarih", formattedDay(booking.startTime.prefix(10).description))
                 detailCard("Saat", "\(formattedTime(booking.startTime)) - \(formattedTime(booking.endTime))")
 

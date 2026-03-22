@@ -101,7 +101,7 @@ struct HomeView: View {
                                 showCheckout = false
                             }
                         }
-                            .navigationTitle("Odeme")
+                            .navigationTitle("Ödeme")
                             .navigationBarTitleDisplayMode(.inline)
                     }
                 }
@@ -140,12 +140,12 @@ struct HomeView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Bugunku planini, rezervasyonlarini ve yeni bildirimlerini tek ekranda takip et.")
+                Text("Bugünkü planını, rezervasyonlarını ve yeni bildirimlerini tek ekranda takip et.")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.92))
 
                 HStack(spacing: 12) {
-                    homeBadge(title: "Rol", value: session.me?.user.role == "PROVIDER" ? "Bakici" : "Aile")
+                    homeBadge(title: "Rol", value: session.me?.user.role == "PROVIDER" ? "Bakıcı" : "Aile")
                     homeBadge(title: "Telefon", value: session.me?.user.phone ?? "-")
                 }
             }
@@ -188,7 +188,7 @@ struct HomeView: View {
             )
 
             summaryCard(
-                title: isQuietHoursActive ? "Sessiz Mod" : "Okunmamis",
+                title: isQuietHoursActive ? "Sessiz Mod" : "Okunmamış",
                 value: "\(viewModel.unreadNotifications)",
                 systemImage: isQuietHoursActive ? "moon.zzz.fill" : "bell.badge.fill",
                 tint: isQuietHoursActive ? .indigo : DS.Colors.accent
@@ -198,15 +198,15 @@ struct HomeView: View {
 
     private var quickActions: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Hizli Islemler")
+            sectionTitle("Hızlı İşlemler")
 
             HStack(spacing: 12) {
                 NavigationLink {
                     BrowseView()
                 } label: {
                     quickActionCard(
-                        title: "Bakici Kesfet",
-                        subtitle: "Yeni profillere goz at",
+                        title: "Bakıcı Keşfet",
+                        subtitle: "Yeni profillere göz at",
                         systemImage: "magnifyingglass"
                     )
                 }
@@ -230,7 +230,7 @@ struct HomeView: View {
                 } label: {
                     quickActionCard(
                         title: "Bildirimler",
-                        subtitle: "Guncel gelismeleri gor",
+                        subtitle: "Güncel gelişmeleri gör",
                         systemImage: "bell"
                     )
                 }
@@ -240,7 +240,7 @@ struct HomeView: View {
                     AccountView()
                 } label: {
                     quickActionCard(
-                        title: "Hesabim",
+                        title: "Hesabım",
                         subtitle: "Kartlar ve ayarlar",
                         systemImage: "person.crop.circle"
                     )
@@ -252,7 +252,7 @@ struct HomeView: View {
 
     private var upcomingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Siradaki Rezervasyonlar")
+            sectionTitle("Sıradaki Rezervasyonlar")
 
             if viewModel.isLoading && viewModel.bookings.isEmpty {
                 ProgressView()
@@ -276,7 +276,7 @@ struct HomeView: View {
 
     private var favoritesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Favori Bakicilar")
+            sectionTitle("Favori Bakıcılar")
 
             if viewModel.favorites.isEmpty {
                 emptyCard(
@@ -316,9 +316,9 @@ struct HomeView: View {
     private var conversationsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                sectionTitle("Son Konusmalar")
+                sectionTitle("Son Konuşmalar")
                 Spacer()
-                Button("Tumunu Gor") {
+                Button("Tümünü Gör") {
                     showChatList = true
                 }
                 .font(.subheadline.weight(.semibold))
@@ -399,7 +399,7 @@ struct HomeView: View {
             HStack {
                 sectionTitle("Son Bildirimler")
                 Spacer()
-                Button("Tumunu Gor") {
+                Button("Tümünü Gör") {
                     showNotifications = true
                 }
                 .font(.subheadline.weight(.semibold))
@@ -410,7 +410,7 @@ struct HomeView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "moon.zzz.fill")
                         .foregroundStyle(.indigo)
-                    Text("Sessiz saatler aktif. Bildirimler burada ozetleniyor, ama banner ve ses azaltildi.")
+                    Text("Sessiz saatler aktif. Bildirimler burada özetleniyor, ama banner ve ses azaltıldı.")
                         .font(.footnote)
                         .foregroundStyle(DS.Colors.textSecondary)
                 }
@@ -422,7 +422,7 @@ struct HomeView: View {
             if viewModel.notifications.isEmpty {
                 emptyCard(
                     title: "Yeni bildirim yok",
-                    message: "Rezervasyon ve mesaj gelismeleri burada gorunecek.",
+                    message: "Rezervasyon ve mesaj gelişmeleri burada görünecek.",
                     systemImage: "bell.slash"
                 )
             } else {
@@ -681,7 +681,7 @@ struct HomeView: View {
 
                 HStack(spacing: 10) {
                     secondaryActionButton(
-                        title: "Rezervasyonu Ac",
+                        title: "Rezervasyonu Aç",
                         systemImage: "arrow.right.circle"
                     ) {
                         selectedBookingContextBadge = nil
@@ -707,7 +707,7 @@ struct HomeView: View {
                                 ProgressView()
                                     .tint(.white)
                             }
-                            Text(isLoadingCheckout && checkoutBookingID == booking.id ? "Baglanti Hazirlaniyor" : "Odemeye Devam Et")
+                            Text(isLoadingCheckout && checkoutBookingID == booking.id ? "Bağlantı Hazırlanıyor" : "Ödemeye Devam Et")
                                 .frame(maxWidth: .infinity)
                         }
                         .frame(height: DS.Size.buttonHeight)
@@ -841,7 +841,7 @@ struct HomeView: View {
 
         if let participantID = conversation.participantID,
            viewModel.favorites.contains(where: { $0.providerId == participantID }) {
-            return "Favori Bakici"
+            return "Favori Bakıcı"
         }
 
         return nil
@@ -899,7 +899,7 @@ struct HomeView: View {
         do {
             let urlString = try await session.deps.paymentService.checkout(bookingID: booking.id)
             guard let url = URL(string: urlString) else {
-                checkoutError = "Odeme baglantisi gecersiz."
+                checkoutError = "Ödeme bağlantısı geçersiz."
                 return
             }
             checkoutURL = url
@@ -907,9 +907,9 @@ struct HomeView: View {
         } catch {
             let message = error.localizedDescription
             if message.localizedCaseInsensitiveContains("iyzico keys not configured") {
-                checkoutError = "Odeme su anda kullanilamiyor. Odeme saglayicisi backend tarafinda henuz yapilandirilmamis."
+                checkoutError = "Ödeme şu anda kullanılamıyor. Ödeme sağlayıcısı backend tarafında henüz yapılandırılmamış."
             } else if message.localizedCaseInsensitiveContains("http 500") {
-                checkoutError = "Odeme baglantisi su anda olusturulamiyor. Lutfen daha sonra tekrar dene."
+                checkoutError = "Ödeme bağlantısı şu anda oluşturulamıyor. Lütfen daha sonra tekrar dene."
             } else {
                 checkoutError = message
             }
