@@ -6,34 +6,224 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0A1B2C3D4E5F600100000001 /* AppLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600100000002 /* AppLogicTests.swift */; };
+		EF19D9CB2F62A2280050A6DD /* YourApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C42F6290EE0050A6DD /* YourApp.swift */; };
+		EF19D9CC2F62A3120050A6DD /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C02F6290510050A6DD /* SessionStore.swift */; };
+		EF19D9CD2F62A31E0050A6DD /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9BF2F628FDC0050A6DD /* AppDependencies.swift */; };
+		EF19D9CE2F62A3310050A6DD /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C32F6290B20050A6DD /* HomeView.swift */; };
+		EF19D9CF2F62A33C0050A6DD /* AuthFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C22F6290950050A6DD /* AuthFlowView.swift */; };
+		EF19D9D02F62A34A0050A6DD /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C12F6290740050A6DD /* AuthViewModel.swift */; };
+		EF19D9D12F62A3530050A6DD /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9BE2F628DEE0050A6DD /* AuthService.swift */; };
+		EF19D9D22F62A3640050A6DD /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9BC2F628DCA0050A6DD /* APIClient.swift */; };
+		EF19D9D32F62A36F0050A6DD /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9BA2F628D5E0050A6DD /* TokenStore.swift */; };
+		EF19D9DA2F62EF000050A6DD /* ProviderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C52F6291BA0050A6DD /* ProviderModels.swift */; };
+		EF19D9DB2F62EF010050A6DD /* ProviderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C62F6291FD0050A6DD /* ProviderService.swift */; };
+		EF19D9DC2F62EF020050A6DD /* ProviderOnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C72F62922B0050A6DD /* ProviderOnboardingViewModel.swift */; };
+		EF19D9DD2F62EF030050A6DD /* ProviderOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C82F6292570050A6DD /* ProviderOnboardingView.swift */; };
+		EF19D9DE2F62EF040050A6DD /* DS.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9C92F6293170050A6DD /* DS.swift */; };
+		EF19D9DF2F62EF050050A6DD /* OTPLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9EA2F62EF100050A6DD /* OTPLoginView.swift */; };
+		EF19D9E02F62EF060050A6DD /* OTPVerifyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9EB2F62EF110050A6DD /* OTPVerifyView.swift */; };
+		EF19D9E12F62EF070050A6DD /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9EC2F62EF120050A6DD /* PrimaryButton.swift */; };
+		EF19D9E22F62EF080050A6DD /* AppTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9ED2F62EF130050A6DD /* AppTextField.swift */; };
+		EF19D9E32F62EF090050A6DD /* AppCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9EE2F62EF140050A6DD /* AppCard.swift */; };
+		EF19D9E42F62EF0A0050A6DD /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9EF2F62EF150050A6DD /* SplashView.swift */; };
+		EF19D9E52F62EF0B0050A6DD /* OnboardingPagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9F02F62EF160050A6DD /* OnboardingPagerView.swift */; };
+		EF19D9E62F62EF0C0050A6DD /* OnboardingPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9F12F62EF170050A6DD /* OnboardingPageView.swift */; };
+		EF19D9E72F62EF0D0050A6DD /* LocationIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9F22F62EF180050A6DD /* LocationIntroView.swift */; };
+		EF19D9F32F62F9B50050A6DD /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9F22F62F9B50050A6DD /* RootView.swift */; };
+		EF19D9F52F62F9B50050A6DD /* AppButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19D9F42F62F9B50050A6DD /* AppButton.swift */; };
+		EF19DA032F62FE950050A6DD /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA022F62FE950050A6DD /* APIError.swift */; };
+		EF19DA072F62FE950050A6DD /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA062F62FE950050A6DD /* StatusPill.swift */; };
+		EF19DA092F62FE950050A6DD /* CopyRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA082F62FE950050A6DD /* CopyRow.swift */; };
+		EF19DA0B2F62FED40050A6DD /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA0A2F62FED40050A6DD /* User.swift */; };
+		EF19DA0D2F62FED40050A6DD /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA0C2F62FED40050A6DD /* AuthModels.swift */; };
+		EF19DA1F2F6300D10050A6DD /* AppTextArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA1E2F6300D10050A6DD /* AppTextArea.swift */; };
+		EF19DA212F6300D10050A6DD /* PhoneField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA202F6300D10050A6DD /* PhoneField.swift */; };
+		EF19DA232F6300D10050A6DD /* OTPField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA222F6300D10050A6DD /* OTPField.swift */; };
+		EF19DA2F2F6301A90050A6DD /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA2E2F6301A90050A6DD /* MainTabView.swift */; };
+		EF19DA312F6301A90050A6DD /* BookingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA302F6301A90050A6DD /* BookingsView.swift */; };
+		EF19DA332F6301A90050A6DD /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA322F6301A90050A6DD /* ChatView.swift */; };
+		EF19DA352F6301A90050A6DD /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA342F6301A90050A6DD /* NotificationsView.swift */; };
+		EF19DA372F6301A90050A6DD /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA362F6301A90050A6DD /* AccountView.swift */; };
+		EF19DA3B2F6303030050A6DD /* MapSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA3A2F6303030050A6DD /* MapSearchView.swift */; };
+		EF19DA3F2F6303900050A6DD /* BrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA3E2F6303900050A6DD /* BrowseView.swift */; };
+		EF19DA412F6303DD0050A6DD /* NannyCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA402F6303DD0050A6DD /* NannyCard.swift */; };
+		EF19DA432F6304110050A6DD /* SearchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA422F6304110050A6DD /* SearchBar.swift */; };
+		EF19DA452F6304490050A6DD /* CategoryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA442F6304490050A6DD /* CategoryRow.swift */; };
+		EF19DA472F6304790050A6DD /* BookingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA462F6304790050A6DD /* BookingListView.swift */; };
+		EF19DA492F6304AC0050A6DD /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA482F6304AC0050A6DD /* ChatListView.swift */; };
+		EF19DA4B2F6304D80050A6DD /* NotificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA4A2F6304D80050A6DD /* NotificationView.swift */; };
+		EF19DA572F63059D0050A6DD /* NannyProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA562F63059D0050A6DD /* NannyProfileView.swift */; };
+		EF19DA592F63059E0050A6DD /* BookingCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA582F63059E0050A6DD /* BookingCalendarView.swift */; };
+		EF19DA5B2F63059E0050A6DD /* PaymentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA5A2F63059E0050A6DD /* PaymentView.swift */; };
+		EF19DA5D2F63059F0050A6DD /* ChatConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA5C2F63059F0050A6DD /* ChatConversationView.swift */; };
+		EF19DA5F2F63059F0050A6DD /* ProviderDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA5E2F63059F0050A6DD /* ProviderDashboardView.swift */; };
+		EF19DA612F63062A0050A6DD /* SkillPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA602F63062A0050A6DD /* SkillPill.swift */; };
+		EF19DA632F6306B40050A6DD /* TimeSlotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA622F6306B40050A6DD /* TimeSlotView.swift */; };
+		EF19DA652F6307930050A6DD /* MapCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA642F6307930050A6DD /* MapCard.swift */; };
+		EF19DA672F6308660050A6DD /* ChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA662F6308660050A6DD /* ChatBubble.swift */; };
+		EF19DA692F63092A0050A6DD /* DashboardCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA682F63092A0050A6DD /* DashboardCard.swift */; };
+		EF19DA6B2F6309730050A6DD /* ProviderCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA6A2F6309730050A6DD /* ProviderCalendarView.swift */; };
+		EF19DA712F630A9A0050A6DD /* BookingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA702F630A9A0050A6DD /* BookingService.swift */; };
+		EF19DA742F630B140050A6DD /* BookingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA732F630B140050A6DD /* BookingViewModel.swift */; };
+		EF19DA762F6311AC0050A6DD /* MeResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA752F6311AC0050A6DD /* MeResponse.swift */; };
+		EF19DA782F6311AC0050A6DD /* BookingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA772F6311AC0050A6DD /* BookingModels.swift */; };
+		EF19DA7A2F63D0440050A6DD /* ChatSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA792F63D0440050A6DD /* ChatSocket.swift */; };
+		EF19DA7D2F63D06D0050A6DD /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA7C2F63D06D0050A6DD /* ChatViewModel.swift */; };
+		EF19DA802F63D1310050A6DD /* PaymentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA7F2F63D1310050A6DD /* PaymentService.swift */; };
+		EF19DA822F63D1560050A6DD /* CheckoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA812F63D1560050A6DD /* CheckoutView.swift */; };
+		EF19DA862F63D5560050A6DD /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA852F63D5560050A6DD /* AppDelegate.swift */; };
+		EF19DA8A2F63DF340050A6DD /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = EF19DA892F63DF340050A6DD /* FirebaseCore */; };
+		EF19DA8C2F63DF430050A6DD /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = EF19DA8B2F63DF430050A6DD /* FirebaseMessaging */; };
+		EF19DA8E2F63DF730050A6DD /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = EF19DA8D2F63DF730050A6DD /* FirebaseAnalytics */; };
+		EF19DA922F63E8850050A6DD /* PushDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA912F63E8850050A6DD /* PushDebugView.swift */; };
+		EF19DA942F651D490050A6DD /* BrowseFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA932F651D490050A6DD /* BrowseFilterSheet.swift */; };
+		EF19DA962F651D4A0050A6DD /* BrowseSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA952F651D4A0050A6DD /* BrowseSearchView.swift */; };
+		EF19DA982F651D4A0050A6DD /* DiscoverBrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA972F651D4A0050A6DD /* DiscoverBrowseView.swift */; };
+		EF19DA9A2F651D4A0050A6DD /* CategoriesBrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF19DA992F651D4A0050A6DD /* CategoriesBrowseView.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		0A1B2C3D4E5F600100000002 /* AppLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogicTests.swift; sourceTree = "<group>"; };
+		0A1B2C3D4E5F600100000003 /* APIEnvironmentTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = APIEnvironmentTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EF19D9AB2F628BBB0050A6DD /* APIEnvironment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = APIEnvironment.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EF19D9BA2F628D5E0050A6DD /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		EF19D9BB2F628DB40050A6DD /* APIEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIEnvironment.swift; sourceTree = "<group>"; };
+		EF19D9BC2F628DCA0050A6DD /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		EF19D9BE2F628DEE0050A6DD /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		EF19D9BF2F628FDC0050A6DD /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
+		EF19D9C02F6290510050A6DD /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		EF19D9C12F6290740050A6DD /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		EF19D9C22F6290950050A6DD /* AuthFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFlowView.swift; sourceTree = "<group>"; };
+		EF19D9C32F6290B20050A6DD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		EF19D9C42F6290EE0050A6DD /* YourApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YourApp.swift; sourceTree = "<group>"; };
+		EF19D9C52F6291BA0050A6DD /* ProviderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderModels.swift; sourceTree = "<group>"; };
+		EF19D9C62F6291FD0050A6DD /* ProviderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderService.swift; sourceTree = "<group>"; };
+		EF19D9C72F62922B0050A6DD /* ProviderOnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderOnboardingViewModel.swift; sourceTree = "<group>"; };
+		EF19D9C82F6292570050A6DD /* ProviderOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderOnboardingView.swift; sourceTree = "<group>"; };
+		EF19D9C92F6293170050A6DD /* DS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DS.swift; sourceTree = "<group>"; };
+		EF19D9EA2F62EF100050A6DD /* OTPLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPLoginView.swift; sourceTree = "<group>"; };
+		EF19D9EB2F62EF110050A6DD /* OTPVerifyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPVerifyView.swift; sourceTree = "<group>"; };
+		EF19D9EC2F62EF120050A6DD /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
+		EF19D9ED2F62EF130050A6DD /* AppTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTextField.swift; sourceTree = "<group>"; };
+		EF19D9EE2F62EF140050A6DD /* AppCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCard.swift; sourceTree = "<group>"; };
+		EF19D9EF2F62EF150050A6DD /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		EF19D9F02F62EF160050A6DD /* OnboardingPagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPagerView.swift; sourceTree = "<group>"; };
+		EF19D9F12F62EF170050A6DD /* OnboardingPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPageView.swift; sourceTree = "<group>"; };
+		EF19D9F22F62EF180050A6DD /* LocationIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationIntroView.swift; sourceTree = "<group>"; };
+		EF19D9F22F62F9B50050A6DD /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		EF19D9F42F62F9B50050A6DD /* AppButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppButton.swift; sourceTree = "<group>"; };
+		EF19DA022F62FE950050A6DD /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
+		EF19DA062F62FE950050A6DD /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
+		EF19DA082F62FE950050A6DD /* CopyRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyRow.swift; sourceTree = "<group>"; };
+		EF19DA0A2F62FED40050A6DD /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		EF19DA0C2F62FED40050A6DD /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		EF19DA1E2F6300D10050A6DD /* AppTextArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTextArea.swift; sourceTree = "<group>"; };
+		EF19DA202F6300D10050A6DD /* PhoneField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneField.swift; sourceTree = "<group>"; };
+		EF19DA222F6300D10050A6DD /* OTPField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPField.swift; sourceTree = "<group>"; };
+		EF19DA2E2F6301A90050A6DD /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		EF19DA302F6301A90050A6DD /* BookingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingsView.swift; sourceTree = "<group>"; };
+		EF19DA322F6301A90050A6DD /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		EF19DA342F6301A90050A6DD /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		EF19DA362F6301A90050A6DD /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
+		EF19DA3A2F6303030050A6DD /* MapSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSearchView.swift; sourceTree = "<group>"; };
+		EF19DA3E2F6303900050A6DD /* BrowseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseView.swift; sourceTree = "<group>"; };
+		EF19DA402F6303DD0050A6DD /* NannyCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NannyCard.swift; sourceTree = "<group>"; };
+		EF19DA422F6304110050A6DD /* SearchBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBar.swift; sourceTree = "<group>"; };
+		EF19DA442F6304490050A6DD /* CategoryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryRow.swift; sourceTree = "<group>"; };
+		EF19DA462F6304790050A6DD /* BookingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingListView.swift; sourceTree = "<group>"; };
+		EF19DA482F6304AC0050A6DD /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
+		EF19DA4A2F6304D80050A6DD /* NotificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationView.swift; sourceTree = "<group>"; };
+		EF19DA562F63059D0050A6DD /* NannyProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NannyProfileView.swift; sourceTree = "<group>"; };
+		EF19DA582F63059E0050A6DD /* BookingCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingCalendarView.swift; sourceTree = "<group>"; };
+		EF19DA5A2F63059E0050A6DD /* PaymentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentView.swift; sourceTree = "<group>"; };
+		EF19DA5C2F63059F0050A6DD /* ChatConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConversationView.swift; sourceTree = "<group>"; };
+		EF19DA5E2F63059F0050A6DD /* ProviderDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderDashboardView.swift; sourceTree = "<group>"; };
+		EF19DA602F63062A0050A6DD /* SkillPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillPill.swift; sourceTree = "<group>"; };
+		EF19DA622F6306B40050A6DD /* TimeSlotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSlotView.swift; sourceTree = "<group>"; };
+		EF19DA642F6307930050A6DD /* MapCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapCard.swift; sourceTree = "<group>"; };
+		EF19DA662F6308660050A6DD /* ChatBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBubble.swift; sourceTree = "<group>"; };
+		EF19DA682F63092A0050A6DD /* DashboardCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardCard.swift; sourceTree = "<group>"; };
+		EF19DA6A2F6309730050A6DD /* ProviderCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderCalendarView.swift; sourceTree = "<group>"; };
+		EF19DA702F630A9A0050A6DD /* BookingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingService.swift; sourceTree = "<group>"; };
+		EF19DA732F630B140050A6DD /* BookingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingViewModel.swift; sourceTree = "<group>"; };
+		EF19DA752F6311AC0050A6DD /* MeResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeResponse.swift; sourceTree = "<group>"; };
+		EF19DA772F6311AC0050A6DD /* BookingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingModels.swift; sourceTree = "<group>"; };
+		EF19DA792F63D0440050A6DD /* ChatSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSocket.swift; sourceTree = "<group>"; };
+		EF19DA7C2F63D06D0050A6DD /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		EF19DA7F2F63D1310050A6DD /* PaymentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentService.swift; sourceTree = "<group>"; };
+		EF19DA812F63D1560050A6DD /* CheckoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckoutView.swift; sourceTree = "<group>"; };
+		EF19DA852F63D5560050A6DD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		EF19DA912F63E8850050A6DD /* PushDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushDebugView.swift; sourceTree = "<group>"; };
+		EF19DA932F651D490050A6DD /* BrowseFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseFilterSheet.swift; sourceTree = "<group>"; };
+		EF19DA952F651D4A0050A6DD /* BrowseSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseSearchView.swift; sourceTree = "<group>"; };
+		EF19DA972F651D4A0050A6DD /* DiscoverBrowseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverBrowseView.swift; sourceTree = "<group>"; };
+		EF19DA992F651D4A0050A6DD /* CategoriesBrowseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesBrowseView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EF19DA902F63E4E10050A6DD /* Exceptions for "APIEnvironment" folder in "APIEnvironment" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = EF19D9AA2F628BBB0050A6DD /* APIEnvironment */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EF19D9AD2F628BBB0050A6DD /* APIEnvironment */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EF19DA902F63E4E10050A6DD /* Exceptions for "APIEnvironment" folder in "APIEnvironment" target */,
+			);
 			path = APIEnvironment;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		EF19D9A82F628BBB0050A6DD /* Frameworks */ = {
+		0A1B2C3D4E5F600100000004 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EF19D9A82F628BBB0050A6DD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF19DA8C2F63DF430050A6DD /* FirebaseMessaging in Frameworks */,
+				EF19DA8A2F63DF340050A6DD /* FirebaseCore in Frameworks */,
+				EF19DA8E2F63DF730050A6DD /* FirebaseAnalytics in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0A1B2C3D4E5F600100000005 /* APIEnvironmentTests */ = {
+			isa = PBXGroup;
+			children = (
+				0A1B2C3D4E5F600100000002 /* AppLogicTests.swift */,
+			);
+			path = APIEnvironmentTests;
+			sourceTree = "<group>";
+		};
 		EF19D9A22F628BBB0050A6DD = {
 			isa = PBXGroup;
 			children = (
+				EF19D9B92F628D3B0050A6DD /* networking */,
 				EF19D9AD2F628BBB0050A6DD /* APIEnvironment */,
+				0A1B2C3D4E5F600100000005 /* APIEnvironmentTests */,
 				EF19D9AC2F628BBB0050A6DD /* Products */,
+				EF19D9D42F62EC150050A6DD /* UI */,
+				EF19D9F62F62FDE70050A6DD /* App */,
+				EF19D9F82F62FDED0050A6DD /* Core */,
+				EF19D9F92F62FDED0050A6DD /* Features */,
+				EF19DA882F63DF340050A6DD /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -41,13 +231,618 @@
 			isa = PBXGroup;
 			children = (
 				EF19D9AB2F628BBB0050A6DD /* APIEnvironment.app */,
+				0A1B2C3D4E5F600100000003 /* APIEnvironmentTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		EF19D9B92F628D3B0050A6DD /* networking */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = networking;
+			sourceTree = "<group>";
+		};
+		EF19D9D42F62EC150050A6DD /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9D52F62EC1D0050A6DD /* DesignSystem */,
+				EF19D9D62F62EC1E0050A6DD /* Onboarding */,
+				EF19D9D72F62EC1E0050A6DD /* Auth */,
+				EF19D9D82F62EC1E0050A6DD /* Location */,
+				EF19D9D92F62EC1E0050A6DD /* Provider */,
+				EF19D9F72F62FDE70050A6DD /* Components */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		EF19D9D52F62EC1D0050A6DD /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9C92F6293170050A6DD /* DS.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		EF19D9D62F62EC1E0050A6DD /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		EF19D9D72F62EC1E0050A6DD /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		EF19D9D82F62EC1E0050A6DD /* Location */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9F22F62EF180050A6DD /* LocationIntroView.swift */,
+			);
+			path = Location;
+			sourceTree = "<group>";
+		};
+		EF19D9D92F62EC1E0050A6DD /* Provider */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Provider;
+			sourceTree = "<group>";
+		};
+		EF19D9F62F62FDE70050A6DD /* App */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9C42F6290EE0050A6DD /* YourApp.swift */,
+				EF19D9F22F62F9B50050A6DD /* RootView.swift */,
+				EF19D9C02F6290510050A6DD /* SessionStore.swift */,
+				EF19DA852F63D5560050A6DD /* AppDelegate.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		EF19D9F72F62FDE70050A6DD /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9EC2F62EF120050A6DD /* PrimaryButton.swift */,
+				EF19D9F42F62F9B50050A6DD /* AppButton.swift */,
+				EF19D9ED2F62EF130050A6DD /* AppTextField.swift */,
+				EF19D9EE2F62EF140050A6DD /* AppCard.swift */,
+				EF19DA062F62FE950050A6DD /* StatusPill.swift */,
+				EF19DA082F62FE950050A6DD /* CopyRow.swift */,
+				EF19DA1E2F6300D10050A6DD /* AppTextArea.swift */,
+				EF19DA202F6300D10050A6DD /* PhoneField.swift */,
+				EF19DA222F6300D10050A6DD /* OTPField.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		EF19D9F82F62FDED0050A6DD /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9FA2F62FDF60050A6DD /* Networking */,
+				EF19D9FB2F62FDF60050A6DD /* Auth */,
+				EF19D9FC2F62FDF60050A6DD /* Dependencies */,
+				EF19D9FD2F62FDF60050A6DD /* Models */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		EF19D9F92F62FDED0050A6DD /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9FE2F62FDF60050A6DD /* Auth */,
+				EF19D9FF2F62FDF60050A6DD /* Onboarding */,
+				EF19DA002F62FDF60050A6DD /* Home */,
+				EF19DA012F62FDF60050A6DD /* Provider */,
+				EF19DA242F63018F0050A6DD /* Main */,
+				EF19DA262F63018F0050A6DD /* Bookings */,
+				EF19DA282F63018F0050A6DD /* Chat */,
+				EF19DA2A2F63018F0050A6DD /* Notifications */,
+				EF19DA2C2F63018F0050A6DD /* Account */,
+				EF19DA382F6302EF0050A6DD /* MapSearch */,
+				EF19DA3C2F63037D0050A6DD /* Browse */,
+				EF19DA4C2F6305760050A6DD /* NannyProfile */,
+				EF19DA4E2F6305760050A6DD /* BookingCalendar */,
+				EF19DA502F6305760050A6DD /* Payment */,
+				EF19DA522F6305760050A6DD /* ChatConversation */,
+				EF19DA542F6305760050A6DD /* ProviderDashboard */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		EF19D9FA2F62FDF60050A6DD /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9BC2F628DCA0050A6DD /* APIClient.swift */,
+				EF19D9BB2F628DB40050A6DD /* APIEnvironment.swift */,
+				EF19DA022F62FE950050A6DD /* APIError.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		EF19D9FB2F62FDF60050A6DD /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9BE2F628DEE0050A6DD /* AuthService.swift */,
+				EF19D9BA2F628D5E0050A6DD /* TokenStore.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		EF19D9FC2F62FDF60050A6DD /* Dependencies */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9BF2F628FDC0050A6DD /* AppDependencies.swift */,
+			);
+			path = Dependencies;
+			sourceTree = "<group>";
+		};
+		EF19D9FD2F62FDF60050A6DD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA0A2F62FED40050A6DD /* User.swift */,
+				EF19DA0C2F62FED40050A6DD /* AuthModels.swift */,
+				EF19D9C52F6291BA0050A6DD /* ProviderModels.swift */,
+				EF19DA752F6311AC0050A6DD /* MeResponse.swift */,
+				EF19DA772F6311AC0050A6DD /* BookingModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EF19D9FE2F62FDF60050A6DD /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA0E2F62FFC10050A6DD /* View */,
+				EF19DA0F2F62FFC10050A6DD /* ViewModel */,
+				EF19DA102F62FFC10050A6DD /* Service */,
+				EF19DA112F62FFC10050A6DD /* Models */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		EF19D9FF2F62FDF60050A6DD /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA122F62FFC10050A6DD /* View */,
+				EF19DA132F62FFC20050A6DD /* ViewModel */,
+				EF19DA142F62FFC20050A6DD /* Service */,
+				EF19DA152F62FFC20050A6DD /* Models */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		EF19DA002F62FDF60050A6DD /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA192F62FFC20050A6DD /* View */,
+				EF19DA1B2F62FFC20050A6DD /* ViewModel */,
+				EF19DA1C2F62FFC20050A6DD /* Models */,
+				EF19DA1D2F62FFC20050A6DD /* Service */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		EF19DA012F62FDF60050A6DD /* Provider */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA162F62FFC20050A6DD /* View */,
+				EF19DA172F62FFC20050A6DD /* ViewModel */,
+				EF19DA182F62FFC20050A6DD /* Service */,
+				EF19DA1A2F62FFC20050A6DD /* Models */,
+			);
+			path = Provider;
+			sourceTree = "<group>";
+		};
+		EF19DA0E2F62FFC10050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9C22F6290950050A6DD /* AuthFlowView.swift */,
+				EF19D9EA2F62EF100050A6DD /* OTPLoginView.swift */,
+				EF19D9EB2F62EF110050A6DD /* OTPVerifyView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA0F2F62FFC10050A6DD /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9C12F6290740050A6DD /* AuthViewModel.swift */,
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		EF19DA102F62FFC10050A6DD /* Service */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		EF19DA112F62FFC10050A6DD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EF19DA122F62FFC10050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9EF2F62EF150050A6DD /* SplashView.swift */,
+				EF19D9F02F62EF160050A6DD /* OnboardingPagerView.swift */,
+				EF19D9F12F62EF170050A6DD /* OnboardingPageView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA132F62FFC20050A6DD /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		EF19DA142F62FFC20050A6DD /* Service */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		EF19DA152F62FFC20050A6DD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EF19DA162F62FFC20050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9C82F6292570050A6DD /* ProviderOnboardingView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA172F62FFC20050A6DD /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9C72F62922B0050A6DD /* ProviderOnboardingViewModel.swift */,
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		EF19DA182F62FFC20050A6DD /* Service */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9C62F6291FD0050A6DD /* ProviderService.swift */,
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		EF19DA192F62FFC20050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19D9C32F6290B20050A6DD /* HomeView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA1A2F62FFC20050A6DD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EF19DA1B2F62FFC20050A6DD /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		EF19DA1C2F62FFC20050A6DD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EF19DA1D2F62FFC20050A6DD /* Service */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		EF19DA242F63018F0050A6DD /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA252F63018F0050A6DD /* View */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
+		EF19DA252F63018F0050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA2E2F6301A90050A6DD /* MainTabView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA262F63018F0050A6DD /* Bookings */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA272F63018F0050A6DD /* View */,
+				EF19DA6F2F630A980050A6DD /* Service */,
+				EF19DA722F630AE80050A6DD /* ViewModel */,
+			);
+			path = Bookings;
+			sourceTree = "<group>";
+		};
+		EF19DA272F63018F0050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA302F6301A90050A6DD /* BookingsView.swift */,
+				EF19DA462F6304790050A6DD /* BookingListView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA282F63018F0050A6DD /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA292F63018F0050A6DD /* View */,
+				EF19DA6C2F6309E80050A6DD /* Service */,
+				EF19DA7B2F63D06D0050A6DD /* ViewModel */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		EF19DA292F63018F0050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA322F6301A90050A6DD /* ChatView.swift */,
+				EF19DA482F6304AC0050A6DD /* ChatListView.swift */,
+				EF19DA662F6308660050A6DD /* ChatBubble.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA2A2F63018F0050A6DD /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA2B2F63018F0050A6DD /* View */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
+		EF19DA2B2F63018F0050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA342F6301A90050A6DD /* NotificationsView.swift */,
+				EF19DA4A2F6304D80050A6DD /* NotificationView.swift */,
+				EF19DA912F63E8850050A6DD /* PushDebugView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA2C2F63018F0050A6DD /* Account */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA2D2F63018F0050A6DD /* View */,
+			);
+			path = Account;
+			sourceTree = "<group>";
+		};
+		EF19DA2D2F63018F0050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA362F6301A90050A6DD /* AccountView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA382F6302EF0050A6DD /* MapSearch */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA392F6302EF0050A6DD /* View */,
+			);
+			path = MapSearch;
+			sourceTree = "<group>";
+		};
+		EF19DA392F6302EF0050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA3A2F6303030050A6DD /* MapSearchView.swift */,
+				EF19DA642F6307930050A6DD /* MapCard.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA3C2F63037D0050A6DD /* Browse */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA3D2F6303900050A6DD /* View */,
+			);
+			path = Browse;
+			sourceTree = "<group>";
+		};
+		EF19DA3D2F6303900050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA3E2F6303900050A6DD /* BrowseView.swift */,
+				EF19DA402F6303DD0050A6DD /* NannyCard.swift */,
+				EF19DA422F6304110050A6DD /* SearchBar.swift */,
+				EF19DA442F6304490050A6DD /* CategoryRow.swift */,
+				EF19DA932F651D490050A6DD /* BrowseFilterSheet.swift */,
+				EF19DA952F651D4A0050A6DD /* BrowseSearchView.swift */,
+				EF19DA972F651D4A0050A6DD /* DiscoverBrowseView.swift */,
+				EF19DA992F651D4A0050A6DD /* CategoriesBrowseView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA4C2F6305760050A6DD /* NannyProfile */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA4D2F6305760050A6DD /* View */,
+			);
+			path = NannyProfile;
+			sourceTree = "<group>";
+		};
+		EF19DA4D2F6305760050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA562F63059D0050A6DD /* NannyProfileView.swift */,
+				EF19DA602F63062A0050A6DD /* SkillPill.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA4E2F6305760050A6DD /* BookingCalendar */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA4F2F6305760050A6DD /* View */,
+			);
+			path = BookingCalendar;
+			sourceTree = "<group>";
+		};
+		EF19DA4F2F6305760050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA582F63059E0050A6DD /* BookingCalendarView.swift */,
+				EF19DA622F6306B40050A6DD /* TimeSlotView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA502F6305760050A6DD /* Payment */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA512F6305760050A6DD /* View */,
+				EF19DA7E2F63D1310050A6DD /* Service */,
+			);
+			path = Payment;
+			sourceTree = "<group>";
+		};
+		EF19DA512F6305760050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA5A2F63059E0050A6DD /* PaymentView.swift */,
+				EF19DA812F63D1560050A6DD /* CheckoutView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA522F6305760050A6DD /* ChatConversation */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA532F6305760050A6DD /* View */,
+			);
+			path = ChatConversation;
+			sourceTree = "<group>";
+		};
+		EF19DA532F6305760050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA5C2F63059F0050A6DD /* ChatConversationView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA542F6305760050A6DD /* ProviderDashboard */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA552F6305760050A6DD /* View */,
+			);
+			path = ProviderDashboard;
+			sourceTree = "<group>";
+		};
+		EF19DA552F6305760050A6DD /* View */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA5E2F63059F0050A6DD /* ProviderDashboardView.swift */,
+				EF19DA682F63092A0050A6DD /* DashboardCard.swift */,
+				EF19DA6A2F6309730050A6DD /* ProviderCalendarView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		EF19DA6C2F6309E80050A6DD /* Service */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA792F63D0440050A6DD /* ChatSocket.swift */,
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		EF19DA6F2F630A980050A6DD /* Service */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA702F630A9A0050A6DD /* BookingService.swift */,
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		EF19DA722F630AE80050A6DD /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA732F630B140050A6DD /* BookingViewModel.swift */,
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		EF19DA7B2F63D06D0050A6DD /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA7C2F63D06D0050A6DD /* ChatViewModel.swift */,
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		EF19DA7E2F63D1310050A6DD /* Service */ = {
+			isa = PBXGroup;
+			children = (
+				EF19DA7F2F63D1310050A6DD /* PaymentService.swift */,
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		EF19DA882F63DF340050A6DD /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0A1B2C3D4E5F600100000006 /* APIEnvironmentTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0A1B2C3D4E5F60010000000C /* Build configuration list for PBXNativeTarget "APIEnvironmentTests" */;
+			buildPhases = (
+				0A1B2C3D4E5F600100000007 /* Sources */,
+				0A1B2C3D4E5F600100000004 /* Frameworks */,
+				0A1B2C3D4E5F600100000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0A1B2C3D4E5F600100000009 /* PBXTargetDependency */,
+			);
+			name = APIEnvironmentTests;
+			productName = APIEnvironmentTests;
+			productReference = 0A1B2C3D4E5F600100000003 /* APIEnvironmentTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		EF19D9AA2F628BBB0050A6DD /* APIEnvironment */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = EF19D9B62F628BBC0050A6DD /* Build configuration list for PBXNativeTarget "APIEnvironment" */;
@@ -65,6 +860,9 @@
 			);
 			name = APIEnvironment;
 			packageProductDependencies = (
+				EF19DA892F63DF340050A6DD /* FirebaseCore */,
+				EF19DA8B2F63DF430050A6DD /* FirebaseMessaging */,
+				EF19DA8D2F63DF730050A6DD /* FirebaseAnalytics */,
 			);
 			productName = APIEnvironment;
 			productReference = EF19D9AB2F628BBB0050A6DD /* APIEnvironment.app */;
@@ -80,6 +878,10 @@
 				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					0A1B2C3D4E5F600100000006 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = EF19D9AA2F628BBB0050A6DD;
+					};
 					EF19D9AA2F628BBB0050A6DD = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -94,17 +896,28 @@
 			);
 			mainGroup = EF19D9A22F628BBB0050A6DD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EF19DA872F63DC470050A6DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EF19D9AC2F628BBB0050A6DD /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				0A1B2C3D4E5F600100000006 /* APIEnvironmentTests */,
 				EF19D9AA2F628BBB0050A6DD /* APIEnvironment */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0A1B2C3D4E5F600100000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EF19D9A92F628BBB0050A6DD /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,16 +928,159 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0A1B2C3D4E5F600100000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0A1B2C3D4E5F600100000001 /* AppLogicTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EF19D9A72F628BBB0050A6DD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EF19DA472F6304790050A6DD /* BookingListView.swift in Sources */,
+				EF19DA332F6301A90050A6DD /* ChatView.swift in Sources */,
+				EF19D9D32F62A36F0050A6DD /* TokenStore.swift in Sources */,
+				EF19DA0D2F62FED40050A6DD /* AuthModels.swift in Sources */,
+				EF19D9CB2F62A2280050A6DD /* YourApp.swift in Sources */,
+				EF19DA372F6301A90050A6DD /* AccountView.swift in Sources */,
+				EF19D9CC2F62A3120050A6DD /* SessionStore.swift in Sources */,
+				EF19DA6B2F6309730050A6DD /* ProviderCalendarView.swift in Sources */,
+				EF19DA1F2F6300D10050A6DD /* AppTextArea.swift in Sources */,
+				EF19DA712F630A9A0050A6DD /* BookingService.swift in Sources */,
+				EF19DA452F6304490050A6DD /* CategoryRow.swift in Sources */,
+				EF19DA922F63E8850050A6DD /* PushDebugView.swift in Sources */,
+				EF19DA822F63D1560050A6DD /* CheckoutView.swift in Sources */,
+				EF19D9D22F62A3640050A6DD /* APIClient.swift in Sources */,
+				EF19DA0B2F62FED40050A6DD /* User.swift in Sources */,
+				EF19DA982F651D4A0050A6DD /* DiscoverBrowseView.swift in Sources */,
+				EF19DA7D2F63D06D0050A6DD /* ChatViewModel.swift in Sources */,
+				EF19DA432F6304110050A6DD /* SearchBar.swift in Sources */,
+				EF19DA692F63092A0050A6DD /* DashboardCard.swift in Sources */,
+				EF19D9D12F62A3530050A6DD /* AuthService.swift in Sources */,
+				EF19D9CE2F62A3310050A6DD /* HomeView.swift in Sources */,
+				EF19DA232F6300D10050A6DD /* OTPField.swift in Sources */,
+				EF19DA942F651D490050A6DD /* BrowseFilterSheet.swift in Sources */,
+				EF19D9D02F62A34A0050A6DD /* AuthViewModel.swift in Sources */,
+				EF19DA412F6303DD0050A6DD /* NannyCard.swift in Sources */,
+				EF19D9CD2F62A31E0050A6DD /* AppDependencies.swift in Sources */,
+				EF19D9CF2F62A33C0050A6DD /* AuthFlowView.swift in Sources */,
+				EF19DA2F2F6301A90050A6DD /* MainTabView.swift in Sources */,
+				EF19DA612F63062A0050A6DD /* SkillPill.swift in Sources */,
+				EF19DA3F2F6303900050A6DD /* BrowseView.swift in Sources */,
+				EF19D9DA2F62EF000050A6DD /* ProviderModels.swift in Sources */,
+				EF19DA962F651D4A0050A6DD /* BrowseSearchView.swift in Sources */,
+				EF19DA762F6311AC0050A6DD /* MeResponse.swift in Sources */,
+				EF19DA782F6311AC0050A6DD /* BookingModels.swift in Sources */,
+				EF19DA492F6304AC0050A6DD /* ChatListView.swift in Sources */,
+				EF19D9DB2F62EF010050A6DD /* ProviderService.swift in Sources */,
+				EF19DA862F63D5560050A6DD /* AppDelegate.swift in Sources */,
+				EF19D9DC2F62EF020050A6DD /* ProviderOnboardingViewModel.swift in Sources */,
+				EF19DA3B2F6303030050A6DD /* MapSearchView.swift in Sources */,
+				EF19DA092F62FE950050A6DD /* CopyRow.swift in Sources */,
+				EF19DA672F6308660050A6DD /* ChatBubble.swift in Sources */,
+				EF19D9F52F62F9B50050A6DD /* AppButton.swift in Sources */,
+				EF19DA032F62FE950050A6DD /* APIError.swift in Sources */,
+				EF19DA312F6301A90050A6DD /* BookingsView.swift in Sources */,
+				EF19D9DD2F62EF030050A6DD /* ProviderOnboardingView.swift in Sources */,
+				EF19DA352F6301A90050A6DD /* NotificationsView.swift in Sources */,
+				EF19DA592F63059E0050A6DD /* BookingCalendarView.swift in Sources */,
+				EF19D9DE2F62EF040050A6DD /* DS.swift in Sources */,
+				EF19D9DF2F62EF050050A6DD /* OTPLoginView.swift in Sources */,
+				EF19DA5D2F63059F0050A6DD /* ChatConversationView.swift in Sources */,
+				EF19DA742F630B140050A6DD /* BookingViewModel.swift in Sources */,
+				EF19DA072F62FE950050A6DD /* StatusPill.swift in Sources */,
+				EF19DA5F2F63059F0050A6DD /* ProviderDashboardView.swift in Sources */,
+				EF19DA4B2F6304D80050A6DD /* NotificationView.swift in Sources */,
+				EF19DA652F6307930050A6DD /* MapCard.swift in Sources */,
+				EF19D9E02F62EF060050A6DD /* OTPVerifyView.swift in Sources */,
+				EF19D9E12F62EF070050A6DD /* PrimaryButton.swift in Sources */,
+				EF19D9E22F62EF080050A6DD /* AppTextField.swift in Sources */,
+				EF19D9E32F62EF090050A6DD /* AppCard.swift in Sources */,
+				EF19D9E42F62EF0A0050A6DD /* SplashView.swift in Sources */,
+				EF19DA9A2F651D4A0050A6DD /* CategoriesBrowseView.swift in Sources */,
+				EF19DA5B2F63059E0050A6DD /* PaymentView.swift in Sources */,
+				EF19DA632F6306B40050A6DD /* TimeSlotView.swift in Sources */,
+				EF19DA7A2F63D0440050A6DD /* ChatSocket.swift in Sources */,
+				EF19DA572F63059D0050A6DD /* NannyProfileView.swift in Sources */,
+				EF19D9F32F62F9B50050A6DD /* RootView.swift in Sources */,
+				EF19D9E52F62EF0B0050A6DD /* OnboardingPagerView.swift in Sources */,
+				EF19DA212F6300D10050A6DD /* PhoneField.swift in Sources */,
+				EF19D9E62F62EF0C0050A6DD /* OnboardingPageView.swift in Sources */,
+				EF19DA802F63D1310050A6DD /* PaymentService.swift in Sources */,
+				EF19D9E72F62EF0D0050A6DD /* LocationIntroView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXContainerItemProxy section */
+		0A1B2C3D4E5F60010000000A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EF19D9A32F628BBB0050A6DD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EF19D9AA2F628BBB0050A6DD;
+			remoteInfo = APIEnvironment;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		0A1B2C3D4E5F600100000009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EF19D9AA2F628BBB0050A6DD /* APIEnvironment */;
+			targetProxy = 0A1B2C3D4E5F60010000000A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		0A1B2C3D4E5F60010000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 46X5M3XFZ2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "click-ajans.APIEnvironmentTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/APIEnvironment.app/APIEnvironment";
+			};
+			name = Debug;
+		};
+		0A1B2C3D4E5F60010000000D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 46X5M3XFZ2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "click-ajans.APIEnvironmentTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/APIEnvironment.app/APIEnvironment";
+			};
+			name = Release;
+		};
 		EF19D9B42F628BBC0050A6DD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -251,8 +1207,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 46X5M3XFZ2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = APIEnvironment/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,8 +1240,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 46X5M3XFZ2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = APIEnvironment/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -309,6 +1269,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0A1B2C3D4E5F60010000000C /* Build configuration list for PBXNativeTarget "APIEnvironmentTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A1B2C3D4E5F60010000000B /* Debug */,
+				0A1B2C3D4E5F60010000000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		EF19D9A62F628BBB0050A6DD /* Build configuration list for PBXProject "APIEnvironment" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -328,6 +1297,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		EF19DA872F63DC470050A6DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EF19DA892F63DF340050A6DD /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EF19DA872F63DC470050A6DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		EF19DA8B2F63DF430050A6DD /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EF19DA872F63DC470050A6DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		EF19DA8D2F63DF730050A6DD /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EF19DA872F63DC470050A6DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = EF19D9A32F628BBB0050A6DD /* Project object */;
 }
