@@ -102,6 +102,7 @@ struct RootView: View {
 private struct ProviderRootView: View {
     let service: ProviderService
 
+    @AppStorage("didCompleteProviderOnboarding") private var didCompleteProviderOnboarding = false
     @State private var isLoading = true
     @State private var account: ProviderAccount?
     @State private var errorMessage: String?
@@ -111,10 +112,15 @@ private struct ProviderRootView: View {
             Group {
                 if isLoading {
                     ProgressView("Provider paneli yükleniyor...")
-                } else if let account, account.status.uppercased() == "APPROVED" {
-                    ProviderDashboardView(account: account)
+                } else if let account {
+                    ProviderMainTabView(account: account)
+                } else if didCompleteProviderOnboarding {
+                    ProviderMainTabView(account: nil)
                 } else {
-                    ProviderOnboardingView(service: service)
+                    ProviderOnboardingView(service: service) { updatedAccount in
+                        account = updatedAccount
+                        didCompleteProviderOnboarding = updatedAccount != nil
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -128,12 +134,52 @@ private struct ProviderRootView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            account = try await service.getPayoutAccount().account
+            account = try await service.getOnboardingSummary().account
+            didCompleteProviderOnboarding = account != nil || didCompleteProviderOnboarding
             errorMessage = nil
         } catch {
             account = nil
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private struct ProviderMainTabView: View {
+    let account: ProviderAccount?
+
+    var body: some View {
+        TabView {
+            ProviderDashboardView(account: account)
+                .tabItem {
+                    Label("Panel", systemImage: "square.grid.2x2")
+                }
+
+            NavigationStack {
+                ProviderCalendarView()
+            }
+            .tabItem {
+                Label("Müsaitlik", systemImage: "calendar")
+            }
+
+            ChatListView()
+                .tabItem {
+                    Label("Mesajlar", systemImage: "message")
+                }
+
+            NotificationsView()
+                .tabItem {
+                    Label("Bildirimler", systemImage: "bell")
+                }
+
+            AccountView()
+                .tabItem {
+                    Label("Hesap", systemImage: "person")
+                }
+        }
+        .tint(DS.Colors.primary)
+        .toolbarBackground(.white, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarColorScheme(.light, for: .tabBar)
     }
 }
 

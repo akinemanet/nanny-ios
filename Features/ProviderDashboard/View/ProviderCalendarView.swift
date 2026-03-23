@@ -169,10 +169,14 @@ struct ProviderCalendarView: View {
                     displayedComponents: [.date]
                 )
                 .datePickerStyle(.graphical)
+                .environment(\.colorScheme, .light)
+                .environment(\.locale, Locale(identifier: "tr_TR"))
+                .tint(DS.Colors.primary)
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Uygun Saatler")
                         .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         ForEach(slots, id: \.self) { slot in
@@ -188,7 +192,7 @@ struct ProviderCalendarView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 44)
                                     .background(selectedSlots.contains(slot) ? DS.Colors.primary : Color.white)
-                                    .foregroundStyle(selectedSlots.contains(slot) ? .white : .primary)
+                                    .foregroundStyle(selectedSlots.contains(slot) ? Color.white : DS.Colors.textPrimary)
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
                         }
@@ -198,16 +202,17 @@ struct ProviderCalendarView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Özet")
                         .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
                     Text("\(selectedSlots.count) zaman aralığı seçildi")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(DS.Colors.textSecondary)
                     if let nextDate = ProviderAvailabilityLogic.nextAvailableDate(in: decodedSelections) {
-                        Text("Siradaki musait gun: \(formattedDay(nextDate))")
-                            .foregroundStyle(.secondary)
+                        Text("Sıradaki müsait gün: \(formattedDay(nextDate))")
+                            .foregroundStyle(DS.Colors.textSecondary)
                     }
                     if isSyncingSelections {
-                        Text("Musaitlik backend ile eszamanlaniyor...")
+                        Text("Müsaitlik backend ile eşzamanlanıyor...")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.Colors.textSecondary)
                     } else if let syncNotice {
                         Text(syncNotice)
                             .font(.footnote)
@@ -217,14 +222,14 @@ struct ProviderCalendarView: View {
                             .font(.footnote)
                             .foregroundStyle(.red)
                     } else {
-                        Text("Secimlerin cihazda kaydediliyor. Backend musaitlik API'si geldiyse otomatik eszamanlanacak.")
+                        Text("Seçimlerin cihazda kaydediliyor. Backend müsaitlik API'si geldiyse otomatik eşzamanlanacak.")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.Colors.textSecondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                .background(.white)
+                .background(DS.Colors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 18))
 
             }
@@ -232,6 +237,8 @@ struct ProviderCalendarView: View {
         }
         .background(DS.Colors.background.ignoresSafeArea())
         .navigationTitle("Müsaitlik")
+        .toolbarBackground(DS.Colors.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .onAppear {
             loadSlotsForSelectedDate()
         }
@@ -286,24 +293,25 @@ struct ProviderCalendarView: View {
             if let remoteSelections = try await availabilityService.fetchSelections(), !remoteSelections.isEmpty {
                 storedSelections = ProviderAvailabilityLogic.encodeSelections(remoteSelections)
                 loadSlotsForSelectedDate()
-                syncNotice = "Musaitlik backend'den eszamanlandi."
+                syncNotice = "Müsaitlik backend'den eşzamanlandı."
                 syncError = nil
             }
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
-                if code == 404 || code == 405 {
-                    syncNotice = "Musaitlik bu cihazda kaydediliyor. Backend musaitlik endpoint'i hazir degil."
+                if code == 404 || code == 405 || code >= 500 {
+                    syncNotice = "Müsaitlik bu cihazda kaydediliyor. Backend şu anda yanıt vermiyor."
+                    syncError = nil
                 } else {
-                    syncError = error.localizedDescription
+                    syncError = "Müsaitlik bilgileri şu anda alınamadı."
                     syncNotice = nil
                 }
             default:
-                syncError = error.localizedDescription
+                syncError = "Müsaitlik bilgileri şu anda alınamadı."
                 syncNotice = nil
             }
         } catch {
-            syncError = error.localizedDescription
+            syncError = "Müsaitlik bilgileri şu anda alınamadı."
             syncNotice = nil
         }
     }
@@ -315,23 +323,24 @@ struct ProviderCalendarView: View {
 
         do {
             try await availabilityService.saveSelections(selections)
-            syncNotice = "Musaitlik backend ile eszamanlandi."
+            syncNotice = "Müsaitlik backend ile eşzamanlandı."
             syncError = nil
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
-                if code == 404 || code == 405 {
-                    syncNotice = "Musaitlik cihazda guncellendi. Backend musaitlik endpoint'i hazir degil."
+                if code == 404 || code == 405 || code >= 500 {
+                    syncNotice = "Müsaitlik cihazda güncellendi. Backend şu anda yanıt vermiyor."
+                    syncError = nil
                 } else {
-                    syncError = error.localizedDescription
+                    syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
                     syncNotice = nil
                 }
             default:
-                syncError = error.localizedDescription
+                syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
                 syncNotice = nil
             }
         } catch {
-            syncError = error.localizedDescription
+            syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
             syncNotice = nil
         }
     }

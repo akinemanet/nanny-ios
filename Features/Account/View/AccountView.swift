@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import PhotosUI
+import UniformTypeIdentifiers
 
 private enum AccountPreferenceKeys {
     static let newsletter = "accountPreferenceNewsletter"
@@ -501,6 +503,17 @@ private struct AccountProfileSnapshot: Equatable, Decodable {
     }
 }
 
+private enum ProviderAssetKind {
+    case profilePhoto
+    case criminalRecord
+}
+
+private struct ProviderAssetStatusPresentation {
+    let title: String
+    let tint: Color
+    let icon: String
+}
+
 struct AccountView: View {
     @EnvironmentObject var session: SessionStore
     @AppStorage(AccountPreferenceKeys.pushAlerts) private var pushAlerts = true
@@ -523,6 +536,8 @@ struct AccountView: View {
     @AppStorage(StoredLocationKeys.longitude) private var selectedLongitude = StoredLocation.fallback.longitude
     @State private var showSettings = false
     @State private var showProfileEditor = false
+    @State private var showProviderProfileEditor = false
+    @State private var showProviderMediaEditor = false
     @State private var showAddCard = false
     @State private var showLocationPicker = false
     @State private var paymentMethods: [PaymentMethodItem] = []
@@ -531,6 +546,10 @@ struct AccountView: View {
     @State private var profileSyncNotice: String?
     @State private var profileSyncError: String?
     @State private var didLoadRemoteProfile = false
+    @State private var providerSummary: ProviderOnboardingSummary?
+    @State private var providerAccount: ProviderAccount?
+    @State private var providerProfileNotice: String?
+    @State private var providerAccountError: String?
 
     var body: some View {
         NavigationStack {
@@ -573,17 +592,21 @@ struct AccountView: View {
                     preferenceSummaryCard
                     profileSummaryCard
 
-                    accountRow("Hesap Kredisi", trailing: "\(CurrencyFormatting.symbol(for: preferredCurrency))0,00")
-                    NavigationLink {
-                        FavoritesGridView()
-                    } label: {
-                        accountRow("Favoriler", trailing: "Tümünü gör")
+                    if isProvider {
+                        providerOperationsCard
+                    } else {
+                        accountRow("Hesap Kredisi", trailing: "\(CurrencyFormatting.symbol(for: preferredCurrency))0,00")
+                        NavigationLink {
+                            FavoritesGridView()
+                        } label: {
+                            accountRow("Favoriler", trailing: "Tümünü gör")
+                        }
                     }
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Adres")
                             .font(.headline)
                             .foregroundStyle(DS.Colors.textPrimary)
-                        accountRow("Kayitli Konum", trailing: selectedLocationName)
+                        accountRow("Kayıtlı Konum", trailing: selectedLocationName)
                         accountRow(
                             "Koordinat",
                             trailing: StoredLocation.coordinateLabel(
@@ -591,34 +614,36 @@ struct AccountView: View {
                                 longitude: selectedLongitude
                             )
                         )
-                        Button("Konumu guncelle") {
+                        Button("Konumu güncelle") {
                             showLocationPicker = true
                         }
                         .foregroundStyle(DS.Colors.primary)
                     }
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Ödeme Kartları")
-                            .font(.headline)
-                            .foregroundStyle(DS.Colors.textPrimary)
-                        if let paymentMethodsError {
-                            Text(paymentMethodsError)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                        } else if paymentMethods.isEmpty {
-                            Text("Henüz ödeme yöntemi yok.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(paymentMethods) { method in
-                                accountRow(method.brand, trailing: "**** \(method.last4)")
+                    if !isProvider {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Ödeme Kartları")
+                                .font(.headline)
+                                .foregroundStyle(DS.Colors.textPrimary)
+                            if let paymentMethodsError {
+                                Text(paymentMethodsError)
+                                    .font(.footnote)
+                                    .foregroundStyle(.red)
+                            } else if paymentMethods.isEmpty {
+                                Text("Henüz ödeme yöntemi yok.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(paymentMethods) { method in
+                                    accountRow(method.brand, trailing: "**** \(method.last4)")
+                                }
                             }
-                        }
-                        Button {
-                            showAddCard = true
-                        } label: {
-                            Text("Yeni kart ekle")
-                                .foregroundStyle(DS.Colors.primary)
+                            Button {
+                                showAddCard = true
+                            } label: {
+                                Text("Yeni kart ekle")
+                                    .foregroundStyle(DS.Colors.primary)
+                            }
                         }
                     }
 
@@ -660,6 +685,30 @@ struct AccountView: View {
                 .preferredColorScheme(.light)
                 .presentationBackground(DS.Colors.background)
             }
+            .sheet(isPresented: $showProviderProfileEditor) {
+                NavigationStack {
+                    ProviderProfileEditView(
+                        account: providerAccount,
+                        profile: providerSummary?.profile
+                    ) { payload in
+                        await saveProviderProfile(payload)
+                    }
+                }
+                .preferredColorScheme(.light)
+                .presentationBackground(DS.Colors.background)
+            }
+            .sheet(isPresented: $showProviderMediaEditor) {
+                NavigationStack {
+                    ProviderMediaEditView(
+                        profilePhotoName: providerSummary?.profile.profilePhotoName ?? "",
+                        criminalRecordFileName: providerSummary?.profile.criminalRecordFileName ?? ""
+                    ) { payload in
+                        await saveProviderMedia(payload)
+                    }
+                }
+                .preferredColorScheme(.light)
+                .presentationBackground(DS.Colors.background)
+            }
             .sheet(isPresented: $showAddCard) {
                 PaymentMethodCatalogView {
                     await loadPaymentMethods()
@@ -682,9 +731,13 @@ struct AccountView: View {
                 .presentationBackground(DS.Colors.background)
             }
             .task {
-                profileService = AccountProfileService(api: session.deps.api)
-                await loadRemoteProfileIfNeeded()
-                await loadPaymentMethods()
+                if isProvider {
+                    await loadProviderSummary()
+                } else {
+                    profileService = AccountProfileService(api: session.deps.api)
+                    await loadRemoteProfileIfNeeded()
+                    await loadPaymentMethods()
+                }
             }
         }
     }
@@ -750,7 +803,77 @@ struct AccountView: View {
         .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
     }
 
+    @ViewBuilder
     private var profileSummaryCard: some View {
+        if isProvider {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("Bakıcı Profili")
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    Spacer()
+                    Button("Profili Düzenle") {
+                        showProviderProfileEditor = true
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.Colors.primary)
+                }
+
+                HStack(spacing: 12) {
+                    accountInfoCard("Ad Soyad", providerDisplayName)
+                    accountInfoCard("E-posta", providerEmail)
+                }
+
+                HStack(spacing: 12) {
+                    accountInfoCard("Telefon", providerPhone)
+                    accountInfoCard("Eğitim", providerSummary?.profile.educationLevel.isEmpty == false ? providerSummary?.profile.educationLevel ?? "-" : "-")
+                }
+
+                if let providerAbout, !providerAbout.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Hakkında")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Text(providerAbout)
+                            .font(.subheadline)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .lineLimit(3)
+                    }
+                    .padding()
+                    .background(DS.Colors.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+
+                if !providerCategories.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(providerCategories.prefix(3), id: \.self) { category in
+                            Text(category)
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(DS.Colors.primary.opacity(0.12))
+                                .foregroundStyle(DS.Colors.primary)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+
+                if let providerProfileNotice {
+                    Text(providerProfileNotice)
+                        .font(.footnote)
+                        .foregroundStyle(DS.Colors.primary)
+                } else if let providerAccountError {
+                    Text(providerAccountError)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding()
+            .background(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+        } else {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Aile Profili")
@@ -797,6 +920,56 @@ struct AccountView: View {
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+        }
+    }
+
+    private var providerOperationsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Ödeme ve Onboarding")
+                    .font(.headline)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Spacer()
+                Button("Belgeleri Yönet") {
+                    showProviderMediaEditor = true
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(DS.Colors.primary)
+            }
+
+            HStack(spacing: 12) {
+                accountInfoCard("Ödeme Durumu", providerStatusLabel)
+                accountInfoCard("Para Birimi", providerAccount?.currency ?? preferredCurrency)
+            }
+
+            HStack(spacing: 12) {
+                accountInfoCard("IBAN", maskedIBAN(providerAccount?.iban))
+                accountInfoCard("Alt Üye İşyeri", subMerchantSummary)
+            }
+
+            HStack(spacing: 12) {
+                providerStatusCard("Profil Fotoğrafı", presentation: providerAssetStatus(for: .profilePhoto))
+                providerStatusCard("Belge Durumu", presentation: providerAssetStatus(for: .criminalRecord))
+            }
+
+            Text("Belge durumları mevcut onboarding yanıtından türetiliyor.")
+                .font(.footnote)
+                .foregroundStyle(DS.Colors.textSecondary)
+
+            if let error = providerAccount?.lastError, !error.isEmpty {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            } else if let providerAccountError {
+                Text(providerAccountError)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding()
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
     }
 
     private func preferencePill(title: String, systemImage: String, tint: Color) -> some View {
@@ -829,6 +1002,24 @@ struct AccountView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
+    private func providerStatusCard(_ title: String, presentation: ProviderAssetStatusPresentation) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(DS.Colors.textSecondary)
+
+            Label(presentation.title, systemImage: presentation.icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(presentation.tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(DS.Colors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
     private var notificationSummaryText: String {
         let enabledChannels = [pushAlerts, newsletter, textMessages, phoneCalls].filter { $0 }.count
         return "\(enabledChannels) kanal acik"
@@ -847,6 +1038,9 @@ struct AccountView: View {
     }
 
     private var displayTitle: String {
+        if isProvider {
+            return providerDisplayName
+        }
         if !profileDisplayName.isEmpty { return profileDisplayName }
         if let name = session.me?.user.displayName, !name.isEmpty { return name }
         if let email = session.me?.user.email, !email.isEmpty { return email }
@@ -854,7 +1048,39 @@ struct AccountView: View {
     }
 
     private var displaySubtitle: String {
-        resolvedProfilePhone
+        if isProvider {
+            return providerEmail
+        }
+        return resolvedProfilePhone
+    }
+
+    private var isProvider: Bool {
+        session.me?.user.role == "PROVIDER"
+    }
+
+    private var providerStatusLabel: String {
+        switch (providerAccount?.status ?? "PENDING").uppercased() {
+        case "APPROVED":
+            return "Onaylandı"
+        case "FAILED":
+            return "Başarısız"
+        case "PENDING", "PROCESSING":
+            return "Beklemede"
+        default:
+            return providerAccount?.status.capitalized ?? "Beklemede"
+        }
+    }
+
+    private var subMerchantSummary: String {
+        if let key = providerAccount?.subMerchantKey, !key.isEmpty {
+            return "Hazır"
+        }
+        return "Bekleniyor"
+    }
+
+    private func maskedIBAN(_ iban: String?) -> String {
+        guard let iban, !iban.isEmpty else { return "-" }
+        return "****\(iban.suffix(4))"
     }
 
     private var resolvedProfileEmail: String {
@@ -864,6 +1090,84 @@ struct AccountView: View {
 
     private var resolvedProfilePhone: String {
         session.me?.user.phone ?? "-"
+    }
+
+    private var providerDisplayName: String {
+        let fullName = [providerAccount?.contactName, providerAccount?.contactSurname]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        if !fullName.isEmpty { return fullName }
+        if let storeName = providerAccount?.name, !storeName.isEmpty { return storeName }
+        if let sessionName = session.me?.user.displayName, !sessionName.isEmpty { return sessionName }
+        if let sessionEmail = session.me?.user.email, !sessionEmail.isEmpty { return sessionEmail }
+        return "Bakıcı Hesabı"
+    }
+
+    private var providerEmail: String {
+        if let email = providerAccount?.email, !email.isEmpty { return email }
+        return session.me?.user.email ?? "-"
+    }
+
+    private var providerPhone: String {
+        if let phone = providerAccount?.gsmNumber, !phone.isEmpty { return phone }
+        return session.me?.user.phone ?? "-"
+    }
+
+    private var providerAbout: String? {
+        let text = providerSummary?.profile.about.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return text.isEmpty ? nil : text
+    }
+
+    private var providerCategories: [String] {
+        providerSummary?.profile.categories ?? []
+    }
+
+    private func providerAssetStatus(for kind: ProviderAssetKind) -> ProviderAssetStatusPresentation {
+        let hasAsset: Bool
+        switch kind {
+        case .profilePhoto:
+            hasAsset = providerSummary?.profile.profilePhotoName.isEmpty == false
+        case .criminalRecord:
+            hasAsset = providerSummary?.profile.criminalRecordFileName.isEmpty == false
+        }
+
+        guard hasAsset else {
+            return ProviderAssetStatusPresentation(
+                title: "Eksik",
+                tint: DS.Colors.textSecondary,
+                icon: "exclamationmark.circle"
+            )
+        }
+
+        if let lastError = providerAccount?.lastError, !lastError.isEmpty {
+            return ProviderAssetStatusPresentation(
+                title: "Reddedildi",
+                tint: .red,
+                icon: "xmark.seal.fill"
+            )
+        }
+
+        switch (providerAccount?.status ?? "PENDING").uppercased() {
+        case "APPROVED":
+            return ProviderAssetStatusPresentation(
+                title: "Onaylandı",
+                tint: .green,
+                icon: "checkmark.seal.fill"
+            )
+        case "FAILED":
+            return ProviderAssetStatusPresentation(
+                title: "Reddedildi",
+                tint: .red,
+                icon: "xmark.seal.fill"
+            )
+        default:
+            return ProviderAssetStatusPresentation(
+                title: "Beklemede",
+                tint: .orange,
+                icon: "clock.badge.exclamationmark"
+            )
+        }
     }
 
     private func loadRemoteProfileIfNeeded() async {
@@ -943,6 +1247,174 @@ struct AccountView: View {
             profileSyncNotice = nil
         }
     }
+
+    private func loadProviderSummary() async {
+        do {
+            let summary = try await session.deps.providerService.getOnboardingSummary()
+            providerSummary = summary
+            providerAccount = summary.account
+            providerProfileNotice = "Bakıcı profili backend'den eşzamanlandı."
+            providerAccountError = nil
+        } catch let error as APIError {
+            providerSummary = nil
+            switch error {
+            case .http(let code, _):
+                if code == 404 || code == 405 {
+                    providerAccountError = "Ödeme onboarding bilgileri henüz backend'de hazır değil."
+                } else {
+                    providerAccountError = "Ödeme onboarding bilgileri şu anda alınamadı."
+                }
+            default:
+                providerAccountError = "Ödeme onboarding bilgileri şu anda alınamadı."
+            }
+            providerProfileNotice = nil
+        } catch {
+            providerSummary = nil
+            providerAccountError = "Ödeme onboarding bilgileri şu anda alınamadı."
+            providerProfileNotice = nil
+        }
+    }
+
+    private func saveProviderProfile(_ payload: ProviderProfileEditPayload) async {
+        guard let currentAccount = providerAccount else {
+            providerAccountError = "Bakıcı hesap bilgileri yüklenmeden profil güncellenemiyor."
+            providerProfileNotice = nil
+            return
+        }
+
+        providerAccountError = nil
+        providerProfileNotice = nil
+
+        let payoutRequest = UpsertPayoutAccountRequest(
+            address: currentAccount.address,
+            contactName: payload.contactName,
+            contactSurname: payload.contactSurname,
+            email: payload.email,
+            gsmNumber: payload.phone,
+            name: payload.storeName,
+            iban: currentAccount.iban,
+            identityNumber: currentAccount.identityNumber
+        )
+
+        let profileRequest = UpsertProviderOnboardingProfileRequest(
+            educationLevel: payload.educationLevel,
+            about: payload.about,
+            categories: payload.categories,
+            profilePhotoName: providerSummary?.profile.profilePhotoName ?? "",
+            criminalRecordFileName: providerSummary?.profile.criminalRecordFileName ?? ""
+        )
+
+        do {
+            let payoutResponse = try await session.deps.providerService.upsertPayoutAccount(payoutRequest)
+            providerAccount = payoutResponse.account
+
+            do {
+                if let updatedSummary = try await session.deps.providerService.upsertOnboardingProfile(profileRequest) {
+                    providerSummary = updatedSummary
+                    if let updatedAccount = updatedSummary.account {
+                        providerAccount = updatedAccount
+                    }
+                    providerProfileNotice = "Bakıcı profili backend ile eşzamanlandı."
+                } else {
+                    providerProfileNotice = "Bakıcı profili güncellendi. Profil endpoint'i hazır olduğunda ek alanlar da backend'e taşınacak."
+                }
+            } catch let error as APIError {
+                switch error {
+                case .http(let code, _):
+                    if code == 404 || code == 405 {
+                        providerProfileNotice = "Bakıcı profili güncellendi. Profil endpoint'i hazır olmadığından bazı alanlar cihazda tutuluyor."
+                    } else {
+                        throw error
+                    }
+                default:
+                    throw error
+                }
+            }
+
+            showProviderProfileEditor = false
+        } catch let error as APIError {
+            providerAccountError = error.localizedDescription
+        } catch {
+            providerAccountError = "Bakıcı profili şu anda kaydedilemedi."
+        }
+    }
+
+    private func saveProviderMedia(_ payload: ProviderMediaEditPayload) async {
+        let existingProfile = providerSummary?.profile ?? ProviderOnboardingProfile()
+        let profileRequest = UpsertProviderOnboardingProfileRequest(
+            educationLevel: existingProfile.educationLevel,
+            about: existingProfile.about,
+            categories: existingProfile.categories,
+            profilePhotoName: payload.profilePhotoName,
+            criminalRecordFileName: payload.criminalRecordFileName
+        )
+
+        providerAccountError = nil
+        providerProfileNotice = nil
+
+        do {
+            if let updatedSummary = try await session.deps.providerService.upsertOnboardingProfile(profileRequest) {
+                providerSummary = updatedSummary
+                if let updatedAccount = updatedSummary.account {
+                    providerAccount = updatedAccount
+                }
+                providerProfileNotice = "Profil fotoğrafı ve belge bilgileri backend ile eşzamanlandı."
+            } else {
+                providerSummary = ProviderOnboardingSummary(
+                    account: providerAccount,
+                    profile: ProviderOnboardingProfile(
+                        educationLevel: existingProfile.educationLevel,
+                        about: existingProfile.about,
+                        categories: existingProfile.categories,
+                        profilePhotoName: payload.profilePhotoName,
+                        criminalRecordFileName: payload.criminalRecordFileName
+                    )
+                )
+                providerProfileNotice = "Profil fotoğrafı ve belge bilgileri güncellendi."
+            }
+            showProviderMediaEditor = false
+        } catch let error as APIError {
+            switch error {
+            case .http(let code, _):
+                if code == 404 || code == 405 {
+                    providerSummary = ProviderOnboardingSummary(
+                        account: providerAccount,
+                        profile: ProviderOnboardingProfile(
+                            educationLevel: existingProfile.educationLevel,
+                            about: existingProfile.about,
+                            categories: existingProfile.categories,
+                            profilePhotoName: payload.profilePhotoName,
+                            criminalRecordFileName: payload.criminalRecordFileName
+                        )
+                    )
+                    providerProfileNotice = "Belge alanları güncellendi. Backend endpoint'i hazır olmadığından cihazda tutuluyor."
+                    showProviderMediaEditor = false
+                } else {
+                    providerAccountError = error.localizedDescription
+                }
+            default:
+                providerAccountError = error.localizedDescription
+            }
+        } catch {
+            providerAccountError = "Belge bilgileri şu anda güncellenemedi."
+        }
+    }
+}
+
+private struct ProviderProfileEditPayload {
+    let contactName: String
+    let contactSurname: String
+    let storeName: String
+    let email: String
+    let phone: String
+    let educationLevel: String
+    let about: String
+    let categories: [String]
+}
+
+private struct ProviderMediaEditPayload {
+    let profilePhotoName: String
+    let criminalRecordFileName: String
 }
 
 private struct ProfileEditView: View {
@@ -1031,6 +1503,319 @@ private struct ProfileEditView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Kapat") { dismiss() }
                     .foregroundStyle(DS.Colors.primary)
+            }
+        }
+    }
+}
+
+private struct ProviderProfileEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    let account: ProviderAccount?
+    let profile: ProviderOnboardingProfile?
+    let onSave: (ProviderProfileEditPayload) async -> Void
+
+    @State private var contactName: String
+    @State private var contactSurname: String
+    @State private var storeName: String
+    @State private var email: String
+    @State private var phone: String
+    @State private var educationLevel: String
+    @State private var about: String
+    @State private var selectedCategories: [String]
+    @State private var isSaving = false
+
+    private let educationOptions = [
+        "Lise",
+        "Ön Lisans",
+        "Lisans",
+        "Yüksek Lisans",
+        "Doktora"
+    ]
+
+    private let categoryOptions = [
+        "Bebek Bakımı",
+        "Yürümeye Başlayan",
+        "Okul Öncesi",
+        "Anaokulu",
+        "İlkokul Desteği",
+        "Özel Ders"
+    ]
+
+    init(
+        account: ProviderAccount?,
+        profile: ProviderOnboardingProfile?,
+        onSave: @escaping (ProviderProfileEditPayload) async -> Void
+    ) {
+        self.account = account
+        self.profile = profile
+        self.onSave = onSave
+        _contactName = State(initialValue: account?.contactName ?? "")
+        _contactSurname = State(initialValue: account?.contactSurname ?? "")
+        _storeName = State(initialValue: account?.name ?? "")
+        _email = State(initialValue: account?.email ?? "")
+        _phone = State(initialValue: account?.gsmNumber ?? "")
+        _educationLevel = State(initialValue: profile?.educationLevel ?? "")
+        _about = State(initialValue: profile?.about ?? "")
+        _selectedCategories = State(initialValue: profile?.categories ?? [])
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Bakıcı Profili")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(DS.Colors.textPrimary)
+
+                AppTextField(placeholder: "Ad", text: $contactName)
+                AppTextField(placeholder: "Soyad", text: $contactSurname)
+                AppTextField(placeholder: "Profil / Mağaza Adı", text: $storeName)
+                AppTextField(placeholder: "E-posta", text: $email, keyboardType: .emailAddress)
+                AppTextField(placeholder: "Telefon", text: $phone, keyboardType: .phonePad)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Eğitim Durumu")
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+
+                    Menu {
+                        ForEach(educationOptions, id: \.self) { option in
+                            Button(option) {
+                                educationLevel = option
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(educationLevel.isEmpty ? "Eğitim seç" : educationLevel)
+                                .foregroundStyle(educationLevel.isEmpty ? DS.Colors.textSecondary : DS.Colors.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .foregroundStyle(DS.Colors.textSecondary)
+                        }
+                        .padding(16)
+                        .background(Color.gray.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Hakkında")
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    AppTextArea(
+                        placeholder: "Deneyimini, yaklaşımını ve ailelere sunduğun desteği anlat.",
+                        text: $about,
+                        minHeight: 140
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Kategoriler")
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
+                        ForEach(categoryOptions, id: \.self) { category in
+                            let isSelected = selectedCategories.contains(category)
+                            Text(category)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(isSelected ? .white : DS.Colors.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(isSelected ? DS.Colors.primary : .white)
+                                )
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(isSelected ? DS.Colors.primary : DS.Colors.border, lineWidth: 1)
+                                }
+                                .onTapGesture {
+                                    toggleCategory(category)
+                                }
+                        }
+                    }
+                }
+
+                Button {
+                    Task {
+                        isSaving = true
+                        await onSave(
+                            ProviderProfileEditPayload(
+                                contactName: contactName.trimmingCharacters(in: .whitespacesAndNewlines),
+                                contactSurname: contactSurname.trimmingCharacters(in: .whitespacesAndNewlines),
+                                storeName: storeName.trimmingCharacters(in: .whitespacesAndNewlines),
+                                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                                phone: phone.trimmingCharacters(in: .whitespacesAndNewlines),
+                                educationLevel: educationLevel,
+                                about: about.trimmingCharacters(in: .whitespacesAndNewlines),
+                                categories: selectedCategories
+                            )
+                        )
+                        isSaving = false
+                    }
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .frame(height: DS.Size.buttonHeight)
+                    } else {
+                        Text("Kaydet")
+                            .frame(maxWidth: .infinity)
+                            .frame(height: DS.Size.buttonHeight)
+                    }
+                }
+                .background(DS.Colors.primary)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
+            }
+            .padding()
+        }
+        .background(DS.Colors.background.ignoresSafeArea())
+        .navigationTitle("Profili Düzenle")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Kapat") {
+                    dismiss()
+                }
+                .foregroundStyle(DS.Colors.primary)
+            }
+        }
+    }
+
+    private func toggleCategory(_ category: String) {
+        if let index = selectedCategories.firstIndex(of: category) {
+            selectedCategories.remove(at: index)
+        } else {
+            selectedCategories.append(category)
+        }
+    }
+}
+
+private struct ProviderMediaEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    let onSave: (ProviderMediaEditPayload) async -> Void
+
+    @State private var profilePhotoName: String
+    @State private var criminalRecordFileName: String
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var showPDFPicker = false
+    @State private var isSaving = false
+
+    init(
+        profilePhotoName: String,
+        criminalRecordFileName: String,
+        onSave: @escaping (ProviderMediaEditPayload) async -> Void
+    ) {
+        self.onSave = onSave
+        _profilePhotoName = State(initialValue: profilePhotoName)
+        _criminalRecordFileName = State(initialValue: criminalRecordFileName)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Belgeler ve Medya")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(DS.Colors.textPrimary)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Profil Fotoğrafı")
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        HStack {
+                            Image(systemName: "photo.badge.plus")
+                            Text(profilePhotoName.isEmpty ? "Fotoğraf Seç" : "Fotoğrafı Güncelle")
+                            Spacer()
+                        }
+                        .padding(16)
+                        .background(DS.Colors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+
+                    Text(profilePhotoName.isEmpty ? "Henüz fotoğraf seçilmedi." : profilePhotoName)
+                        .font(.footnote)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Sabıka Kaydı")
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+
+                    Button {
+                        showPDFPicker = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.badge.plus")
+                            Text(criminalRecordFileName.isEmpty ? "PDF Seç" : "PDF'yi Güncelle")
+                            Spacer()
+                        }
+                        .padding(16)
+                        .background(DS.Colors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    Text(criminalRecordFileName.isEmpty ? "Henüz belge seçilmedi." : criminalRecordFileName)
+                        .font(.footnote)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                }
+
+                Button {
+                    Task {
+                        isSaving = true
+                        await onSave(
+                            ProviderMediaEditPayload(
+                                profilePhotoName: profilePhotoName,
+                                criminalRecordFileName: criminalRecordFileName
+                            )
+                        )
+                        isSaving = false
+                    }
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .frame(height: DS.Size.buttonHeight)
+                    } else {
+                        Text("Kaydet")
+                            .frame(maxWidth: .infinity)
+                            .frame(height: DS.Size.buttonHeight)
+                    }
+                }
+                .background(DS.Colors.primary)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
+            }
+            .padding()
+        }
+        .background(DS.Colors.background.ignoresSafeArea())
+        .navigationTitle("Belgeleri Yönet")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Kapat") {
+                    dismiss()
+                }
+                .foregroundStyle(DS.Colors.primary)
+            }
+        }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard newItem != nil else { return }
+            profilePhotoName = "profil-fotografi-guncel.jpg"
+        }
+        .fileImporter(
+            isPresented: $showPDFPicker,
+            allowedContentTypes: [.pdf],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                criminalRecordFileName = urls.first?.lastPathComponent ?? criminalRecordFileName
+            case .failure:
+                break
             }
         }
     }

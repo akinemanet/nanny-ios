@@ -47,8 +47,9 @@ struct ProviderDashboardView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(account?.name.isEmpty == false ? account?.name ?? "Bakıcı Paneli" : "Bakıcı Paneli")
                             .font(.largeTitle.bold())
+                            .foregroundStyle(DS.Colors.textPrimary)
                         Text(account?.email ?? "Profilini, müsaitliğini ve ödeme onboarding durumunu yönet.")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.Colors.textSecondary)
                     }
 
                     HStack(spacing: 14) {
@@ -77,7 +78,7 @@ struct ProviderDashboardView: View {
 
                     HStack(spacing: 14) {
                         DashboardCard(
-                            title: "Kayitli Slot",
+                            title: "Kayıtlı Slot",
                             value: "\(ProviderAvailabilityLogic.totalSlotCount(in: availabilitySelections))"
                         )
 
@@ -134,6 +135,7 @@ struct ProviderDashboardView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Son Ödeme Hatası")
                                 .font(.headline)
+                                .foregroundStyle(DS.Colors.textPrimary)
                             Text(error)
                                 .font(.footnote)
                                 .foregroundStyle(.red)
@@ -173,6 +175,7 @@ struct ProviderDashboardView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Bugünkü Odak")
                             .font(.headline)
+                            .foregroundStyle(DS.Colors.textPrimary)
                         bullet("Müsaitlik takvimini güncel tut ve yeni slotlarını kaydet.")
                         bullet("Okunmamış mesajları hızlıca kontrol et.")
                         bullet("Ödeme onboarding ve IBAN bilgisini güncel tut.")
@@ -220,7 +223,7 @@ struct ProviderDashboardView: View {
 
     private var nextAvailabilityLabel: String {
         guard let next = ProviderAvailabilityLogic.nextAvailableDate(in: availabilitySelections) else {
-            return "Planlanmadi"
+            return "Planlanmadı"
         }
 
         return formattedDay(next)
@@ -230,10 +233,11 @@ struct ProviderDashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Bugünkü Program")
                 .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
 
             if todaysBookings.isEmpty {
                 emptyProviderCard(
-                    title: "Bugun planlanmis is yok",
+                    title: "Bugün planlanmış iş yok",
                     message: "Müsaitlik takvimini güncel tutarak yeni talepler alabilirsin.",
                     systemImage: "calendar.badge.clock"
                 )
@@ -254,10 +258,11 @@ struct ProviderDashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Yaklaşan Talepler")
                 .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
 
             if selectedRequestFilter == .all, !veryNearbyPendingRequests.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("Oncelikli Talepler", systemImage: "bolt.fill")
+                    Label("Öncelikli Talepler", systemImage: "bolt.fill")
                         .font(.subheadline.bold())
                         .foregroundStyle(DS.Colors.primary)
 
@@ -390,7 +395,7 @@ struct ProviderDashboardView: View {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(DS.Colors.primary)
             Text(text)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DS.Colors.textSecondary)
         }
     }
 
@@ -529,7 +534,7 @@ struct ProviderDashboardView: View {
             }
 
             HStack {
-                Text(booking.provider.displayName)
+                Text(resolvedFamilyName(for: booking))
                     .font(.headline)
                     .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
@@ -856,8 +861,8 @@ struct ProviderDashboardView: View {
 
     private func matchingConversation(for booking: BookingItem) -> ConversationItem? {
         DashboardRouting.conversation(
-            forProviderID: booking.provider.id,
-            participantName: booking.provider.displayName,
+            forProviderID: booking.parentUserID ?? booking.provider.id,
+            participantName: resolvedFamilyName(for: booking),
             conversations: conversations
         )
     }
@@ -875,24 +880,24 @@ struct ProviderDashboardView: View {
         switch status.uppercased() {
         case "CONFIRMED":
             return fallback
-                ? "Talep lokal olarak onaylandi. Backend endpoint'i hazir degil."
-                : "Talep onaylandi."
+                ? "Talep lokal olarak onaylandı. Backend endpoint'i hazır değil."
+                : "Talep onaylandı."
         case "CANCELED":
             return fallback
-                ? "Talep lokal olarak reddedildi. Backend endpoint'i hazir degil."
+                ? "Talep lokal olarak reddedildi. Backend endpoint'i hazır değil."
                 : "Talep reddedildi."
         case "IN_PROGRESS":
             return fallback
-                ? "Check-in lokal olarak baslatildi. Durum panelde guncellendi."
-                : "Hizmet baslatildi."
+                ? "Check-in lokal olarak başlatıldı. Durum panelde güncellendi."
+                : "Hizmet başlatıldı."
         case "COMPLETED":
             return fallback
                 ? "Hizmet lokal olarak tamamlandı. Kazanç özeti güncellendi."
                 : "Hizmet tamamlandı. Kazanç özeti güncellendi."
         default:
             return fallback
-                ? "Durum lokal olarak guncellendi."
-                : "Durum guncellendi."
+                ? "Durum lokal olarak güncellendi."
+                : "Durum güncellendi."
         }
     }
 
@@ -957,7 +962,7 @@ struct ProviderDashboardView: View {
         if !trimmedAbout.isEmpty {
             return trimmedAbout
         }
-        let resolvedName = booking.familyDisplayName ?? familyDisplayName
+        let resolvedName = resolvedFamilyName(for: booking)
         let resolvedLocation = distancePreview(for: booking) ?? booking.familyLocationName ?? familyLocationName
         if !resolvedName.isEmpty {
             return "\(resolvedName) • \(resolvedLocation)"
@@ -1029,6 +1034,20 @@ struct ProviderDashboardView: View {
             recentlyApprovedBookingIDs.remove(bookingID)
         }
     }
+
+    private func resolvedFamilyName(for booking: BookingItem) -> String {
+        let bookingName = booking.familyDisplayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !bookingName.isEmpty {
+            return bookingName
+        }
+
+        let storedName = familyDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !storedName.isEmpty {
+            return storedName
+        }
+
+        return "Aile"
+    }
 }
 
 private struct ProviderBookingDetailView: View {
@@ -1044,7 +1063,7 @@ private struct ProviderBookingDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(booking.provider.displayName)
+                    Text(resolvedFamilyName)
                         .font(.title2.bold())
                         .foregroundStyle(DS.Colors.textPrimary)
                     Text(booking.service.replacingOccurrences(of: "_", with: " ").capitalized)

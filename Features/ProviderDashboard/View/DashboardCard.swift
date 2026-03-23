@@ -14,14 +14,19 @@ struct DashboardCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .foregroundStyle(DS.Colors.textSecondary)
 
             Text(value)
                 .font(.title.bold())
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .foregroundStyle(DS.Colors.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.white)
+        .background(DS.Colors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(radius: 3)
     }

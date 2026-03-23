@@ -15,6 +15,7 @@ struct ProviderOnboardingView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: UIImage?
     @State private var showPDFPicker = false
+    private let onCompleted: ((ProviderAccount?) -> Void)?
 
     private let educationOptions = [
         "Lise",
@@ -33,8 +34,9 @@ struct ProviderOnboardingView: View {
         "Özel Ders"
     ]
 
-    init(service: ProviderService) {
+    init(service: ProviderService, onCompleted: ((ProviderAccount?) -> Void)? = nil) {
         _vm = StateObject(wrappedValue: ProviderOnboardingViewModel(service: service))
+        self.onCompleted = onCompleted
     }
 
     var body: some View {
@@ -314,7 +316,12 @@ struct ProviderOnboardingView: View {
     private var actionButtons: some View {
         VStack(spacing: 12) {
             PrimaryButton("Kaydet / Güncelle", isLoading: vm.isLoading) {
-                Task { await vm.save() }
+                Task {
+                    let didSave = await vm.save()
+                    if didSave {
+                        onCompleted?(vm.account)
+                    }
+                }
             }
 
             Button("Yenile") {

@@ -7,12 +7,18 @@
 
 import SwiftUI
 
+private enum ProviderConversationFilter: String, CaseIterable {
+    case all = "Hepsi"
+    case unread = "Okunmamış"
+}
+
 struct ChatListView: View {
     @EnvironmentObject private var session: SessionStore
     @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
     @AppStorage("accountPreferenceQuietHoursStart") private var quietHoursStart = "22:00"
     @AppStorage("accountPreferenceQuietHoursEnd") private var quietHoursEnd = "07:00"
     @State private var selectedTab = 0
+    @State private var selectedProviderFilter: ProviderConversationFilter = .all
     @State private var showCallScreen = false
     @StateObject private var viewModel: ChatViewModel
 
@@ -32,12 +38,22 @@ struct ChatListView: View {
         NavigationStack {
             VStack {
                 HStack {
-                    Text("Bağlan")
+                    Text(isProvider ? "Mesajlar" : "Bağlan")
                         .font(.largeTitle.bold())
                         .foregroundStyle(DS.Colors.textPrimary)
                     Spacer()
                 }
                 .padding(.horizontal)
+
+                if isProvider {
+                    HStack {
+                        Text(selectedTab == 0 ? "Aile konuşmalarını ve geri dönüş bekleyen mesajları buradan takip et." : "Geçmiş aramalarını ve geri dönüşlerini buradan yönet.")
+                            .font(.footnote)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                }
 
                 if selectedTab == 0, isQuietHoursActive {
                     HStack(spacing: 10) {
@@ -58,17 +74,24 @@ struct ChatListView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
 
+                if isProvider, selectedTab == 0 {
+                    providerConversationFilterBar
+                        .padding(.horizontal)
+                }
+
                 List {
                     if let error = viewModel.error {
                         Text(error)
                             .foregroundStyle(.red)
                     }
 
-                    if selectedTab == 0, viewModel.conversations.isEmpty, viewModel.error == nil {
+                    if selectedTab == 0, filteredConversations.isEmpty, viewModel.error == nil {
                         emptyState(
-                            title: "Sohbet Yok",
+                            title: isProvider ? "Aktif konuşma yok" : "Sohbet Yok",
                             systemImage: "message",
-                            description: "Henüz hiç konuşman yok."
+                            description: isProvider
+                                ? "Ailelerle mesajlaştığında konuşmaların burada görünecek."
+                                : "Henüz hiç konuşman yok."
                         )
                         .frame(maxWidth: .infinity)
                         .listRowBackground(Color.clear)
@@ -85,7 +108,7 @@ struct ChatListView: View {
                     }
 
                     if selectedTab == 0 {
-                        ForEach(viewModel.conversations) { chat in
+                        ForEach(filteredConversations) { chat in
                             NavigationLink {
                                 ChatView(chatID: chat.id, title: chat.participantName) {
                                     viewModel.markConversationReadLocally(chatID: chat.id)
@@ -184,6 +207,21 @@ struct ChatListView: View {
         await viewModel.loadCalls()
     }
 
+    private var isProvider: Bool {
+        session.me?.user.role == "PROVIDER"
+    }
+
+    private var filteredConversations: [ConversationItem] {
+        guard isProvider, selectedTab == 0 else { return viewModel.conversations }
+
+        switch selectedProviderFilter {
+        case .all:
+            return viewModel.conversations
+        case .unread:
+            return viewModel.conversations.filter { $0.unreadCount > 0 }
+        }
+    }
+
     private var isQuietHoursActive: Bool {
         QuietHoursLogic.isActive(
             enabled: quietHoursEnabled,
@@ -198,6 +236,27 @@ struct ChatListView: View {
 
     private var unreadBadgeForeground: Color {
         isQuietHoursActive ? .indigo : .white
+    }
+
+    private var providerConversationFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(ProviderConversationFilter.allCases, id: \.self) { filter in
+                    Button {
+                        selectedProviderFilter = filter
+                    } label: {
+                        Text(filter.rawValue)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(selectedProviderFilter == filter ? DS.Colors.primary : .white)
+                            .foregroundStyle(selectedProviderFilter == filter ? .white : DS.Colors.textPrimary)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private func emptyState(title: String, systemImage: String, description: String) -> some View {

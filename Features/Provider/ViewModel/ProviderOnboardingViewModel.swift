@@ -64,33 +64,34 @@ final class ProviderOnboardingViewModel: ObservableObject {
         }
     }
 
-    func save() async {
+    @discardableResult
+    func save() async -> Bool {
         errorMessage = nil
         message = nil
 
         guard !profilePhotoName.isEmpty else {
             errorMessage = "Lütfen profil fotoğrafı ekle."
-            return
+            return false
         }
 
         guard !educationLevel.isEmpty else {
             errorMessage = "Lütfen eğitim durumunu seç."
-            return
+            return false
         }
 
         guard !about.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             errorMessage = "Lütfen hakkında alanını doldur."
-            return
+            return false
         }
 
         guard !selectedCategories.isEmpty else {
             errorMessage = "Lütfen en az bir kategori seç."
-            return
+            return false
         }
 
         guard !criminalRecordFileName.isEmpty else {
             errorMessage = "Lütfen PDF sabıka kaydını ekle."
-            return
+            return false
         }
 
         isLoading = true
@@ -142,8 +143,10 @@ final class ProviderOnboardingViewModel: ObservableObject {
                     throw error
                 }
             }
+            return true
         } catch {
             errorMessage = "Bilgiler şu anda kaydedilemedi. Lütfen alanları kontrol edip tekrar dene."
+            return false
         }
     }
 }

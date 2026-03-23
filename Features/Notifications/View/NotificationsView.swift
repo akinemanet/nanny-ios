@@ -7,6 +7,13 @@
 
 import SwiftUI
 
+private enum ProviderNotificationFilter: String, CaseIterable {
+    case all = "Hepsi"
+    case requests = "Talepler"
+    case operations = "Operasyon"
+    case system = "Sistem"
+}
+
 struct NotificationsView: View {
     @EnvironmentObject private var session: SessionStore
     @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
@@ -25,6 +32,7 @@ struct NotificationsView: View {
     @State private var selectedConversationContextBadge: String?
     @State private var selectedBooking: BookingItem?
     @State private var selectedBookingContextBadge: String?
+    @State private var selectedProviderFilter: ProviderNotificationFilter = .all
 
     var body: some View {
         NavigationStack {
@@ -47,8 +55,23 @@ struct NotificationsView: View {
                 }
                 .padding(.horizontal)
 
+                if isProvider {
+                    HStack {
+                        Text("Yeni talepleri, ödeme akışlarını ve sistem uyarılarını buradan takip et.")
+                            .font(.footnote)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                }
+
                 if isQuietHoursActive {
                     quietHoursNotice
+                        .padding(.horizontal)
+                }
+
+                if isProvider {
+                    providerNotificationFilterBar
                         .padding(.horizontal)
                 }
 
@@ -58,17 +81,19 @@ struct NotificationsView: View {
                             .foregroundStyle(.red)
                     }
 
-                    if items.isEmpty, errorMessage == nil {
+                    if filteredItems.isEmpty, errorMessage == nil {
                         emptyState(
-                            title: "Bildirim Yok",
+                            title: isProvider ? "Bildirim yok" : "Bildirim Yok",
                             systemImage: "bell",
-                            description: "Henüz hiç bildirimin yok."
+                            description: isProvider
+                                ? "Yeni talepler ve operasyon bildirimleri burada görünecek."
+                                : "Henüz hiç bildirimin yok."
                         )
                         .frame(maxWidth: .infinity)
                         .listRowBackground(Color.clear)
                     }
 
-                    ForEach(items) { item in
+                    ForEach(filteredItems) { item in
                         Button {
                             openNotification(item)
                         } label: {
@@ -118,7 +143,7 @@ struct NotificationsView: View {
 
                                     HStack(spacing: 6) {
                                         Image(systemName: "person.text.rectangle")
-                                        Text(familyPreviewText)
+                                        Text(contextPreviewText)
                                             .lineLimit(1)
                                     }
                                     .font(.caption)
@@ -192,12 +217,31 @@ struct NotificationsView: View {
         items.filter { !$0.read }.count
     }
 
+    private var isProvider: Bool {
+        session.me?.user.role == "PROVIDER"
+    }
+
     private var isQuietHoursActive: Bool {
         QuietHoursLogic.isActive(
             enabled: quietHoursEnabled,
             start: quietHoursStart,
             end: quietHoursEnd
         )
+    }
+
+    private var filteredItems: [AppNotification] {
+        guard isProvider else { return items }
+
+        switch selectedProviderFilter {
+        case .all:
+            return items
+        case .requests:
+            return items.filter { providerNotificationCategory(for: $0) == .requests }
+        case .operations:
+            return items.filter { providerNotificationCategory(for: $0) == .operations }
+        case .system:
+            return items.filter { providerNotificationCategory(for: $0) == .system }
+        }
     }
 
     private func loadData() async {
@@ -418,7 +462,14 @@ struct NotificationsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private var familyPreviewText: String {
+    private var contextPreviewText: String {
+        if isProvider {
+            if let displayName = session.me?.user.displayName, !displayName.isEmpty {
+                return "\(displayName) • bakıcı hesabı"
+            }
+            return "Bakıcı hesabı • operasyon akışı"
+        }
+
         let trimmedAbout = familyAbout.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedAbout.isEmpty {
             return trimmedAbout
@@ -427,6 +478,54 @@ struct NotificationsView: View {
             return "\(familyDisplayName) • \(familyLocationName)"
         }
         return familyLocationName
+    }
+
+    private var providerNotificationFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(ProviderNotificationFilter.allCases, id: \.self) { filter in
+                    Button {
+                        selectedProviderFilter = filter
+                    } label: {
+                        Text(filter.rawValue)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(selectedProviderFilter == filter ? DS.Colors.primary : .white)
+                            .foregroundStyle(selectedProviderFilter == filter ? .white : DS.Colors.textPrimary)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private enum ProviderNotificationCategory {
+        case requests
+        case operations
+        case system
+    }
+
+    private func providerNotificationCategory(for notification: AppNotification) -> ProviderNotificationCategory {
+        let haystack = "\(notification.title) \(notification.body) \(notification.type ?? "")".lowercased()
+
+        if haystack.contains("booking_confirmed")
+            || haystack.contains("booking_rejected")
+            || haystack.contains("talep")
+            || haystack.contains("rezervasyon") {
+            return .requests
+        }
+
+        if haystack.contains("booking_completed")
+            || haystack.contains("ödeme")
+            || haystack.contains("odeme")
+            || haystack.contains("checkout")
+            || haystack.contains("hesaba geçecek") {
+            return .operations
+        }
+
+        return .system
     }
 
     private func emptyState(title: String, systemImage: String, description: String) -> some View {
