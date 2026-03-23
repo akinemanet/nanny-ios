@@ -714,6 +714,34 @@ enum QuietHoursLogic {
 }
 
 enum ProviderAvailabilityLogic {
+    static func decodeWeeklyTemplates(_ rawValue: String) -> [Int: [String]] {
+        guard let data = rawValue.data(using: .utf8) else { return [:] }
+
+        if let decoded = try? JSONDecoder().decode([Int: [String]].self, from: data) {
+            return decoded
+        }
+
+        guard let fallback = try? JSONDecoder().decode([String: [String]].self, from: data) else {
+            return [:]
+        }
+
+        return fallback.reduce(into: [:]) { partial, item in
+            guard let weekday = Int(item.key) else { return }
+            partial[weekday] = item.value
+        }
+    }
+
+    static func encodeWeeklyTemplates(_ templates: [Int: [String]]) -> String {
+        guard
+            let data = try? JSONEncoder().encode(templates),
+            let string = String(data: data, encoding: .utf8)
+        else {
+            return "{}"
+        }
+
+        return string
+    }
+
     static func decodeSelections(_ rawValue: String) -> [String: [String]] {
         guard let data = rawValue.data(using: .utf8) else { return [:] }
         return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
@@ -740,6 +768,12 @@ enum ProviderAvailabilityLogic {
         }
     }
 
+    static func totalTemplateCount(in templates: [Int: [String]]) -> Int {
+        templates.values.reduce(0) { partial, slots in
+            partial + Set(slots).count
+        }
+    }
+
     static func nextAvailableDate(
         in selections: [String: [String]],
         from now: Date = Date()
@@ -753,6 +787,72 @@ enum ProviderAvailabilityLogic {
             .first { key in
                 key >= today && !(selections[key] ?? []).isEmpty
             }
+    }
+
+    static func weekday(for date: Date, calendar: Calendar = .current) -> Int {
+        calendar.component(.weekday, from: date)
+    }
+
+    static func weekdayTitle(for weekday: Int, locale: Locale = Locale(identifier: "tr_TR")) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = locale
+
+        let weekdaySymbols = calendar.weekdaySymbols
+        guard weekday > 0, weekday <= weekdaySymbols.count else { return "Bu gün" }
+        return weekdaySymbols[weekday - 1].capitalized(with: locale)
+    }
+
+    static func nextDate(
+        for weekday: Int,
+        from date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date? {
+        guard (1...7).contains(weekday) else { return nil }
+
+        let currentWeekday = calendar.component(.weekday, from: date)
+        let delta = (weekday - currentWeekday + 7) % 7
+        return calendar.date(byAdding: .day, value: delta, to: date)
+    }
+
+    static func selectionsApplyingWeeklyRule(
+        currentSelections: [String: [String]],
+        currentTemplates: [Int: [String]],
+        selectedDate: Date,
+        selectedSlots: [String],
+        appliesWeeklyTemplate: Bool,
+        horizonInWeeks: Int = 8,
+        calendar: Calendar = .current
+    ) -> (selections: [String: [String]], templates: [Int: [String]]) {
+        var updatedSelections = currentSelections
+        var updatedTemplates = currentTemplates
+
+        let normalizedSlots = sortedSlots(selectedSlots)
+        let selectedWeekday = weekday(for: selectedDate, calendar: calendar)
+
+        if appliesWeeklyTemplate {
+            updatedTemplates[selectedWeekday] = normalizedSlots
+
+            guard horizonInWeeks > 0 else {
+                return (updatedSelections, updatedTemplates)
+            }
+
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+
+            for offset in 0..<horizonInWeeks {
+                guard let candidateDate = calendar.date(byAdding: .weekOfYear, value: offset, to: selectedDate) else {
+                    continue
+                }
+                let key = formatter.string(from: candidateDate)
+                updatedSelections[key] = normalizedSlots
+            }
+        } else {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+            updatedSelections[formatter.string(from: selectedDate)] = normalizedSlots
+        }
+
+        return (updatedSelections, updatedTemplates)
     }
 }
 

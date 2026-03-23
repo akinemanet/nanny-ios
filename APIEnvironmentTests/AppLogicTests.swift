@@ -349,6 +349,40 @@ final class AppLogicTests: XCTestCase {
             ProviderAvailabilityLogic.nextAvailableDate(in: decoded, from: now),
             "2026-03-22"
         )
+
+        let templates = [
+            2: ["13:00", "09:00"]
+        ]
+        let rawTemplates = ProviderAvailabilityLogic.encodeWeeklyTemplates(templates)
+        XCTAssertEqual(ProviderAvailabilityLogic.decodeWeeklyTemplates(rawTemplates)[2] ?? [], ["13:00", "09:00"])
+        XCTAssertEqual(ProviderAvailabilityLogic.totalTemplateCount(in: templates), 2)
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let selectedDate = ISO8601DateFormatter().date(from: "2026-03-23T10:00:00Z")!
+        let recurring = ProviderAvailabilityLogic.selectionsApplyingWeeklyRule(
+            currentSelections: [:],
+            currentTemplates: [:],
+            selectedDate: selectedDate,
+            selectedSlots: ["13:00", "09:00"],
+            appliesWeeklyTemplate: true,
+            horizonInWeeks: 3,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(recurring.templates[2] ?? [], ["09:00", "13:00"])
+        XCTAssertEqual(recurring.selections["2026-03-23"] ?? [], ["09:00", "13:00"])
+        XCTAssertEqual(recurring.selections["2026-03-30"] ?? [], ["09:00", "13:00"])
+        XCTAssertEqual(recurring.selections["2026-04-06"] ?? [], ["09:00", "13:00"])
+
+        let nextMonday = ProviderAvailabilityLogic.nextDate(
+            for: 2,
+            from: ISO8601DateFormatter().date(from: "2026-03-25T10:00:00Z")!,
+            calendar: calendar
+        )
+        let dayFormatter = ISO8601DateFormatter()
+        dayFormatter.formatOptions = [.withFullDate]
+        XCTAssertEqual(dayFormatter.string(from: nextMonday ?? selectedDate), "2026-03-30")
     }
 
     func testProviderAvailabilitySyncPlanCandidates() {

@@ -17,6 +17,8 @@ private enum ProviderRequestFilter: String, CaseIterable {
 struct ProviderDashboardView: View {
     @EnvironmentObject private var session: SessionStore
     @AppStorage("providerAvailabilitySelections") private var storedAvailabilitySelections = "{}"
+    @AppStorage("providerAvailabilityWeeklyTemplates") private var storedWeeklyTemplates = "{}"
+    @AppStorage("providerAvailabilityFocusedDate") private var focusedAvailabilityDate = ""
     @AppStorage("accountProfileDisplayName") private var familyDisplayName = ""
     @AppStorage("accountProfileAboutFamily") private var familyAbout = ""
     @AppStorage(StoredLocationKeys.name) private var familyLocationName = StoredLocation.fallback.name
@@ -86,6 +88,37 @@ struct ProviderDashboardView: View {
                             title: "Sıradaki Müsaitlik",
                             value: nextAvailabilityLabel
                         )
+                    }
+
+                    if !weeklyTemplates.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Haftalık Şablon")
+                                .font(.headline)
+                                .foregroundStyle(DS.Colors.textPrimary)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(weeklyTemplateItems, id: \.weekday) { item in
+                                    Button {
+                                        focusAvailability(on: item.weekday)
+                                    } label: {
+                                        HStack(alignment: .top, spacing: 8) {
+                                            Text(item.title)
+                                                .foregroundStyle(DS.Colors.textPrimary)
+                                            Spacer(minLength: 8)
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption.bold())
+                                                .foregroundStyle(DS.Colors.textSecondary)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .shadow(radius: 3)
                     }
 
                     HStack(spacing: 14) {
@@ -221,12 +254,39 @@ struct ProviderDashboardView: View {
         ProviderAvailabilityLogic.decodeSelections(storedAvailabilitySelections)
     }
 
+    private var weeklyTemplates: [Int: [String]] {
+        ProviderAvailabilityLogic.decodeWeeklyTemplates(storedWeeklyTemplates)
+    }
+
     private var nextAvailabilityLabel: String {
         guard let next = ProviderAvailabilityLogic.nextAvailableDate(in: availabilitySelections) else {
             return "Planlanmadı"
         }
 
         return formattedDay(next)
+    }
+
+    private var weeklyTemplateItems: [(weekday: Int, title: String)] {
+        weeklyTemplates
+            .keys
+            .sorted()
+            .compactMap { weekday in
+                guard let slots = weeklyTemplates[weekday], !slots.isEmpty else { return nil }
+                let day = ProviderAvailabilityLogic.weekdayTitle(for: weekday)
+                return (weekday, "\(day): \(ProviderAvailabilityLogic.sortedSlots(slots).joined(separator: ", "))")
+            }
+    }
+
+    private func focusAvailability(on weekday: Int) {
+        guard let targetDate = ProviderAvailabilityLogic.nextDate(for: weekday) else {
+            showAvailabilityManager = true
+            return
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        focusedAvailabilityDate = formatter.string(from: targetDate)
+        showAvailabilityManager = true
     }
 
     private var providerScheduleSection: some View {
