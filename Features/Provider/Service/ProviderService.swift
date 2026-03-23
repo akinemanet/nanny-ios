@@ -217,6 +217,20 @@ final class ProviderService {
         throw lastError ?? APIError.invalidURL
     }
 
+    func uploadDocument(kind: ProviderDocumentKind, fileName: String, data: Data, mimeType: String) async throws -> ProviderDocumentUploadResponse {
+        try await api.uploadMultipart(
+            "v1/providers/documents/\(kind.rawValue)",
+            method: "POST",
+            file: APIClient.MultipartFile(
+                fieldName: "file",
+                fileName: fileName,
+                mimeType: mimeType,
+                data: data
+            ),
+            needsAuth: true
+        )
+    }
+
     private func makeBrowseProvider(id: String, payoutStatus: String, seed: SeededProviderProfile) -> BrowseProvider {
         Self.seededProviderIDs[id] = seed
         return BrowseProvider(
@@ -254,7 +268,12 @@ private struct ProviderOnboardingSummaryResponse: Decodable {
         case educationLevel
         case about
         case profilePhotoName
+        case profilePhotoUrl
         case criminalRecordFileName
+        case criminalRecordUrl
+        case profilePhotoStatus
+        case criminalRecordStatus
+        case approvalStatus
     }
 
     init(from decoder: Decoder) throws {
@@ -269,7 +288,12 @@ private struct ProviderOnboardingSummaryResponse: Decodable {
             about: try container.decodeIfPresent(String.self, forKey: .about) ?? "",
             categories: try container.decodeIfPresent([String].self, forKey: .categories) ?? [],
             profilePhotoName: try container.decodeIfPresent(String.self, forKey: .profilePhotoName) ?? "",
-            criminalRecordFileName: try container.decodeIfPresent(String.self, forKey: .criminalRecordFileName) ?? ""
+            profilePhotoUrl: try container.decodeIfPresent(String.self, forKey: .profilePhotoUrl) ?? "",
+            criminalRecordFileName: try container.decodeIfPresent(String.self, forKey: .criminalRecordFileName) ?? "",
+            criminalRecordUrl: try container.decodeIfPresent(String.self, forKey: .criminalRecordUrl) ?? "",
+            profilePhotoStatus: try container.decodeIfPresent(String.self, forKey: .profilePhotoStatus) ?? "MISSING",
+            criminalRecordStatus: try container.decodeIfPresent(String.self, forKey: .criminalRecordStatus) ?? "MISSING",
+            approvalStatus: try container.decodeIfPresent(String.self, forKey: .approvalStatus) ?? "PENDING"
         )
         summary = ProviderOnboardingSummary(
             account: try container.decodeIfPresent(ProviderAccount.self, forKey: .account),

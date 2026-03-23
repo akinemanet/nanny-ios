@@ -73,7 +73,24 @@ struct ProviderOnboardingView: View {
         ) { result in
             switch result {
             case .success(let urls):
-                vm.criminalRecordFileName = urls.first?.lastPathComponent ?? ""
+                guard let url = urls.first else { return }
+                let didAccess = url.startAccessingSecurityScopedResource()
+                defer {
+                    if didAccess {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+
+                do {
+                    let data = try Data(contentsOf: url)
+                    vm.setCriminalRecord(
+                        data: data,
+                        fileName: url.lastPathComponent,
+                        mimeType: "application/pdf"
+                    )
+                } catch {
+                    vm.errorMessage = error.localizedDescription
+                }
             case .failure(let error):
                 vm.errorMessage = error.localizedDescription
             }
@@ -379,10 +396,32 @@ struct ProviderOnboardingView: View {
             if let data = try await item.loadTransferable(type: Data.self),
                let uiImage = UIImage(data: data) {
                 profileImage = uiImage
-                vm.profilePhotoName = "profil-fotografi.jpg"
+                let fileName = preferredImageFileName(for: item)
+                vm.setProfilePhoto(data: data, fileName: fileName, mimeType: preferredImageMimeType(for: item))
             }
         } catch {
             vm.errorMessage = error.localizedDescription
         }
+    }
+
+    private func preferredImageFileName(for item: PhotosPickerItem) -> String {
+        let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
+        return "profil-fotografi.\(ext)"
+    }
+
+    private func preferredImageMimeType(for item: PhotosPickerItem) -> String {
+        guard let type = item.supportedContentTypes.first else {
+            return "image/jpeg"
+        }
+
+        if type.conforms(to: .png) {
+            return "image/png"
+        }
+
+        if type.conforms(to: .heic) {
+            return "image/heic"
+        }
+
+        return "image/jpeg"
     }
 }
