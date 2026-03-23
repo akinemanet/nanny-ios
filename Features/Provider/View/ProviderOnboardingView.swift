@@ -11,10 +11,12 @@ import UIKit
 
 struct ProviderOnboardingView: View {
     @EnvironmentObject private var session: SessionStore
+    @AppStorage("kvkkAcceptedProviderRegistration") private var kvkkAccepted = false
     @StateObject private var vm: ProviderOnboardingViewModel
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: UIImage?
     @State private var showPDFPicker = false
+    @State private var showKVKKSheet = false
     private let onCompleted: ((ProviderAccount?) -> Void)?
 
     private let educationOptions = [
@@ -52,6 +54,7 @@ struct ProviderOnboardingView: View {
                 categoriesCard
                 documentsCard
                 accountCard
+                kvkkCard
                 feedbackCard
                 actionButtons
             }
@@ -74,6 +77,9 @@ struct ProviderOnboardingView: View {
             case .failure(let error):
                 vm.errorMessage = error.localizedDescription
             }
+        }
+        .sheet(isPresented: $showKVKKSheet) {
+            KVKKDisclosureSheet()
         }
     }
 
@@ -296,6 +302,20 @@ struct ProviderOnboardingView: View {
         }
     }
 
+    private var kvkkCard: some View {
+        AppCard {
+            Text("KVKK Onayı")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            KVKKConsentBlock(
+                isAccepted: $kvkkAccepted,
+                showSheet: $showKVKKSheet,
+                accentColor: DS.Colors.primary
+            )
+        }
+    }
+
     @ViewBuilder
     private var feedbackCard: some View {
         if let msg = vm.message {
@@ -323,6 +343,7 @@ struct ProviderOnboardingView: View {
                     }
                 }
             }
+            .disabled(!kvkkAccepted)
 
             Button("Yenile") {
                 Task { await vm.load() }
