@@ -1299,7 +1299,7 @@ struct AccountView: View {
         let profileRequest = UpsertProviderOnboardingProfileRequest(
             educationLevel: payload.educationLevel,
             about: payload.about,
-            categories: payload.categories,
+            categories: ProviderCategoryMapper.backendServices(from: payload.categories),
             profilePhotoName: providerSummary?.profile.profilePhotoName ?? "",
             criminalRecordFileName: providerSummary?.profile.criminalRecordFileName ?? ""
         )
@@ -1601,7 +1601,7 @@ private struct ProviderProfileEditView: View {
         _phone = State(initialValue: account?.gsmNumber ?? "")
         _educationLevel = State(initialValue: profile?.educationLevel ?? "")
         _about = State(initialValue: profile?.about ?? "")
-        _selectedCategories = State(initialValue: profile?.categories ?? [])
+        _selectedCategories = State(initialValue: ProviderCategoryMapper.displayLabels(from: profile?.categories ?? []))
     }
 
     var body: some View {

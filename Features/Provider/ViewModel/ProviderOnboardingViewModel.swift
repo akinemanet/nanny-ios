@@ -66,7 +66,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
             }
             educationLevel = summary.profile.educationLevel
             about = summary.profile.about
-            selectedCategories = summary.profile.categories
+            selectedCategories = ProviderCategoryMapper.displayLabels(from: summary.profile.categories)
             profilePhotoName = summary.profile.profilePhotoName
             profilePhotoURL = summary.profile.profilePhotoUrl
             criminalRecordFileName = summary.profile.criminalRecordFileName
@@ -162,7 +162,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
             let profileReq = UpsertProviderOnboardingProfileRequest(
                 educationLevel: educationLevel,
                 about: about,
-                categories: selectedCategories,
+                categories: ProviderCategoryMapper.backendServices(from: selectedCategories),
                 profilePhotoName: profilePhotoName,
                 criminalRecordFileName: criminalRecordFileName
             )
@@ -174,7 +174,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
                     }
                     educationLevel = summary.profile.educationLevel
                     about = summary.profile.about
-                    selectedCategories = summary.profile.categories
+                    selectedCategories = ProviderCategoryMapper.displayLabels(from: summary.profile.categories)
                     profilePhotoName = summary.profile.profilePhotoName
                     profilePhotoURL = summary.profile.profilePhotoUrl
                     criminalRecordFileName = summary.profile.criminalRecordFileName
@@ -197,7 +197,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
             }
             return true
         } catch {
-            errorMessage = "Bilgiler şu anda kaydedilemedi. Lütfen alanları kontrol edip tekrar dene."
+            errorMessage = error.localizedDescription
             return false
         }
     }

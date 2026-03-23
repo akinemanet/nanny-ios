@@ -125,6 +125,34 @@ struct UpsertProviderOnboardingProfileRequest: Codable {
     let criminalRecordFileName: String
 }
 
+enum ProviderCategoryMapper {
+    private static let labelToService: [String: String] = [
+        "Bebek Bakımı": "BABYSITTER",
+        "Yürümeye Başlayan": "BABYSITTER",
+        "Okul Öncesi": "BABYSITTER",
+        "Anaokulu": "BABYSITTER",
+        "İlkokul Desteği": "TUTOR",
+        "Özel Ders": "TUTOR",
+        "Özel Eğitim": "SPECIAL_ED",
+    ]
+
+    private static let serviceToLabel: [String: String] = [
+        "BABYSITTER": "Bebek Bakımı",
+        "TUTOR": "Özel Ders",
+        "SPECIAL_ED": "Özel Eğitim",
+    ]
+
+    static func backendServices(from labels: [String]) -> [String] {
+        let mapped = labels.map { labelToService[$0] ?? $0 }
+        var seen = Set<String>()
+        return mapped.filter { seen.insert($0).inserted }
+    }
+
+    static func displayLabels(from services: [String]) -> [String] {
+        services.map { serviceToLabel[$0] ?? $0 }
+    }
+}
+
 enum ProviderDocumentKind: String {
     case profilePhoto = "profile-photo"
     case criminalRecord = "criminal-record"
