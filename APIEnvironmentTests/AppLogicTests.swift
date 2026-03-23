@@ -383,6 +383,14 @@ final class AppLogicTests: XCTestCase {
         let dayFormatter = ISO8601DateFormatter()
         dayFormatter.formatOptions = [.withFullDate]
         XCTAssertEqual(dayFormatter.string(from: nextMonday ?? selectedDate), "2026-03-30")
+
+        let copiedTemplates = ProviderAvailabilityLogic.copyTemplate(
+            from: 2,
+            to: [3, 4],
+            using: [2: ["09:00", "13:00"]]
+        )
+        XCTAssertEqual(copiedTemplates[3] ?? [], ["09:00", "13:00"])
+        XCTAssertEqual(copiedTemplates[4] ?? [], ["09:00", "13:00"])
     }
 
     func testProviderAvailabilitySyncPlanCandidates() {

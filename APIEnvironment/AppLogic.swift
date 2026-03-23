@@ -854,6 +854,22 @@ enum ProviderAvailabilityLogic {
 
         return (updatedSelections, updatedTemplates)
     }
+
+    static func copyTemplate(
+        from sourceWeekday: Int,
+        to destinationWeekdays: [Int],
+        using templates: [Int: [String]]
+    ) -> [Int: [String]] {
+        guard let sourceSlots = templates[sourceWeekday], !sourceSlots.isEmpty else {
+            return templates
+        }
+
+        var updated = templates
+        for weekday in destinationWeekdays where weekday != sourceWeekday {
+            updated[weekday] = sortedSlots(sourceSlots)
+        }
+        return updated
+    }
 }
 
 struct ProviderEarningsSummary: Equatable, Decodable {

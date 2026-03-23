@@ -157,6 +157,7 @@ struct ProviderCalendarView: View {
     @AppStorage(ProviderAvailabilityStorageKeys.focusedDate) private var focusedDateValue = ""
     @State private var selectedSlots: Set<String> = []
     @State private var repeatWeeklySelection = false
+    @State private var templateCopyTargets: Set<Int> = []
     @State private var availabilityService: ProviderAvailabilityService?
     @State private var syncError: String?
     @State private var syncNotice: String?
@@ -246,6 +247,40 @@ struct ProviderCalendarView: View {
                         .buttonStyle(.bordered)
                         .disabled((weeklyTemplates[ProviderAvailabilityLogic.weekday(for: selectedDate)] ?? []).isEmpty)
                     }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Şablonu diğer günlere uygula")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(DS.Colors.textPrimary)
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                            ForEach(weekdayOptions, id: \.weekday) { option in
+                                Button {
+                                    toggleTemplateTarget(option.weekday)
+                                } label: {
+                                    Text(option.title)
+                                        .font(.footnote.weight(.medium))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 36)
+                                        .background(templateCopyTargets.contains(option.weekday) ? DS.Colors.primary : Color.white)
+                                        .foregroundStyle(templateCopyTargets.contains(option.weekday) ? Color.white : DS.Colors.textPrimary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                }
+                                .disabled(option.weekday == selectedWeekday)
+                                .opacity(option.weekday == selectedWeekday ? 0.45 : 1)
+                            }
+                        }
+
+                        Button {
+                            applyTemplateToSelectedWeekdays()
+                        } label: {
+                            Label("Seçili günlere uygula", systemImage: "arrow.triangle.branch")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(DS.Colors.primary)
+                        .disabled(templateCopyTargets.isEmpty || (weeklyTemplates[selectedWeekday] ?? []).isEmpty)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
@@ -329,6 +364,16 @@ struct ProviderCalendarView: View {
         )
     }
 
+    private var selectedWeekday: Int {
+        ProviderAvailabilityLogic.weekday(for: selectedDate)
+    }
+
+    private var weekdayOptions: [(weekday: Int, title: String)] {
+        (1...7).map { weekday in
+            (weekday, ProviderAvailabilityLogic.weekdayTitle(for: weekday))
+        }
+    }
+
     private var templateSummary: String? {
         let weekday = ProviderAvailabilityLogic.weekday(for: selectedDate)
         guard let slots = weeklyTemplates[weekday], !slots.isEmpty else { return nil }
@@ -350,8 +395,8 @@ struct ProviderCalendarView: View {
     }
 
     private func loadRepeatPreferenceForSelectedDate() {
-        let weekday = ProviderAvailabilityLogic.weekday(for: selectedDate)
-        repeatWeeklySelection = !(weeklyTemplates[weekday] ?? []).isEmpty
+        repeatWeeklySelection = !(weeklyTemplates[selectedWeekday] ?? []).isEmpty
+        templateCopyTargets = []
     }
 
     private func persistSelection() {
@@ -382,13 +427,33 @@ struct ProviderCalendarView: View {
     }
 
     private func clearWeeklyTemplate() {
-        let selectedWeekday = ProviderAvailabilityLogic.weekday(for: selectedDate)
         var updatedTemplates = weeklyTemplates
         updatedTemplates[selectedWeekday] = []
         storedWeeklyTemplates = ProviderAvailabilityLogic.encodeWeeklyTemplates(updatedTemplates)
         repeatWeeklySelection = false
+        templateCopyTargets = []
         syncNotice = "\(selectedWeekdayTitle) için haftalık şablon temizlendi."
         syncError = nil
+    }
+
+    private func toggleTemplateTarget(_ weekday: Int) {
+        if templateCopyTargets.contains(weekday) {
+            templateCopyTargets.remove(weekday)
+        } else {
+            templateCopyTargets.insert(weekday)
+        }
+    }
+
+    private func applyTemplateToSelectedWeekdays() {
+        let updatedTemplates = ProviderAvailabilityLogic.copyTemplate(
+            from: selectedWeekday,
+            to: Array(templateCopyTargets),
+            using: weeklyTemplates
+        )
+        storedWeeklyTemplates = ProviderAvailabilityLogic.encodeWeeklyTemplates(updatedTemplates)
+        syncNotice = "\(selectedWeekdayTitle) şablonu seçili günlere uygulandı."
+        syncError = nil
+        templateCopyTargets = []
     }
 
     private func formattedDay(_ value: String) -> String {
