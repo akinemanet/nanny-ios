@@ -55,7 +55,17 @@ struct HomeView: View {
                 .padding()
             }
             .background(DS.Colors.background.ignoresSafeArea())
-            .navigationTitle("Ana Sayfa")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(DS.Colors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Ana Sayfa")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(DS.Colors.textPrimary)
+                }
+            }
             .navigationDestination(isPresented: $showBookingList) {
                 BookingListView()
             }
@@ -139,10 +149,13 @@ struct HomeView: View {
                 Text(greetingTitle)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.9)
 
                 Text("Bugünkü planını, rezervasyonlarını ve yeni bildirimlerini tek ekranda takip et.")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.92))
+                    .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 12) {
                     homeBadge(title: "Rol", value: session.me?.user.role == "PROVIDER" ? "Bakıcı" : "Aile")
@@ -150,7 +163,8 @@ struct HomeView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(4)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 10)
             .background(
                 LinearGradient(
                     colors: [DS.Colors.primary, DS.Colors.accent],
@@ -262,8 +276,8 @@ struct HomeView: View {
                 errorCard(message: errorMessage)
             } else if viewModel.activeBookings.isEmpty {
                 emptyCard(
-                    title: "Planlanmis rezervasyonun yok",
-                    message: "Uygun bakicilari kesfedip yeni bir rezervasyon olusturabilirsin.",
+                    title: "Planlanmış rezervasyonun yok",
+                    message: "Uygun bakıcıları keşfedip yeni bir rezervasyon oluşturabilirsin.",
                     systemImage: "calendar.badge.exclamationmark"
                 )
             } else {
@@ -280,8 +294,8 @@ struct HomeView: View {
 
             if viewModel.favorites.isEmpty {
                 emptyCard(
-                    title: "Favori bakici eklemedin",
-                    message: "Begendigin profilleri favorilere ekleyip burada hizlica ulasabilirsin.",
+                    title: "Favori bakıcı eklemedin",
+                    message: "Beğendiğin profilleri favorilere ekleyip burada hızlıca ulaşabilirsin.",
                     systemImage: "heart"
                 )
             } else {
@@ -327,8 +341,8 @@ struct HomeView: View {
 
             if viewModel.conversations.isEmpty {
                 emptyCard(
-                    title: "Aktif konusma yok",
-                    message: "Mesajlasmalarin basladiginda son konusmalar burada gorunecek.",
+                    title: "Aktif konuşma yok",
+                    message: "Mesajlaşmaların başladığında son konuşmalar burada görünecek.",
                     systemImage: "bubble.left.and.bubble.right"
                 )
             } else {
@@ -492,9 +506,9 @@ struct HomeView: View {
 
     private var greetingTitle: String {
         if let email = session.me?.user.email, !email.isEmpty {
-            return "Hos geldin, \(email)"
+            return "Hoş geldin, \(email)"
         }
-        return "Hos geldin"
+        return "Hoş geldin"
     }
 
     private var isQuietHoursActive: Bool {
@@ -617,6 +631,8 @@ struct HomeView: View {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(DS.Colors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
                 Text(subtitle)
                     .font(.footnote)
                     .foregroundStyle(DS.Colors.textSecondary)
