@@ -114,6 +114,7 @@ struct ProviderDetail: Codable, Identifiable {
     let rating: Double
     let hourlyRate: Int
     let payoutStatus: String
+    let educationLevel: String
     let about: String
     let experienceYears: Int
     let age: Int

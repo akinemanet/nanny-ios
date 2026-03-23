@@ -98,6 +98,19 @@ struct NannyProfileView: View {
                     infoCard(title: "Tamamlanan", value: "\(detail?.completedSittings ?? 37) oturum")
                 }
 
+                if let educationLevel = detail?.educationLevel, !educationLevel.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Eğitim Durumu")
+                            .font(.headline)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text(educationLevel)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                    }
+                    .padding()
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Deneyim")
                         .font(.headline)

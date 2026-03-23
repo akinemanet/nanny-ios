@@ -60,6 +60,7 @@ final class ProviderService {
                     rating: seed.rating,
                     hourlyRate: seed.hourlyRate,
                     payoutStatus: provider.payoutStatus,
+                    educationLevel: seed.educationLevel,
                     about: seed.about,
                     experienceYears: seed.experienceYears,
                     age: seed.age,
@@ -81,6 +82,7 @@ final class ProviderService {
                     rating: seed.rating,
                     hourlyRate: seed.hourlyRate,
                     payoutStatus: "APPROVED",
+                    educationLevel: seed.educationLevel,
                     about: seed.about,
                     experienceYears: seed.experienceYears,
                     age: seed.age,
@@ -319,6 +321,7 @@ private struct SeededProviderProfile {
     let distanceText: String
     let latitude: Double
     let longitude: Double
+    let educationLevel: String
     let about: String
     let categories: [String]
     let skills: [String]
@@ -342,6 +345,7 @@ private extension ProviderService {
             distanceText: "2.1 km uzaklıkta",
             latitude: 40.9917,
             longitude: 29.0277,
+            educationLevel: "Çocuk Gelişimi Lisans",
             about: "Çocuk gelişimi mezunuyum. Yenidoğan bakımından okul öncesi döneme kadar farklı yaş gruplarıyla deneyimim var. Güvenli rutin kurma, oyun temelli gelişim ve ailelerle düzenli iletişim konularında özenliyim.",
             categories: ["Bebek", "Okul Öncesi"],
             skills: ["Bebek Bakımı", "İlk Yardım", "Oyun Planı", "Uyku Rutini"],
@@ -369,6 +373,7 @@ private extension ProviderService {
             distanceText: "3.4 km uzaklıkta",
             latitude: 41.0430,
             longitude: 29.0094,
+            educationLevel: "Okul Öncesi Öğretmenliği Lisans",
             about: "Okul öncesi öğretmenliği geçmişim var. Yaratıcı etkinlikler, yemek düzeni ve ekran süresi yönetimi konusunda sistemli çalışırım. Ailelerin günlük akışına kolay uyum sağlarım.",
             categories: ["Okul Öncesi", "Anaokulu"],
             skills: ["Okul Öncesi", "Ödev Desteği", "Yemek Hazırlığı", "Etkinlik"],
@@ -396,6 +401,7 @@ private extension ProviderService {
             distanceText: "1.7 km uzaklıkta",
             latitude: 38.4622,
             longitude: 27.2176,
+            educationLevel: "Çocuk Gelişimi Ön Lisans",
             about: "Özellikle hareketli ve meraklı çocuklarla güçlü bağ kuruyorum. Açık hava etkinlikleri, ödev takibi ve günlük bakım rutinlerinde destek sağlıyorum.",
             categories: ["Yürümeye Başlayan", "İlkokul"],
             skills: ["Yürümeye Başlayan", "Açık Hava Etkinliği", "Ödev Desteği", "İletişim"],
@@ -422,6 +428,7 @@ private extension ProviderService {
             distanceText: "4.6 km uzaklıkta",
             latitude: 39.9179,
             longitude: 32.8627,
+            educationLevel: "Çocuk Gelişimi Yüksek Lisans",
             about: "Uzun yıllardır tam zamanlı çocuk bakımında çalışıyorum. Kriz anlarında sakin kalırım; düzen, hijyen ve güvenlik konularında yüksek hassasiyet gösteririm.",
             categories: ["Bebek", "Gece Bakımı"],
             skills: ["Bebek Bakımı", "Gece Bakımı", "İlaç Takibi", "Hijyen"],
