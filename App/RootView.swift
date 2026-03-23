@@ -100,12 +100,21 @@ struct RootView: View {
 }
 
 private struct ProviderRootView: View {
+    @EnvironmentObject private var session: SessionStore
     let service: ProviderService
 
-    @AppStorage("didCompleteProviderOnboarding") private var didCompleteProviderOnboarding = false
+    @AppStorage("didCompleteProviderOnboardingUserID") private var completedProviderUserID = ""
     @State private var isLoading = true
     @State private var account: ProviderAccount?
     @State private var errorMessage: String?
+
+    private var currentProviderUserID: String {
+        session.me?.user.id ?? ""
+    }
+
+    private var didCompleteProviderOnboarding: Bool {
+        !currentProviderUserID.isEmpty && completedProviderUserID == currentProviderUserID
+    }
 
     var body: some View {
         NavigationStack {
@@ -119,7 +128,9 @@ private struct ProviderRootView: View {
                 } else {
                     ProviderOnboardingView(service: service) { updatedAccount in
                         account = updatedAccount
-                        didCompleteProviderOnboarding = updatedAccount != nil
+                        if updatedAccount != nil {
+                            completedProviderUserID = currentProviderUserID
+                        }
                     }
                 }
             }
@@ -135,7 +146,9 @@ private struct ProviderRootView: View {
         defer { isLoading = false }
         do {
             account = try await service.getOnboardingSummary().account
-            didCompleteProviderOnboarding = account != nil || didCompleteProviderOnboarding
+            if account != nil {
+                completedProviderUserID = currentProviderUserID
+            }
             errorMessage = nil
         } catch {
             account = nil
