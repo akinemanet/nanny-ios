@@ -1341,18 +1341,45 @@ struct AccountView: View {
 
     private func saveProviderMedia(_ payload: ProviderMediaEditPayload) async {
         let existingProfile = providerSummary?.profile ?? ProviderOnboardingProfile()
-        let profileRequest = UpsertProviderOnboardingProfileRequest(
-            educationLevel: existingProfile.educationLevel,
-            about: existingProfile.about,
-            categories: existingProfile.categories,
-            profilePhotoName: payload.profilePhotoName,
-            criminalRecordFileName: payload.criminalRecordFileName
-        )
+        var profilePhotoName = payload.profilePhotoName
+        var profilePhotoURL = existingProfile.profilePhotoUrl
+        var criminalRecordFileName = payload.criminalRecordFileName
+        var criminalRecordURL = existingProfile.criminalRecordUrl
 
         providerAccountError = nil
         providerProfileNotice = nil
 
         do {
+            if let profilePhoto = payload.profilePhotoUpload {
+                let uploaded = try await session.deps.providerService.uploadDocument(
+                    kind: .profilePhoto,
+                    fileName: profilePhoto.fileName,
+                    data: profilePhoto.data,
+                    mimeType: profilePhoto.mimeType
+                )
+                profilePhotoName = uploaded.profile?.profilePhotoName ?? profilePhotoName
+                profilePhotoURL = uploaded.profile?.profilePhotoUrl ?? uploaded.url ?? profilePhotoURL
+            }
+
+            if let criminalRecord = payload.criminalRecordUpload {
+                let uploaded = try await session.deps.providerService.uploadDocument(
+                    kind: .criminalRecord,
+                    fileName: criminalRecord.fileName,
+                    data: criminalRecord.data,
+                    mimeType: criminalRecord.mimeType
+                )
+                criminalRecordFileName = uploaded.profile?.criminalRecordFileName ?? criminalRecordFileName
+                criminalRecordURL = uploaded.profile?.criminalRecordUrl ?? uploaded.url ?? criminalRecordURL
+            }
+
+            let profileRequest = UpsertProviderOnboardingProfileRequest(
+                educationLevel: existingProfile.educationLevel,
+                about: existingProfile.about,
+                categories: existingProfile.categories,
+                profilePhotoName: profilePhotoName,
+                criminalRecordFileName: criminalRecordFileName
+            )
+
             if let updatedSummary = try await session.deps.providerService.upsertOnboardingProfile(profileRequest) {
                 providerSummary = updatedSummary
                 if let updatedAccount = updatedSummary.account {
@@ -1366,8 +1393,13 @@ struct AccountView: View {
                         educationLevel: existingProfile.educationLevel,
                         about: existingProfile.about,
                         categories: existingProfile.categories,
-                        profilePhotoName: payload.profilePhotoName,
-                        criminalRecordFileName: payload.criminalRecordFileName
+                        profilePhotoName: profilePhotoName,
+                        profilePhotoUrl: profilePhotoURL,
+                        criminalRecordFileName: criminalRecordFileName,
+                        criminalRecordUrl: criminalRecordURL,
+                        profilePhotoStatus: profilePhotoName.isEmpty ? "MISSING" : "PENDING",
+                        criminalRecordStatus: criminalRecordFileName.isEmpty ? "MISSING" : "PENDING",
+                        approvalStatus: existingProfile.approvalStatus
                     )
                 )
                 providerProfileNotice = "Profil fotoğrafı ve belge bilgileri güncellendi."
@@ -1383,8 +1415,13 @@ struct AccountView: View {
                             educationLevel: existingProfile.educationLevel,
                             about: existingProfile.about,
                             categories: existingProfile.categories,
-                            profilePhotoName: payload.profilePhotoName,
-                            criminalRecordFileName: payload.criminalRecordFileName
+                            profilePhotoName: profilePhotoName,
+                            profilePhotoUrl: profilePhotoURL,
+                            criminalRecordFileName: criminalRecordFileName,
+                            criminalRecordUrl: criminalRecordURL,
+                            profilePhotoStatus: profilePhotoName.isEmpty ? "MISSING" : "PENDING",
+                            criminalRecordStatus: criminalRecordFileName.isEmpty ? "MISSING" : "PENDING",
+                            approvalStatus: existingProfile.approvalStatus
                         )
                     )
                     providerProfileNotice = "Belge alanları güncellendi. Backend endpoint'i hazır olmadığından cihazda tutuluyor."
@@ -1413,8 +1450,16 @@ private struct ProviderProfileEditPayload {
 }
 
 private struct ProviderMediaEditPayload {
+    struct PendingUpload {
+        let fileName: String
+        let mimeType: String
+        let data: Data
+    }
+
     let profilePhotoName: String
     let criminalRecordFileName: String
+    let profilePhotoUpload: PendingUpload?
+    let criminalRecordUpload: PendingUpload?
 }
 
 private struct ProfileEditView: View {
@@ -1702,6 +1747,8 @@ private struct ProviderMediaEditView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showPDFPicker = false
     @State private var isSaving = false
+    @State private var profilePhotoUpload: ProviderMediaEditPayload.PendingUpload?
+    @State private var criminalRecordUpload: ProviderMediaEditPayload.PendingUpload?
 
     init(
         profilePhotoName: String,
@@ -1769,7 +1816,9 @@ private struct ProviderMediaEditView: View {
                         await onSave(
                             ProviderMediaEditPayload(
                                 profilePhotoName: profilePhotoName,
-                                criminalRecordFileName: criminalRecordFileName
+                                criminalRecordFileName: criminalRecordFileName,
+                                profilePhotoUpload: profilePhotoUpload,
+                                criminalRecordUpload: criminalRecordUpload
                             )
                         )
                         isSaving = false
@@ -1803,8 +1852,10 @@ private struct ProviderMediaEditView: View {
             }
         }
         .onChange(of: selectedPhotoItem) { _, newItem in
-            guard newItem != nil else { return }
-            profilePhotoName = "profil-fotografi-guncel.jpg"
+            guard let newItem else { return }
+            Task {
+                await loadImage(from: newItem)
+            }
         }
         .fileImporter(
             isPresented: $showPDFPicker,
@@ -1813,10 +1864,47 @@ private struct ProviderMediaEditView: View {
         ) { result in
             switch result {
             case .success(let urls):
-                criminalRecordFileName = urls.first?.lastPathComponent ?? criminalRecordFileName
+                guard let url = urls.first else { return }
+                let didAccess = url.startAccessingSecurityScopedResource()
+                defer {
+                    if didAccess {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+                do {
+                    let data = try Data(contentsOf: url)
+                    criminalRecordFileName = url.lastPathComponent
+                    criminalRecordUpload = .init(
+                        fileName: url.lastPathComponent,
+                        mimeType: "application/pdf",
+                        data: data
+                    )
+                } catch {
+                }
             case .failure:
                 break
             }
+        }
+    }
+
+    private func loadImage(from item: PhotosPickerItem) async {
+        do {
+            if let data = try await item.loadTransferable(type: Data.self) {
+                let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
+                let mimeType: String
+                if item.supportedContentTypes.first?.conforms(to: .png) == true {
+                    mimeType = "image/png"
+                } else if item.supportedContentTypes.first?.conforms(to: .heic) == true {
+                    mimeType = "image/heic"
+                } else {
+                    mimeType = "image/jpeg"
+                }
+
+                let fileName = "profil-fotografi-guncel.\(ext)"
+                profilePhotoName = fileName
+                profilePhotoUpload = .init(fileName: fileName, mimeType: mimeType, data: data)
+            }
+        } catch {
         }
     }
 }
