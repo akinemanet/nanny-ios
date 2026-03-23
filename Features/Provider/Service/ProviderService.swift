@@ -8,7 +8,6 @@ import Foundation
 
 final class ProviderService {
     private let api: APIClient
-    private static var seededProviderIDs: [String: SeededProviderProfile] = [:]
 
     init(api: APIClient) {
         self.api = api
@@ -18,14 +17,7 @@ final class ProviderService {
         struct Empty: Encodable {}
         do {
             let response: ProvidersResponse = try await api.request("v1/providers", method: "GET", body: Optional<Empty>.none, needsAuth: false)
-            let seeded = response.providers.enumerated().map { index, provider in
-                makeBrowseProvider(
-                    id: provider.id,
-                    payoutStatus: provider.payoutStatus,
-                    seed: Self.seedProfiles[index % Self.seedProfiles.count]
-                )
-            }
-            if seeded.isEmpty {
+            if response.providers.isEmpty {
                 return ProvidersResponse(providers: Self.seedProfiles.enumerated().map { index, seed in
                     makeBrowseProvider(
                         id: "seed-provider-\(index)",
@@ -34,7 +26,7 @@ final class ProviderService {
                     )
                 })
             }
-            return ProvidersResponse(providers: seeded)
+            return ProvidersResponse(providers: response.providers.map(normalizeBrowseProvider))
         } catch {
             return ProvidersResponse(providers: Self.seedProfiles.enumerated().map { index, seed in
                 makeBrowseProvider(
@@ -48,33 +40,12 @@ final class ProviderService {
 
     func getProviderDetail(id: String) async throws -> ProviderDetailResponse {
         struct Empty: Encodable {}
-        let seed = Self.seededProviderIDs[id] ?? Self.seedProfiles.first!
 
         do {
             let response: ProviderDetailResponse = try await api.request("v1/providers/\(id)", method: "GET", body: Optional<Empty>.none, needsAuth: false)
-            let provider = response.provider
-            return ProviderDetailResponse(
-                provider: ProviderDetail(
-                    id: provider.id,
-                    displayName: seed.displayName,
-                    rating: seed.rating,
-                    hourlyRate: seed.hourlyRate,
-                    payoutStatus: provider.payoutStatus,
-                    educationLevel: seed.educationLevel,
-                    about: seed.about,
-                    experienceYears: seed.experienceYears,
-                    age: seed.age,
-                    completedSittings: seed.completedSittings,
-                    locationName: seed.locationName,
-                    distanceText: seed.distanceText,
-                    latitude: seed.latitude,
-                    longitude: seed.longitude,
-                    skills: seed.skills,
-                    reviews: seed.reviews,
-                    availability: provider.availability.isEmpty ? seed.availability : provider.availability
-                )
-            )
+            return ProviderDetailResponse(provider: normalizeProviderDetail(response.provider))
         } catch {
+            let seed = Self.seedProfiles.first!
             return ProviderDetailResponse(
                 provider: ProviderDetail(
                     id: id,
@@ -232,7 +203,6 @@ final class ProviderService {
     }
 
     private func makeBrowseProvider(id: String, payoutStatus: String, seed: SeededProviderProfile) -> BrowseProvider {
-        Self.seededProviderIDs[id] = seed
         return BrowseProvider(
             id: id,
             displayName: seed.displayName,
@@ -253,6 +223,50 @@ final class ProviderService {
                 .map(\.date),
             availableStartHour: seed.availableStartHour,
             availableEndHour: seed.availableEndHour
+        )
+    }
+
+    private func normalizeBrowseProvider(_ provider: BrowseProvider) -> BrowseProvider {
+        BrowseProvider(
+            id: provider.id,
+            displayName: provider.displayName,
+            rating: provider.rating,
+            hourlyRate: provider.hourlyRate,
+            payoutStatus: provider.payoutStatus,
+            age: provider.age,
+            gender: provider.gender,
+            locationName: provider.locationName,
+            distanceText: provider.distanceText,
+            latitude: provider.latitude,
+            longitude: provider.longitude,
+            categories: ProviderCategoryMapper.displayLabels(from: provider.categories),
+            reviewCount: provider.reviewCount,
+            completedSittings: provider.completedSittings,
+            availableDates: provider.availableDates,
+            availableStartHour: provider.availableStartHour,
+            availableEndHour: provider.availableEndHour
+        )
+    }
+
+    private func normalizeProviderDetail(_ provider: ProviderDetail) -> ProviderDetail {
+        ProviderDetail(
+            id: provider.id,
+            displayName: provider.displayName,
+            rating: provider.rating,
+            hourlyRate: provider.hourlyRate,
+            payoutStatus: provider.payoutStatus,
+            educationLevel: provider.educationLevel,
+            about: provider.about,
+            experienceYears: provider.experienceYears,
+            age: provider.age,
+            completedSittings: provider.completedSittings,
+            locationName: provider.locationName,
+            distanceText: provider.distanceText,
+            latitude: provider.latitude,
+            longitude: provider.longitude,
+            skills: ProviderCategoryMapper.displayLabels(from: provider.skills),
+            reviews: provider.reviews,
+            availability: provider.availability
         )
     }
 }
