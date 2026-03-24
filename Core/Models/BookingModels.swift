@@ -346,6 +346,47 @@ struct BookingProvider: Hashable {
     let hourlyRate: Int?
 }
 
+struct CareRequestCandidate: Codable, Identifiable, Hashable {
+    var id: String { providerUserID }
+    let providerUserID: String
+    let providerDisplayName: String
+    let providerPhone: String?
+    let appliedAt: String
+}
+
+struct CareRequestItem: Codable, Identifiable, Hashable {
+    let id: String
+    let parentUserID: String
+    let parentDisplayName: String
+    let parentPhone: String?
+    let service: String
+    let note: String
+    let startAt: String
+    let endAt: String
+    let locationName: String
+    let createdAt: String
+    var status: String
+    var candidates: [CareRequestCandidate]
+    var assignedProviderUserID: String?
+    var assignedProviderDisplayName: String?
+
+    var isOpen: Bool {
+        status.uppercased() == "OPEN"
+    }
+
+    var isMatched: Bool {
+        status.uppercased() == "MATCHED"
+    }
+}
+
+struct CreateCareRequestInput: Hashable {
+    let service: String
+    let note: String
+    let startAt: Date
+    let endAt: Date
+    let locationName: String
+}
+
 struct NotificationsResponse: Decodable {
     let notifications: [AppNotification]
 }

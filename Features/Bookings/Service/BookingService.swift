@@ -2,6 +2,13 @@ import Foundation
 
 final class BookingService {
     private struct Empty: Encodable {}
+    private struct CareRequestStore: Codable {
+        var items: [CareRequestItem]
+    }
+
+    private enum CareRequestStorageKeys {
+        static let store = "careRequestStoreV1"
+    }
 
     let api: APIClient
 
@@ -250,6 +257,138 @@ final class BookingService {
         }
 
         throw lastError ?? APIError.invalidURL
+    }
+
+    func listParentCareRequests(parentUserID: String) async throws -> [CareRequestItem] {
+        loadCareRequests()
+            .filter { $0.parentUserID == parentUserID }
+            .sorted { $0.startAt < $1.startAt }
+    }
+
+    func listProviderCareRequests(providerUserID: String) async throws -> [CareRequestItem] {
+        loadCareRequests()
+            .filter { request in
+                request.isOpen
+                    || request.assignedProviderUserID == providerUserID
+                    || request.candidates.contains(where: { $0.providerUserID == providerUserID })
+            }
+            .sorted { $0.startAt < $1.startAt }
+    }
+
+    func createCareRequest(
+        input: CreateCareRequestInput,
+        parent: User,
+        parentDisplayName: String,
+        parentPhone: String?,
+        locationName: String
+    ) async throws -> CareRequestItem {
+        guard input.endAt > input.startAt else {
+            throw Self.localError(statusCode: 400, message: "Bitiş saati başlangıçtan sonra olmalı.")
+        }
+
+        var requests = loadCareRequests()
+        let iso = ISO8601DateFormatter()
+        let item = CareRequestItem(
+            id: UUID().uuidString,
+            parentUserID: parent.id,
+            parentDisplayName: parentDisplayName,
+            parentPhone: parentPhone,
+            service: input.service,
+            note: input.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            startAt: iso.string(from: input.startAt),
+            endAt: iso.string(from: input.endAt),
+            locationName: locationName,
+            createdAt: iso.string(from: Date()),
+            status: "OPEN",
+            candidates: [],
+            assignedProviderUserID: nil,
+            assignedProviderDisplayName: nil
+        )
+        requests.append(item)
+        saveCareRequests(requests)
+        return item
+    }
+
+    func applyToCareRequest(
+        requestID: String,
+        provider: User,
+        providerDisplayName: String
+    ) async throws -> CareRequestItem {
+        var requests = loadCareRequests()
+        guard let index = requests.firstIndex(where: { $0.id == requestID }) else {
+            throw Self.localError(statusCode: 404, message: "Talep bulunamadı.")
+        }
+
+        var request = requests[index]
+        guard request.isOpen else {
+            throw Self.localError(statusCode: 400, message: "Bu talep artık aday kabul etmiyor.")
+        }
+
+        if request.candidates.contains(where: { $0.providerUserID == provider.id }) {
+            throw Self.localError(statusCode: 400, message: "Bu talebe zaten aday oldun.")
+        }
+
+        let candidate = CareRequestCandidate(
+            providerUserID: provider.id,
+            providerDisplayName: providerDisplayName,
+            providerPhone: provider.phone,
+            appliedAt: ISO8601DateFormatter().string(from: Date())
+        )
+        request.candidates.append(candidate)
+        requests[index] = request
+        saveCareRequests(requests)
+        return request
+    }
+
+    func approveCareRequestCandidate(
+        requestID: String,
+        candidateProviderUserID: String,
+        parentUserID: String
+    ) async throws -> CareRequestItem {
+        var requests = loadCareRequests()
+        guard let index = requests.firstIndex(where: { $0.id == requestID }) else {
+            throw Self.localError(statusCode: 404, message: "Talep bulunamadı.")
+        }
+
+        var request = requests[index]
+        guard request.parentUserID == parentUserID else {
+            throw Self.localError(statusCode: 403, message: "Bu talebi onaylama yetkin yok.")
+        }
+
+        guard let candidate = request.candidates.first(where: { $0.providerUserID == candidateProviderUserID }) else {
+            throw Self.localError(statusCode: 404, message: "Seçilen aday bulunamadı.")
+        }
+
+        request.status = "MATCHED"
+        request.assignedProviderUserID = candidate.providerUserID
+        request.assignedProviderDisplayName = candidate.providerDisplayName
+        requests[index] = request
+        saveCareRequests(requests)
+        return request
+    }
+
+    private func loadCareRequests() -> [CareRequestItem] {
+        guard let data = UserDefaults.standard.data(forKey: CareRequestStorageKeys.store) else {
+            return []
+        }
+
+        do {
+            return try JSONDecoder().decode(CareRequestStore.self, from: data).items
+        } catch {
+            return []
+        }
+    }
+
+    private func saveCareRequests(_ items: [CareRequestItem]) {
+        let store = CareRequestStore(items: items)
+        if let data = try? JSONEncoder().encode(store) {
+            UserDefaults.standard.set(data, forKey: CareRequestStorageKeys.store)
+        }
+    }
+
+    private static func localError(statusCode: Int, message: String) -> APIError {
+        let payload = #"{"message":"\#(message)"}"#.data(using: .utf8)
+        return .http(statusCode, payload)
     }
 
     private static func toBookingItem(_ record: BookingRecord) -> BookingItem {

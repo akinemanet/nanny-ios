@@ -41,6 +41,10 @@ struct ProviderDashboardView: View {
     @State private var showChatList = false
     @State private var showAvailabilityManager = false
     @State private var selectedRequestFilter: ProviderRequestFilter = .all
+    @State private var careRequests: [CareRequestItem] = []
+    @State private var careRequestError: String?
+    @State private var careRequestNotice: String?
+    @State private var requestActionInFlightID: String?
 
     var body: some View {
         NavigationStack {
@@ -152,6 +156,7 @@ struct ProviderDashboardView: View {
                     }
 
                     providerScheduleSection
+                    familyCareRequestsSection
                     providerRequestsSection
 
                     DashboardCard(
@@ -187,8 +192,22 @@ struct ProviderDashboardView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
+                    if let careRequestError {
+                        Text(careRequestError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
                     if let bookingActionNotice {
                         Text(bookingActionNotice)
+                            .font(.footnote)
+                            .foregroundStyle(DS.Colors.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if let careRequestNotice {
+                        Text(careRequestNotice)
                             .font(.footnote)
                             .foregroundStyle(DS.Colors.primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -359,6 +378,96 @@ struct ProviderDashboardView: View {
         }
     }
 
+    private var familyCareRequestsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Aile Talepleri")
+                    .font(.headline)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Spacer()
+                Text("\(visibleCareRequests.count)")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(DS.Colors.primary.opacity(0.14))
+                    .foregroundStyle(DS.Colors.primary)
+                    .clipShape(Capsule())
+            }
+
+            if visibleCareRequests.isEmpty {
+                emptyProviderCard(
+                    title: "Açık aile talebi yok",
+                    message: "Aileler hızlı talep oluşturduğunda burada görüp aday olabileceksin.",
+                    systemImage: "figure.2.and.child.holdinghands"
+                )
+            } else {
+                ForEach(visibleCareRequests.prefix(4)) { request in
+                    AppCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(localizedCareService(request.service))
+                                        .font(.headline)
+                                        .foregroundStyle(DS.Colors.textPrimary)
+                                    Text(request.parentDisplayName)
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                    Text("\(formattedDate(request.startAt)) • \(formattedTime(request.startAt)) - \(formattedTime(request.endAt))")
+                                        .font(.caption)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+                                Spacer()
+                                Text(careRequestStatusLabel(for: request))
+                                    .font(.caption.bold())
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(careRequestStatusColor(for: request).opacity(0.14))
+                                    .foregroundStyle(careRequestStatusColor(for: request))
+                                    .clipShape(Capsule())
+                            }
+
+                            HStack(spacing: 12) {
+                                careRequestMetaCard("Konum", request.locationName)
+                                careRequestMetaCard("Aday", "\(request.candidates.count)")
+                            }
+
+                            if !request.note.isEmpty {
+                                careRequestMetaCard("Not", request.note)
+                            }
+
+                            if request.assignedProviderUserID == currentProviderID {
+                                careRequestMetaCard("Durum", "Aile bu işi sana atadı.")
+                            } else if providerHasApplied(to: request) {
+                                careRequestMetaCard("Durum", "Bu talebe aday oldun. Ailenin onayı bekleniyor.")
+                            } else if request.isOpen {
+                                Button {
+                                    Task {
+                                        await apply(to: request)
+                                    }
+                                } label: {
+                                    HStack {
+                                        if requestActionInFlightID == request.id {
+                                            ProgressView()
+                                                .tint(.white)
+                                        }
+                                        Text(requestActionInFlightID == request.id ? "Gönderiliyor" : "Aday Ol")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .frame(height: DS.Size.buttonHeight)
+                                    .background(DS.Colors.primary)
+                                    .foregroundStyle(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(requestActionInFlightID == request.id)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private var todaysBookings: [BookingItem] {
         todayBookings.isEmpty
             ? providerBookings.filter { isToday($0.startTime) }
@@ -427,6 +536,21 @@ struct ProviderDashboardView: View {
         bookings.sorted { $0.startTime < $1.startTime }
     }
 
+    private var currentProviderID: String {
+        session.me?.user.id ?? ""
+    }
+
+    private var resolvedProviderDisplayName: String {
+        if let name = account?.name, !name.isEmpty { return name }
+        if let displayName = session.me?.user.displayName, !displayName.isEmpty { return displayName }
+        if let email = session.me?.user.email, !email.isEmpty { return email }
+        return session.me?.user.phone ?? "Bakıcı"
+    }
+
+    private var visibleCareRequests: [CareRequestItem] {
+        careRequests.sorted { $0.startAt < $1.startAt }
+    }
+
     private var earningsSummary: ProviderEarningsSummary {
         earningsSummaryOverride ?? ProviderEarningsSummary.make(bookings: providerBookings)
     }
@@ -480,15 +604,33 @@ struct ProviderDashboardView: View {
         }
     }
 
+    private func careRequestMetaCard(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(DS.Colors.textSecondary)
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(DS.Colors.textPrimary)
+                .lineLimit(title == "Not" ? 4 : 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(DS.Colors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
     private func loadProviderSummary() async {
         async let notificationsTask = session.deps.notificationService.listNotifications()
         async let conversationsTask = session.deps.chatService.listConversations()
         async let bookingsTask = session.deps.bookingService.listBookings()
+        async let careRequestsTask = session.deps.bookingService.listProviderCareRequests(providerUserID: currentProviderID)
 
         do {
-            let (notifications, conversations, bookings) = try await (notificationsTask, conversationsTask, bookingsTask)
+            let (notifications, conversations, bookings, careRequests) = try await (notificationsTask, conversationsTask, bookingsTask, careRequestsTask)
             self.conversations = conversations.conversations
             self.bookings = bookings
+            self.careRequests = careRequests
             async let unreadNotificationSummaryTask = session.deps.notificationService.unreadNotificationCount(
                 fallback: notifications.notifications
             )
@@ -514,11 +656,13 @@ struct ProviderDashboardView: View {
                 .sorted { $0.startTime < $1.startTime }
             }
             providerSummaryError = nil
+            careRequestError = nil
         } catch {
             unreadNotifications = 0
             unreadMessages = 0
             conversations = []
             bookings = []
+            careRequests = []
             todayBookings = []
             pendingRequestBookings = []
             earningsSummaryOverride = nil
@@ -530,6 +674,16 @@ struct ProviderDashboardView: View {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
         guard let date = formatter.date(from: value) else { return value }
+
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "tr_TR")
+        output.dateStyle = .medium
+        return output.string(from: date)
+    }
+
+    private func formattedDate(_ value: String) -> String {
+        let iso = ISO8601DateFormatter()
+        guard let date = iso.date(from: value) else { return value }
 
         let output = DateFormatter()
         output.locale = Locale(identifier: "tr_TR")
@@ -551,6 +705,59 @@ struct ProviderDashboardView: View {
         let iso = ISO8601DateFormatter()
         guard let date = iso.date(from: value) else { return false }
         return Calendar.current.isDateInToday(date)
+    }
+
+    private func providerHasApplied(to request: CareRequestItem) -> Bool {
+        request.candidates.contains(where: { $0.providerUserID == currentProviderID })
+    }
+
+    private func apply(to request: CareRequestItem) async {
+        guard let provider = session.me?.user else { return }
+        requestActionInFlightID = request.id
+        defer { requestActionInFlightID = nil }
+
+        do {
+            _ = try await session.deps.bookingService.applyToCareRequest(
+                requestID: request.id,
+                provider: provider,
+                providerDisplayName: resolvedProviderDisplayName
+            )
+            careRequestNotice = "Aileye adaylığın iletildi."
+            careRequestError = nil
+            careRequests = try await session.deps.bookingService.listProviderCareRequests(providerUserID: currentProviderID)
+        } catch {
+            careRequestError = error.localizedDescription
+        }
+    }
+
+    private func localizedCareService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first ?? service
+    }
+
+    private func careRequestStatusLabel(for request: CareRequestItem) -> String {
+        if request.assignedProviderUserID == currentProviderID {
+            return "Seçildin"
+        }
+        if providerHasApplied(to: request) {
+            return "Aday oldun"
+        }
+        if request.isMatched {
+            return "Dolu"
+        }
+        return "Açık"
+    }
+
+    private func careRequestStatusColor(for request: CareRequestItem) -> Color {
+        if request.assignedProviderUserID == currentProviderID {
+            return .green
+        }
+        if providerHasApplied(to: request) {
+            return DS.Colors.primary
+        }
+        if request.isMatched {
+            return .gray
+        }
+        return .orange
     }
 
     private func providerBookingCard(
