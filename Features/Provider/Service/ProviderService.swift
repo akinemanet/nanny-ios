@@ -16,7 +16,13 @@ final class ProviderService {
     func listProviders() async throws -> ProvidersResponse {
         struct Empty: Encodable {}
         do {
-            let response: ProvidersResponse = try await api.request("v1/providers", method: "GET", body: Optional<Empty>.none, needsAuth: false)
+            let response: ProvidersResponse = try await api.request(
+                "v1/providers",
+                method: "GET",
+                body: Optional<Empty>.none,
+                needsAuth: false,
+                cachePolicy: .reloadIgnoringLocalCacheData
+            )
             if response.providers.isEmpty {
                 return ProvidersResponse(providers: Self.seedProfiles.enumerated().map { index, seed in
                     makeBrowseProvider(
@@ -42,7 +48,13 @@ final class ProviderService {
         struct Empty: Encodable {}
 
         do {
-            let response: ProviderDetailResponse = try await api.request("v1/providers/\(id)", method: "GET", body: Optional<Empty>.none, needsAuth: false)
+            let response: ProviderDetailResponse = try await api.request(
+                "v1/providers/\(id)",
+                method: "GET",
+                body: Optional<Empty>.none,
+                needsAuth: false,
+                cachePolicy: .reloadIgnoringLocalCacheData
+            )
             return ProviderDetailResponse(provider: normalizeProviderDetail(response.provider))
         } catch {
             let seed = Self.seedProfiles.first!

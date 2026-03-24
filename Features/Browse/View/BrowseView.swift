@@ -9,6 +9,7 @@ import SwiftUI
 
 struct BrowseView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(StoredLocationKeys.name) private var selectedLocationName = StoredLocation.fallback.name
     @AppStorage(StoredLocationKeys.latitude) private var selectedLatitude = StoredLocation.fallback.latitude
     @AppStorage(StoredLocationKeys.longitude) private var selectedLongitude = StoredLocation.fallback.longitude
@@ -110,8 +111,16 @@ struct BrowseView: View {
                 CategoriesBrowseView(selectedCategory: $selectedCategory)
             }
             .task {
-                guard providers.isEmpty else { return }
                 await loadProviders()
+            }
+            .refreshable {
+                await loadProviders()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                Task {
+                    await loadProviders()
+                }
             }
         }
     }

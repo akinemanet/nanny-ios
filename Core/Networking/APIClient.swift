@@ -71,7 +71,8 @@ final class APIClient {
         _ path: String,
         method: String = "GET",
         body: B? = nil,
-        needsAuth: Bool = false
+        needsAuth: Bool = false,
+        cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy
     ) async throws -> T {
         guard let url = URL(string: path, relativeTo: APIConfig.baseURL) else {
             throw APIError.invalidURL
@@ -79,6 +80,7 @@ final class APIClient {
 
         var req = URLRequest(url: url)
         req.httpMethod = method
+        req.cachePolicy = cachePolicy
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
