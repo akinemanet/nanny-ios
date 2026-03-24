@@ -4,7 +4,7 @@ struct BrowseFilters {
     var sortSelection = "Popülerlik"
     var genderSelection = "Tümü"
     var experienceSelection: String?
-    var maxPrice: Double = 800
+    var maxPrice: Double = 3000
     var ratingSelection = 1
     var showNearby = false
 
@@ -108,7 +108,7 @@ struct BrowseFilterSheet: View {
                             .font(.headline)
                             .foregroundStyle(DS.Colors.textPrimary)
 
-                        Text("₺300 - ₺800")
+                        Text("₺300 - ₺3000")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(DS.Colors.textPrimary)
 
@@ -116,7 +116,7 @@ struct BrowseFilterSheet: View {
                             .font(.caption)
                             .foregroundStyle(DS.Colors.textSecondary)
 
-                        Slider(value: $filters.maxPrice, in: 300...800, step: 25)
+                        Slider(value: $filters.maxPrice, in: 300...3000, step: 50)
                             .tint(DS.Colors.primary)
                     }
 
