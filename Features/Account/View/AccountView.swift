@@ -829,6 +829,11 @@ struct AccountView: View {
                     accountInfoCard("Eğitim", providerSummary?.profile.educationLevel.isEmpty == false ? providerSummary?.profile.educationLevel ?? "-" : "-")
                 }
 
+                HStack(spacing: 12) {
+                    accountInfoCard("Saatlik Ücret", providerHourlyRateText)
+                    accountInfoCard("Günlük Ücret", providerDailyRateText)
+                }
+
                 if let providerAbout, !providerAbout.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Hakkında")
@@ -1121,6 +1126,16 @@ struct AccountView: View {
 
     private var providerCategories: [String] {
         providerSummary?.profile.categories ?? []
+    }
+
+    private var providerHourlyRateText: String {
+        guard let rate = providerSummary?.profile.hourlyRate else { return "-" }
+        return CurrencyFormatting.formattedHourlyRate(rate, currencyCode: providerAccount?.currency ?? preferredCurrency)
+    }
+
+    private var providerDailyRateText: String {
+        guard let rate = providerSummary?.profile.dailyRate else { return "-" }
+        return "\(CurrencyFormatting.formattedAmount(rate, currencyCode: providerAccount?.currency ?? preferredCurrency)) / gün"
     }
 
     private func providerAssetStatus(for kind: ProviderAssetKind) -> ProviderAssetStatusPresentation {
