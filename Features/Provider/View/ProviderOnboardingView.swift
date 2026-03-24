@@ -49,6 +49,7 @@ struct ProviderOnboardingView: View {
                 statusCard
                 mediaCard
                 basicInfoCard
+                pricingCard
                 educationCard
                 aboutCard
                 categoriesCard
@@ -228,6 +229,18 @@ struct ProviderOnboardingView: View {
         }
     }
 
+    private var pricingCard: some View {
+        AppCard {
+            Text("Ücretlendirme")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            labeledField("Saatlik Ücret (TL)", text: $vm.hourlyRate, keyboardType: .numberPad)
+            Divider()
+            labeledField("Günlük Ücret (TL)", text: $vm.dailyRate, keyboardType: .numberPad)
+        }
+    }
+
     private var aboutCard: some View {
         AppCard {
             Text("Hakkında")
@@ -381,12 +394,13 @@ struct ProviderOnboardingView: View {
         }
     }
 
-    private func labeledField(_ title: String, text: Binding<String>) -> some View {
+    private func labeledField(_ title: String, text: Binding<String>, keyboardType: UIKeyboardType = .default) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(DS.Colors.textSecondary)
             TextField(title, text: text)
+                .keyboardType(keyboardType)
                 .foregroundStyle(DS.Colors.textPrimary)
         }
     }

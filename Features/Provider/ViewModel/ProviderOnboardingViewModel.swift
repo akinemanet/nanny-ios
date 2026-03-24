@@ -28,6 +28,8 @@ final class ProviderOnboardingViewModel: ObservableObject {
     @Published var educationLevel = ""
     @Published var about = ""
     @Published var selectedCategories: [String] = []
+    @Published var hourlyRate = ""
+    @Published var dailyRate = ""
     @Published var profilePhotoName = ""
     @Published var profilePhotoURL = ""
     @Published var criminalRecordFileName = ""
@@ -67,6 +69,8 @@ final class ProviderOnboardingViewModel: ObservableObject {
             educationLevel = summary.profile.educationLevel
             about = summary.profile.about
             selectedCategories = ProviderCategoryMapper.displayLabels(from: summary.profile.categories)
+            hourlyRate = summary.profile.hourlyRate.map(String.init) ?? hourlyRate
+            dailyRate = summary.profile.dailyRate.map(String.init) ?? dailyRate
             profilePhotoName = summary.profile.profilePhotoName
             profilePhotoURL = summary.profile.profilePhotoUrl
             criminalRecordFileName = summary.profile.criminalRecordFileName
@@ -110,6 +114,18 @@ final class ProviderOnboardingViewModel: ObservableObject {
 
         guard !selectedCategories.isEmpty else {
             errorMessage = "Lütfen en az bir kategori seç."
+            return false
+        }
+
+        guard let parsedHourlyRate = Int(hourlyRate.trimmingCharacters(in: .whitespacesAndNewlines)),
+              parsedHourlyRate >= 100 else {
+            errorMessage = "Lütfen geçerli bir saatlik ücret gir."
+            return false
+        }
+
+        guard let parsedDailyRate = Int(dailyRate.trimmingCharacters(in: .whitespacesAndNewlines)),
+              parsedDailyRate >= parsedHourlyRate else {
+            errorMessage = "Lütfen geçerli bir günlük ücret gir."
             return false
         }
 
@@ -159,35 +175,48 @@ final class ProviderOnboardingViewModel: ObservableObject {
                 self.pendingCriminalRecordUpload = nil
             }
 
-            let profileReq = UpsertProviderOnboardingProfileRequest(
+            let fullName = [contactName, contactSurname]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+
+            let profileReq = UpsertProviderProfileRequest(
+                fullName: fullName,
                 educationLevel: educationLevel,
                 about: about,
                 categories: ProviderCategoryMapper.backendServices(from: selectedCategories),
+                hourlyRate: parsedHourlyRate,
+                dailyRate: parsedDailyRate,
                 profilePhotoName: profilePhotoName,
                 criminalRecordFileName: criminalRecordFileName
             )
 
             do {
-                if let summary = try await service.upsertOnboardingProfile(profileReq) {
+                let response = try await service.upsertProviderProfile(profileReq)
+                if let summary = response.summary {
                     if let account = summary.account {
                         self.account = account
                     }
                     educationLevel = summary.profile.educationLevel
                     about = summary.profile.about
                     selectedCategories = ProviderCategoryMapper.displayLabels(from: summary.profile.categories)
+                    hourlyRate = response.profile?.hourlyRate.map(String.init) ?? String(parsedHourlyRate)
+                    dailyRate = response.profile?.dailyRate.map(String.init) ?? String(parsedDailyRate)
                     profilePhotoName = summary.profile.profilePhotoName
                     profilePhotoURL = summary.profile.profilePhotoUrl
                     criminalRecordFileName = summary.profile.criminalRecordFileName
                     criminalRecordURL = summary.profile.criminalRecordUrl
-                    message = "Kaydedildi ve onboarding profili backend ile eszamanlandi."
+                    message = "Kaydedildi ve bakıcı profili backend ile eşzamanlandı."
                 } else {
-                    message = "Kaydedildi. Onboarding profil endpoint'i hazir oldugunda ek alanlar da backend'e tasinacak."
+                    hourlyRate = response.profile?.hourlyRate.map(String.init) ?? String(parsedHourlyRate)
+                    dailyRate = response.profile?.dailyRate.map(String.init) ?? String(parsedDailyRate)
+                    message = "Kaydedildi ve fiyat bilgisi güncellendi."
                 }
             } catch let error as APIError {
                 switch error {
                 case .http(let code, _):
                     if code == 404 || code == 405 {
-                        message = "Kaydedildi. Onboarding profil endpoint'i hazir degil; ek alanlar simdilik cihaz tarafinda tutuluyor."
+                        message = "Kaydedildi. Profil endpoint'i hazır değil; fiyat ve ek alanlar simdilik cihazda tutuluyor."
                     } else {
                         throw error
                     }

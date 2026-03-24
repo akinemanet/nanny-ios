@@ -200,6 +200,10 @@ final class ProviderService {
         throw lastError ?? APIError.invalidURL
     }
 
+    func upsertProviderProfile(_ req: UpsertProviderProfileRequest) async throws -> ProviderProfileMutationResponse {
+        try await api.request("v1/providers/profile", method: "POST", body: req, needsAuth: true)
+    }
+
     func uploadDocument(kind: ProviderDocumentKind, fileName: String, data: Data, mimeType: String) async throws -> ProviderDocumentUploadResponse {
         try await api.uploadMultipart(
             "v1/providers/documents/\(kind.rawValue)",

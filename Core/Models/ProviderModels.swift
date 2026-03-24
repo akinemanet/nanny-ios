@@ -45,6 +45,8 @@ struct ProviderOnboardingProfile: Codable {
     let educationLevel: String
     let about: String
     let categories: [String]
+    let hourlyRate: Int?
+    let dailyRate: Int?
     let profilePhotoName: String
     let profilePhotoUrl: String
     let criminalRecordFileName: String
@@ -57,6 +59,8 @@ struct ProviderOnboardingProfile: Codable {
         educationLevel: String = "",
         about: String = "",
         categories: [String] = [],
+        hourlyRate: Int? = nil,
+        dailyRate: Int? = nil,
         profilePhotoName: String = "",
         profilePhotoUrl: String = "",
         criminalRecordFileName: String = "",
@@ -68,6 +72,8 @@ struct ProviderOnboardingProfile: Codable {
         self.educationLevel = educationLevel
         self.about = about
         self.categories = categories
+        self.hourlyRate = hourlyRate
+        self.dailyRate = dailyRate
         self.profilePhotoName = profilePhotoName
         self.profilePhotoUrl = profilePhotoUrl
         self.criminalRecordFileName = criminalRecordFileName
@@ -81,6 +87,8 @@ struct ProviderOnboardingProfile: Codable {
         case educationLevel
         case about
         case categories
+        case hourlyRate
+        case dailyRate
         case profilePhotoName
         case profilePhotoUrl
         case criminalRecordFileName
@@ -96,6 +104,8 @@ struct ProviderOnboardingProfile: Codable {
             educationLevel: try container.decodeIfPresent(String.self, forKey: .educationLevel) ?? "",
             about: try container.decodeIfPresent(String.self, forKey: .about) ?? "",
             categories: try container.decodeIfPresent([String].self, forKey: .categories) ?? [],
+            hourlyRate: try container.decodeIfPresent(Int.self, forKey: .hourlyRate),
+            dailyRate: try container.decodeIfPresent(Int.self, forKey: .dailyRate),
             profilePhotoName: try container.decodeIfPresent(String.self, forKey: .profilePhotoName) ?? "",
             profilePhotoUrl: try container.decodeIfPresent(String.self, forKey: .profilePhotoUrl) ?? "",
             criminalRecordFileName: try container.decodeIfPresent(String.self, forKey: .criminalRecordFileName) ?? "",
@@ -123,6 +133,28 @@ struct UpsertProviderOnboardingProfileRequest: Codable {
     let categories: [String]
     let profilePhotoName: String
     let criminalRecordFileName: String
+}
+
+struct UpsertProviderProfileRequest: Codable {
+    let fullName: String
+    let educationLevel: String
+    let about: String
+    let categories: [String]
+    let hourlyRate: Int
+    let dailyRate: Int
+    let profilePhotoName: String
+    let criminalRecordFileName: String
+}
+
+struct ProviderProfileMutationResponse: Codable {
+    let profile: ProviderProfileMutationState?
+    let summary: ProviderOnboardingSummary?
+}
+
+struct ProviderProfileMutationState: Codable {
+    let hourlyRate: Int?
+    let dailyRate: Int?
+    let approvalStatus: String?
 }
 
 enum ProviderCategoryMapper {

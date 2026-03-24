@@ -1282,6 +1282,18 @@ struct AccountView: View {
             return
         }
 
+        guard payload.hourlyRate >= 100 else {
+            providerAccountError = "Lütfen geçerli bir saatlik ücret gir."
+            providerProfileNotice = nil
+            return
+        }
+
+        guard payload.dailyRate >= payload.hourlyRate else {
+            providerAccountError = "Lütfen geçerli bir günlük ücret gir."
+            providerProfileNotice = nil
+            return
+        }
+
         providerAccountError = nil
         providerProfileNotice = nil
 
@@ -1296,10 +1308,18 @@ struct AccountView: View {
             identityNumber: currentAccount.identityNumber
         )
 
-        let profileRequest = UpsertProviderOnboardingProfileRequest(
+        let fullName = [payload.contactName, payload.contactSurname]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        let profileRequest = UpsertProviderProfileRequest(
+            fullName: fullName,
             educationLevel: payload.educationLevel,
             about: payload.about,
             categories: ProviderCategoryMapper.backendServices(from: payload.categories),
+            hourlyRate: payload.hourlyRate,
+            dailyRate: payload.dailyRate,
             profilePhotoName: providerSummary?.profile.profilePhotoName ?? "",
             criminalRecordFileName: providerSummary?.profile.criminalRecordFileName ?? ""
         )
@@ -1309,14 +1329,15 @@ struct AccountView: View {
             providerAccount = payoutResponse.account
 
             do {
-                if let updatedSummary = try await session.deps.providerService.upsertOnboardingProfile(profileRequest) {
+                let response = try await session.deps.providerService.upsertProviderProfile(profileRequest)
+                if let updatedSummary = response.summary {
                     providerSummary = updatedSummary
                     if let updatedAccount = updatedSummary.account {
                         providerAccount = updatedAccount
                     }
                     providerProfileNotice = "Bakıcı profili backend ile eşzamanlandı."
                 } else {
-                    providerProfileNotice = "Bakıcı profili güncellendi. Profil endpoint'i hazır olduğunda ek alanlar da backend'e taşınacak."
+                    providerProfileNotice = "Bakıcı profili ve fiyat bilgisi güncellendi."
                 }
             } catch let error as APIError {
                 switch error {
@@ -1447,6 +1468,8 @@ private struct ProviderProfileEditPayload {
     let educationLevel: String
     let about: String
     let categories: [String]
+    let hourlyRate: Int
+    let dailyRate: Int
 }
 
 private struct ProviderMediaEditPayload {
@@ -1567,6 +1590,8 @@ private struct ProviderProfileEditView: View {
     @State private var educationLevel: String
     @State private var about: String
     @State private var selectedCategories: [String]
+    @State private var hourlyRate: String
+    @State private var dailyRate: String
     @State private var isSaving = false
 
     private let educationOptions = [
@@ -1602,6 +1627,8 @@ private struct ProviderProfileEditView: View {
         _educationLevel = State(initialValue: profile?.educationLevel ?? "")
         _about = State(initialValue: profile?.about ?? "")
         _selectedCategories = State(initialValue: ProviderCategoryMapper.displayLabels(from: profile?.categories ?? []))
+        _hourlyRate = State(initialValue: profile?.hourlyRate.map(String.init) ?? "")
+        _dailyRate = State(initialValue: profile?.dailyRate.map(String.init) ?? "")
     }
 
     var body: some View {
@@ -1616,6 +1643,8 @@ private struct ProviderProfileEditView: View {
                 AppTextField(placeholder: "Profil / Mağaza Adı", text: $storeName)
                 AppTextField(placeholder: "E-posta", text: $email, keyboardType: .emailAddress)
                 AppTextField(placeholder: "Telefon", text: $phone, keyboardType: .phonePad)
+                AppTextField(placeholder: "Saatlik Ücret (TL)", text: $hourlyRate, keyboardType: .numberPad)
+                AppTextField(placeholder: "Günlük Ücret (TL)", text: $dailyRate, keyboardType: .numberPad)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Eğitim Durumu")
@@ -1694,7 +1723,9 @@ private struct ProviderProfileEditView: View {
                                 phone: phone.trimmingCharacters(in: .whitespacesAndNewlines),
                                 educationLevel: educationLevel,
                                 about: about.trimmingCharacters(in: .whitespacesAndNewlines),
-                                categories: selectedCategories
+                                categories: selectedCategories,
+                                hourlyRate: Int(hourlyRate.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+                                dailyRate: Int(dailyRate.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
                             )
                         )
                         isSaving = false
