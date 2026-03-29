@@ -260,19 +260,49 @@ final class BookingService {
     }
 
     func listParentCareRequests(parentUserID: String) async throws -> [CareRequestItem] {
-        loadCareRequests()
-            .filter { $0.parentUserID == parentUserID }
-            .sorted { $0.startAt < $1.startAt }
+        do {
+            let response: CareRequestsResponse = try await api.request(
+                "v1/care-requests/my",
+                method: "GET",
+                body: Optional<Empty>.none,
+                needsAuth: true
+            )
+            return response.items.sorted { $0.startAt < $1.startAt }
+        } catch let error as APIError {
+            switch error {
+            case .http(let code, _) where code == 404 || code == 405:
+                return loadCareRequests()
+                    .filter { $0.parentUserID == parentUserID }
+                    .sorted { $0.startAt < $1.startAt }
+            default:
+                throw error
+            }
+        }
     }
 
     func listProviderCareRequests(providerUserID: String) async throws -> [CareRequestItem] {
-        loadCareRequests()
-            .filter { request in
-                request.isOpen
-                    || request.assignedProviderUserID == providerUserID
-                    || request.candidates.contains(where: { $0.providerUserID == providerUserID })
+        do {
+            let response: CareRequestsResponse = try await api.request(
+                "v1/care-requests/my",
+                method: "GET",
+                body: Optional<Empty>.none,
+                needsAuth: true
+            )
+            return response.items.sorted { $0.startAt < $1.startAt }
+        } catch let error as APIError {
+            switch error {
+            case .http(let code, _) where code == 404 || code == 405:
+                return loadCareRequests()
+                    .filter { request in
+                        request.isOpen
+                            || request.assignedProviderUserID == providerUserID
+                            || request.candidates.contains(where: { $0.providerUserID == providerUserID })
+                    }
+                    .sorted { $0.startAt < $1.startAt }
+            default:
+                throw error
             }
-            .sorted { $0.startAt < $1.startAt }
+        }
     }
 
     func createCareRequest(
@@ -286,27 +316,65 @@ final class BookingService {
             throw Self.localError(statusCode: 400, message: "Bitiş saati başlangıçtan sonra olmalı.")
         }
 
-        var requests = loadCareRequests()
         let iso = ISO8601DateFormatter()
-        let item = CareRequestItem(
-            id: UUID().uuidString,
-            parentUserID: parent.id,
-            parentDisplayName: parentDisplayName,
-            parentPhone: parentPhone,
-            service: input.service,
-            note: input.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            startAt: iso.string(from: input.startAt),
-            endAt: iso.string(from: input.endAt),
-            locationName: locationName,
-            createdAt: iso.string(from: Date()),
-            status: "OPEN",
-            candidates: [],
-            assignedProviderUserID: nil,
-            assignedProviderDisplayName: nil
-        )
-        requests.append(item)
-        saveCareRequests(requests)
-        return item
+
+        struct CareRequestCreatePayload: Encodable {
+            let service: String
+            let note: String
+            let startAt: String
+            let endAt: String
+            let locationName: String
+
+            enum CodingKeys: String, CodingKey {
+                case service
+                case note
+                case startAt = "start_at"
+                case endAt = "end_at"
+                case locationName = "location_name"
+            }
+        }
+
+        do {
+            let response: CareRequestMutationResponse = try await api.request(
+                "v1/care-requests",
+                method: "POST",
+                body: CareRequestCreatePayload(
+                    service: input.service,
+                    note: input.note.trimmingCharacters(in: .whitespacesAndNewlines),
+                    startAt: iso.string(from: input.startAt),
+                    endAt: iso.string(from: input.endAt),
+                    locationName: locationName
+                ),
+                needsAuth: true
+            )
+            return response.request
+        } catch let error as APIError {
+            switch error {
+            case .http(let code, _) where code == 404 || code == 405:
+                var requests = loadCareRequests()
+                let item = CareRequestItem(
+                    id: UUID().uuidString,
+                    parentUserID: parent.id,
+                    parentDisplayName: parentDisplayName,
+                    parentPhone: parentPhone,
+                    service: input.service,
+                    note: input.note.trimmingCharacters(in: .whitespacesAndNewlines),
+                    startAt: iso.string(from: input.startAt),
+                    endAt: iso.string(from: input.endAt),
+                    locationName: locationName,
+                    createdAt: iso.string(from: Date()),
+                    status: "OPEN",
+                    candidates: [],
+                    assignedProviderUserID: nil,
+                    assignedProviderDisplayName: nil
+                )
+                requests.append(item)
+                saveCareRequests(requests)
+                return item
+            default:
+                throw error
+            }
+        }
     }
 
     func applyToCareRequest(
@@ -314,30 +382,45 @@ final class BookingService {
         provider: User,
         providerDisplayName: String
     ) async throws -> CareRequestItem {
-        var requests = loadCareRequests()
-        guard let index = requests.firstIndex(where: { $0.id == requestID }) else {
-            throw Self.localError(statusCode: 404, message: "Talep bulunamadı.")
-        }
+        do {
+            let response: CareRequestMutationResponse = try await api.request(
+                "v1/care-requests/\(requestID)/apply",
+                method: "POST",
+                body: Optional<Empty>.none,
+                needsAuth: true
+            )
+            return response.request
+        } catch let error as APIError {
+            switch error {
+            case .http(let code, _) where code == 404 || code == 405:
+                var requests = loadCareRequests()
+                guard let index = requests.firstIndex(where: { $0.id == requestID }) else {
+                    throw Self.localError(statusCode: 404, message: "Talep bulunamadı.")
+                }
 
-        var request = requests[index]
-        guard request.isOpen else {
-            throw Self.localError(statusCode: 400, message: "Bu talep artık aday kabul etmiyor.")
-        }
+                var request = requests[index]
+                guard request.isOpen else {
+                    throw Self.localError(statusCode: 400, message: "Bu talep artık aday kabul etmiyor.")
+                }
 
-        if request.candidates.contains(where: { $0.providerUserID == provider.id }) {
-            throw Self.localError(statusCode: 400, message: "Bu talebe zaten aday oldun.")
-        }
+                if request.candidates.contains(where: { $0.providerUserID == provider.id }) {
+                    throw Self.localError(statusCode: 400, message: "Bu talebe zaten aday oldun.")
+                }
 
-        let candidate = CareRequestCandidate(
-            providerUserID: provider.id,
-            providerDisplayName: providerDisplayName,
-            providerPhone: provider.phone,
-            appliedAt: ISO8601DateFormatter().string(from: Date())
-        )
-        request.candidates.append(candidate)
-        requests[index] = request
-        saveCareRequests(requests)
-        return request
+                let candidate = CareRequestCandidate(
+                    providerUserID: provider.id,
+                    providerDisplayName: providerDisplayName,
+                    providerPhone: provider.phone,
+                    appliedAt: ISO8601DateFormatter().string(from: Date())
+                )
+                request.candidates.append(candidate)
+                requests[index] = request
+                saveCareRequests(requests)
+                return request
+            default:
+                throw error
+            }
+        }
     }
 
     func approveCareRequestCandidate(
@@ -345,26 +428,41 @@ final class BookingService {
         candidateProviderUserID: String,
         parentUserID: String
     ) async throws -> CareRequestItem {
-        var requests = loadCareRequests()
-        guard let index = requests.firstIndex(where: { $0.id == requestID }) else {
-            throw Self.localError(statusCode: 404, message: "Talep bulunamadı.")
-        }
+        do {
+            let response: CareRequestMutationResponse = try await api.request(
+                "v1/care-requests/\(requestID)/candidates/\(candidateProviderUserID)/approve",
+                method: "POST",
+                body: Optional<Empty>.none,
+                needsAuth: true
+            )
+            return response.request
+        } catch let error as APIError {
+            switch error {
+            case .http(let code, _) where code == 404 || code == 405:
+                var requests = loadCareRequests()
+                guard let index = requests.firstIndex(where: { $0.id == requestID }) else {
+                    throw Self.localError(statusCode: 404, message: "Talep bulunamadı.")
+                }
 
-        var request = requests[index]
-        guard request.parentUserID == parentUserID else {
-            throw Self.localError(statusCode: 403, message: "Bu talebi onaylama yetkin yok.")
-        }
+                var request = requests[index]
+                guard request.parentUserID == parentUserID else {
+                    throw Self.localError(statusCode: 403, message: "Bu talebi onaylama yetkin yok.")
+                }
 
-        guard let candidate = request.candidates.first(where: { $0.providerUserID == candidateProviderUserID }) else {
-            throw Self.localError(statusCode: 404, message: "Seçilen aday bulunamadı.")
-        }
+                guard let candidate = request.candidates.first(where: { $0.providerUserID == candidateProviderUserID }) else {
+                    throw Self.localError(statusCode: 404, message: "Seçilen aday bulunamadı.")
+                }
 
-        request.status = "MATCHED"
-        request.assignedProviderUserID = candidate.providerUserID
-        request.assignedProviderDisplayName = candidate.providerDisplayName
-        requests[index] = request
-        saveCareRequests(requests)
-        return request
+                request.status = "MATCHED"
+                request.assignedProviderUserID = candidate.providerUserID
+                request.assignedProviderDisplayName = candidate.providerDisplayName
+                requests[index] = request
+                saveCareRequests(requests)
+                return request
+            default:
+                throw error
+            }
+        }
     }
 
     private func loadCareRequests() -> [CareRequestItem] {

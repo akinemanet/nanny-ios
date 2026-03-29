@@ -352,6 +352,13 @@ struct CareRequestCandidate: Codable, Identifiable, Hashable {
     let providerDisplayName: String
     let providerPhone: String?
     let appliedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case providerUserID = "provider_user_id"
+        case providerDisplayName = "provider_display_name"
+        case providerPhone = "provider_phone"
+        case appliedAt = "applied_at"
+    }
 }
 
 struct CareRequestItem: Codable, Identifiable, Hashable {
@@ -370,6 +377,23 @@ struct CareRequestItem: Codable, Identifiable, Hashable {
     var assignedProviderUserID: String?
     var assignedProviderDisplayName: String?
 
+    enum CodingKeys: String, CodingKey {
+        case id
+        case parentUserID = "parent_user_id"
+        case parentDisplayName = "parent_display_name"
+        case parentPhone = "parent_phone"
+        case service
+        case note
+        case startAt = "start_at"
+        case endAt = "end_at"
+        case locationName = "location_name"
+        case createdAt = "created_at"
+        case status
+        case candidates
+        case assignedProviderUserID = "assigned_provider_user_id"
+        case assignedProviderDisplayName = "assigned_provider_display_name"
+    }
+
     var isOpen: Bool {
         status.uppercased() == "OPEN"
     }
@@ -385,6 +409,15 @@ struct CreateCareRequestInput: Hashable {
     let startAt: Date
     let endAt: Date
     let locationName: String
+}
+
+struct CareRequestsResponse: Decodable {
+    let count: Int
+    let items: [CareRequestItem]
+}
+
+struct CareRequestMutationResponse: Decodable {
+    let request: CareRequestItem
 }
 
 struct NotificationsResponse: Decodable {
