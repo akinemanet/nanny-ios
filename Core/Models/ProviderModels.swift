@@ -166,16 +166,21 @@ struct ProviderProfileMutationState: Codable {
 
 enum ProviderCategoryMapper {
     private static let labelToService: [String: String] = [
-        "Bebek Bakımı": "BABYSITTER",
-        "Yürümeye Başlayan": "BABYSITTER",
-        "Okul Öncesi": "BABYSITTER",
-        "Anaokulu": "BABYSITTER",
-        "İlkokul Desteği": "TUTOR",
+        "Bebek Bakımı": "BABY_CARE",
+        "Yürümeye Başlayan": "TODDLER_CARE",
+        "Okul Öncesi": "PRESCHOOL",
+        "Anaokulu": "KINDERGARTEN",
+        "İlkokul Desteği": "PRIMARY_SCHOOL_SUPPORT",
         "Özel Ders": "TUTOR",
         "Özel Eğitim": "SPECIAL_ED",
     ]
 
     private static let serviceToLabel: [String: String] = [
+        "BABY_CARE": "Bebek Bakımı",
+        "TODDLER_CARE": "Yürümeye Başlayan",
+        "PRESCHOOL": "Okul Öncesi",
+        "KINDERGARTEN": "Anaokulu",
+        "PRIMARY_SCHOOL_SUPPORT": "İlkokul Desteği",
         "BABYSITTER": "Bebek Bakımı",
         "TUTOR": "Özel Ders",
         "SPECIAL_ED": "Özel Eğitim",
