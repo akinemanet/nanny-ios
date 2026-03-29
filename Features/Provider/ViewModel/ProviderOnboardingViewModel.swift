@@ -28,6 +28,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
     @Published var educationLevel = ""
     @Published var about = ""
     @Published var selectedCategories: [String] = []
+    @Published var age = ""
     @Published var hourlyRate = ""
     @Published var dailyRate = ""
     @Published var profilePhotoName = ""
@@ -69,6 +70,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
             educationLevel = summary.profile.educationLevel
             about = summary.profile.about
             selectedCategories = ProviderCategoryMapper.displayLabels(from: summary.profile.categories)
+            age = summary.profile.age.map(String.init) ?? age
             hourlyRate = summary.profile.hourlyRate.map(String.init) ?? hourlyRate
             dailyRate = summary.profile.dailyRate.map(String.init) ?? dailyRate
             profilePhotoName = summary.profile.profilePhotoName
@@ -114,6 +116,11 @@ final class ProviderOnboardingViewModel: ObservableObject {
 
         guard !selectedCategories.isEmpty else {
             errorMessage = "Lütfen en az bir kategori seç."
+            return false
+        }
+
+        guard let parsedAge = Int(age.trimmingCharacters(in: .whitespacesAndNewlines)), parsedAge >= 18 else {
+            errorMessage = "Lütfen geçerli bir yaş gir."
             return false
         }
 
@@ -185,6 +192,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
                 educationLevel: educationLevel,
                 about: about,
                 categories: ProviderCategoryMapper.backendServices(from: selectedCategories),
+                age: parsedAge,
                 hourlyRate: parsedHourlyRate,
                 dailyRate: parsedDailyRate,
                 profilePhotoName: profilePhotoName,
@@ -200,6 +208,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
                     educationLevel = summary.profile.educationLevel
                     about = summary.profile.about
                     selectedCategories = ProviderCategoryMapper.displayLabels(from: summary.profile.categories)
+                    age = response.profile?.age.map(String.init) ?? summary.profile.age.map(String.init) ?? String(parsedAge)
                     hourlyRate = response.profile?.hourlyRate.map(String.init) ?? String(parsedHourlyRate)
                     dailyRate = response.profile?.dailyRate.map(String.init) ?? String(parsedDailyRate)
                     profilePhotoName = summary.profile.profilePhotoName
@@ -208,6 +217,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
                     criminalRecordURL = summary.profile.criminalRecordUrl
                     message = "Kaydedildi ve bakıcı profili backend ile eşzamanlandı."
                 } else {
+                    age = response.profile?.age.map(String.init) ?? String(parsedAge)
                     hourlyRate = response.profile?.hourlyRate.map(String.init) ?? String(parsedHourlyRate)
                     dailyRate = response.profile?.dailyRate.map(String.init) ?? String(parsedDailyRate)
                     message = "Kaydedildi ve fiyat bilgisi güncellendi."

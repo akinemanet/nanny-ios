@@ -1297,6 +1297,12 @@ struct AccountView: View {
             return
         }
 
+        guard payload.age >= 18 else {
+            providerAccountError = "Lütfen geçerli bir yaş gir."
+            providerProfileNotice = nil
+            return
+        }
+
         guard payload.hourlyRate >= 100 else {
             providerAccountError = "Lütfen geçerli bir saatlik ücret gir."
             providerProfileNotice = nil
@@ -1333,6 +1339,7 @@ struct AccountView: View {
             educationLevel: payload.educationLevel,
             about: payload.about,
             categories: ProviderCategoryMapper.backendServices(from: payload.categories),
+            age: payload.age,
             hourlyRate: payload.hourlyRate,
             dailyRate: payload.dailyRate,
             profilePhotoName: providerSummary?.profile.profilePhotoName ?? "",
@@ -1429,6 +1436,9 @@ struct AccountView: View {
                         educationLevel: existingProfile.educationLevel,
                         about: existingProfile.about,
                         categories: existingProfile.categories,
+                        age: existingProfile.age,
+                        hourlyRate: existingProfile.hourlyRate,
+                        dailyRate: existingProfile.dailyRate,
                         profilePhotoName: profilePhotoName,
                         profilePhotoUrl: profilePhotoURL,
                         criminalRecordFileName: criminalRecordFileName,
@@ -1451,6 +1461,9 @@ struct AccountView: View {
                             educationLevel: existingProfile.educationLevel,
                             about: existingProfile.about,
                             categories: existingProfile.categories,
+                            age: existingProfile.age,
+                            hourlyRate: existingProfile.hourlyRate,
+                            dailyRate: existingProfile.dailyRate,
                             profilePhotoName: profilePhotoName,
                             profilePhotoUrl: profilePhotoURL,
                             criminalRecordFileName: criminalRecordFileName,
@@ -1483,6 +1496,7 @@ private struct ProviderProfileEditPayload {
     let educationLevel: String
     let about: String
     let categories: [String]
+    let age: Int
     let hourlyRate: Int
     let dailyRate: Int
 }
@@ -1605,6 +1619,7 @@ private struct ProviderProfileEditView: View {
     @State private var educationLevel: String
     @State private var about: String
     @State private var selectedCategories: [String]
+    @State private var age: String
     @State private var hourlyRate: String
     @State private var dailyRate: String
     @State private var isSaving = false
@@ -1642,6 +1657,7 @@ private struct ProviderProfileEditView: View {
         _educationLevel = State(initialValue: profile?.educationLevel ?? "")
         _about = State(initialValue: profile?.about ?? "")
         _selectedCategories = State(initialValue: ProviderCategoryMapper.displayLabels(from: profile?.categories ?? []))
+        _age = State(initialValue: profile?.age.map(String.init) ?? "")
         _hourlyRate = State(initialValue: profile?.hourlyRate.map(String.init) ?? "")
         _dailyRate = State(initialValue: profile?.dailyRate.map(String.init) ?? "")
     }
@@ -1658,6 +1674,7 @@ private struct ProviderProfileEditView: View {
                 AppTextField(placeholder: "Profil / Mağaza Adı", text: $storeName)
                 AppTextField(placeholder: "E-posta", text: $email, keyboardType: .emailAddress)
                 AppTextField(placeholder: "Telefon", text: $phone, keyboardType: .phonePad)
+                AppTextField(placeholder: "Yaş", text: $age, keyboardType: .numberPad)
                 AppTextField(placeholder: "Saatlik Ücret (TL)", text: $hourlyRate, keyboardType: .numberPad)
                 AppTextField(placeholder: "Günlük Ücret (TL)", text: $dailyRate, keyboardType: .numberPad)
 
@@ -1739,6 +1756,7 @@ private struct ProviderProfileEditView: View {
                                 educationLevel: educationLevel,
                                 about: about.trimmingCharacters(in: .whitespacesAndNewlines),
                                 categories: selectedCategories,
+                                age: Int(age.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
                                 hourlyRate: Int(hourlyRate.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
                                 dailyRate: Int(dailyRate.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
                             )

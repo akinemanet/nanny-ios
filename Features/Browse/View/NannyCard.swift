@@ -34,13 +34,20 @@ struct NannyCard: View {
                     .foregroundStyle(DS.Colors.textSecondary)
                     .lineLimit(2)
 
+                if !provider.categories.isEmpty {
+                    Text(provider.categories.prefix(3).joined(separator: " • "))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(DS.Colors.primary)
+                        .lineLimit(2)
+                }
+
                 HStack(spacing: 6) {
-                    ForEach(0..<4, id: \.self) { _ in
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundStyle(DS.Colors.accent)
-                    }
-                    if provider.reviewCount > 0 {
+                    if provider.reviewCount > 0 && provider.rating > 0 {
+                        ForEach(0..<4, id: \.self) { _ in
+                            Image(systemName: "star.fill")
+                                .font(.caption2)
+                                .foregroundStyle(DS.Colors.accent)
+                        }
                         Text("\(provider.reviewCount)")
                             .font(.caption)
                             .foregroundStyle(DS.Colors.textSecondary)

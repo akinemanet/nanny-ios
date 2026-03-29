@@ -81,8 +81,10 @@ struct NannyProfileView: View {
                 }
 
                 HStack {
-                    profileStat(String(format: "%.1f", detail?.rating ?? provider.rating), "Puan")
-                    profileStat("\(detail?.reviews.count ?? 0)", "Yorum")
+                    if reviewCountValue > 0 && ratingValue > 0 {
+                        profileStat(String(format: "%.1f", ratingValue), "Puan")
+                        profileStat("\(reviewCountValue)", "Yorum")
+                    }
                     profileStat(ageDisplayText, "Yaş")
                 }
 
@@ -155,9 +157,11 @@ struct NannyProfileView: View {
                     }
                 }
 
-                HStack(spacing: 8) {
-                    ForEach(detail?.skills ?? ["İlk Yardım", "Yemek", "Ödev Desteği"], id: \.self) { skill in
-                        SkillPill(title: skill)
+                if !resolvedSkills.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(resolvedSkills, id: \.self) { skill in
+                            SkillPill(title: skill)
+                        }
                     }
                 }
 
@@ -266,6 +270,19 @@ struct NannyProfileView: View {
     private var completedSittingsText: String {
         let count = detail?.completedSittings ?? provider.completedSittings
         return count > 0 ? "\(count) oturum" : "-"
+    }
+
+    private var ratingValue: Double {
+        detail?.rating ?? provider.rating
+    }
+
+    private var reviewCountValue: Int {
+        detail?.reviews.count ?? provider.reviewCount
+    }
+
+    private var resolvedSkills: [String] {
+        let skills = detail?.skills ?? provider.categories
+        return skills.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     private var experienceSummaryText: String {

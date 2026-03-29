@@ -45,6 +45,7 @@ struct ProviderOnboardingProfile: Codable {
     let educationLevel: String
     let about: String
     let categories: [String]
+    let age: Int?
     let hourlyRate: Int?
     let dailyRate: Int?
     let profilePhotoName: String
@@ -59,6 +60,7 @@ struct ProviderOnboardingProfile: Codable {
         educationLevel: String = "",
         about: String = "",
         categories: [String] = [],
+        age: Int? = nil,
         hourlyRate: Int? = nil,
         dailyRate: Int? = nil,
         profilePhotoName: String = "",
@@ -72,6 +74,7 @@ struct ProviderOnboardingProfile: Codable {
         self.educationLevel = educationLevel
         self.about = about
         self.categories = categories
+        self.age = age
         self.hourlyRate = hourlyRate
         self.dailyRate = dailyRate
         self.profilePhotoName = profilePhotoName
@@ -87,6 +90,7 @@ struct ProviderOnboardingProfile: Codable {
         case educationLevel
         case about
         case categories
+        case age
         case hourlyRate
         case dailyRate
         case profilePhotoName
@@ -104,6 +108,7 @@ struct ProviderOnboardingProfile: Codable {
             educationLevel: try container.decodeIfPresent(String.self, forKey: .educationLevel) ?? "",
             about: try container.decodeIfPresent(String.self, forKey: .about) ?? "",
             categories: try container.decodeIfPresent([String].self, forKey: .categories) ?? [],
+            age: try container.decodeIfPresent(Int.self, forKey: .age),
             hourlyRate: try container.decodeIfPresent(Int.self, forKey: .hourlyRate),
             dailyRate: try container.decodeIfPresent(Int.self, forKey: .dailyRate),
             profilePhotoName: try container.decodeIfPresent(String.self, forKey: .profilePhotoName) ?? "",
@@ -140,6 +145,7 @@ struct UpsertProviderProfileRequest: Codable {
     let educationLevel: String
     let about: String
     let categories: [String]
+    let age: Int
     let hourlyRate: Int
     let dailyRate: Int
     let profilePhotoName: String
@@ -152,6 +158,7 @@ struct ProviderProfileMutationResponse: Codable {
 }
 
 struct ProviderProfileMutationState: Codable {
+    let age: Int?
     let hourlyRate: Int?
     let dailyRate: Int?
     let approvalStatus: String?
@@ -292,7 +299,7 @@ struct BrowseProvider: Codable, Identifiable {
         self.init(
             id: try container.decode(String.self, forKey: .id),
             displayName: try container.decodeIfPresent(String.self, forKey: .displayName) ?? "Bakici",
-            rating: try container.decodeIfPresent(Double.self, forKey: .rating) ?? 4.8,
+            rating: try container.decodeIfPresent(Double.self, forKey: .rating) ?? 0,
             hourlyRate: try container.decodeIfPresent(Int.self, forKey: .hourlyRate) ?? 600,
             payoutStatus: try container.decodeIfPresent(String.self, forKey: .payoutStatus) ?? "PENDING",
             age: try container.decodeIfPresent(Int.self, forKey: .age) ?? 0,
@@ -406,7 +413,7 @@ struct ProviderDetail: Codable, Identifiable {
         self.init(
             id: try container.decode(String.self, forKey: .id),
             displayName: try container.decodeIfPresent(String.self, forKey: .displayName) ?? "Bakici",
-            rating: try container.decodeIfPresent(Double.self, forKey: .rating) ?? 4.8,
+            rating: try container.decodeIfPresent(Double.self, forKey: .rating) ?? 0,
             hourlyRate: try container.decodeIfPresent(Int.self, forKey: .hourlyRate) ?? 600,
             payoutStatus: try container.decodeIfPresent(String.self, forKey: .payoutStatus) ?? "PENDING",
             educationLevel: try container.decodeIfPresent(String.self, forKey: .educationLevel) ?? "",

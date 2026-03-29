@@ -198,6 +198,8 @@ struct ProviderOnboardingView: View {
             Divider()
             labeledField("Adres", text: $vm.address)
             Divider()
+            labeledField("Yaş", text: $vm.age, keyboardType: .numberPad)
+            Divider()
             labeledField("E-posta", text: $vm.email)
             Divider()
             labeledField("Telefon", text: $vm.gsmNumber)
