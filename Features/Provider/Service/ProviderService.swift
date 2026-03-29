@@ -15,71 +15,27 @@ final class ProviderService {
 
     func listProviders() async throws -> ProvidersResponse {
         struct Empty: Encodable {}
-        do {
-            let response: ProvidersResponse = try await api.request(
-                "v1/providers",
-                method: "GET",
-                body: Optional<Empty>.none,
-                needsAuth: false,
-                cachePolicy: .reloadIgnoringLocalCacheData
-            )
-            if response.providers.isEmpty {
-                return ProvidersResponse(providers: Self.seedProfiles.enumerated().map { index, seed in
-                    makeBrowseProvider(
-                        id: "seed-provider-\(index)",
-                        payoutStatus: "APPROVED",
-                        seed: seed
-                    )
-                })
-            }
-            return ProvidersResponse(providers: response.providers.map(normalizeBrowseProvider))
-        } catch {
-            return ProvidersResponse(providers: Self.seedProfiles.enumerated().map { index, seed in
-                makeBrowseProvider(
-                    id: "seed-provider-\(index)",
-                    payoutStatus: "APPROVED",
-                    seed: seed
-                )
-            })
-        }
+        let response: ProvidersResponse = try await api.request(
+            "v1/providers",
+            method: "GET",
+            body: Optional<Empty>.none,
+            needsAuth: false,
+            cachePolicy: .reloadIgnoringLocalCacheData
+        )
+        return ProvidersResponse(providers: response.providers.map(normalizeBrowseProvider))
     }
 
     func getProviderDetail(id: String) async throws -> ProviderDetailResponse {
         struct Empty: Encodable {}
 
-        do {
-            let response: ProviderDetailResponse = try await api.request(
-                "v1/providers/\(id)",
-                method: "GET",
-                body: Optional<Empty>.none,
-                needsAuth: false,
-                cachePolicy: .reloadIgnoringLocalCacheData
-            )
-            return ProviderDetailResponse(provider: normalizeProviderDetail(response.provider))
-        } catch {
-            let seed = Self.seedProfiles.first!
-            return ProviderDetailResponse(
-                provider: ProviderDetail(
-                    id: id,
-                    displayName: seed.displayName,
-                    rating: seed.rating,
-                    hourlyRate: seed.hourlyRate,
-                    payoutStatus: "APPROVED",
-                    educationLevel: seed.educationLevel,
-                    about: seed.about,
-                    experienceYears: seed.experienceYears,
-                    age: seed.age,
-                    completedSittings: seed.completedSittings,
-                    locationName: seed.locationName,
-                    distanceText: seed.distanceText,
-                    latitude: seed.latitude,
-                    longitude: seed.longitude,
-                    skills: seed.skills,
-                    reviews: seed.reviews,
-                    availability: seed.availability
-                )
-            )
-        }
+        let response: ProviderDetailResponse = try await api.request(
+            "v1/providers/\(id)",
+            method: "GET",
+            body: Optional<Empty>.none,
+            needsAuth: false,
+            cachePolicy: .reloadIgnoringLocalCacheData
+        )
+        return ProviderDetailResponse(provider: normalizeProviderDetail(response.provider))
     }
 
     func listFavorites() async throws -> FavoritesResponse {
@@ -229,6 +185,7 @@ final class ProviderService {
             gender: seed.gender,
             locationName: seed.locationName,
             distanceText: seed.distanceText,
+            photoURL: nil,
             latitude: seed.latitude,
             longitude: seed.longitude,
             categories: seed.categories,
@@ -252,7 +209,8 @@ final class ProviderService {
             age: provider.age,
             gender: provider.gender,
             locationName: provider.locationName,
-            distanceText: provider.distanceText,
+            distanceText: sanitizedDistanceText(provider.distanceText),
+            photoURL: provider.photoURL,
             latitude: provider.latitude,
             longitude: provider.longitude,
             categories: ProviderCategoryMapper.displayLabels(from: provider.categories),
@@ -277,13 +235,23 @@ final class ProviderService {
             age: provider.age,
             completedSittings: provider.completedSittings,
             locationName: provider.locationName,
-            distanceText: provider.distanceText,
+            distanceText: sanitizedDistanceText(provider.distanceText),
+            photoURL: provider.photoURL,
             latitude: provider.latitude,
             longitude: provider.longitude,
             skills: ProviderCategoryMapper.displayLabels(from: provider.skills),
             reviews: provider.reviews,
             availability: provider.availability
         )
+    }
+
+    private func sanitizedDistanceText(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Mesafe bilgisi yakinda" }
+        if trimmed.count > 40 { return "Mesafe bilgisi yakinda" }
+        let digitCount = trimmed.filter(\.isNumber).count
+        if digitCount > max(8, trimmed.count / 2) { return "Mesafe bilgisi yakinda" }
+        return trimmed
     }
 }
 

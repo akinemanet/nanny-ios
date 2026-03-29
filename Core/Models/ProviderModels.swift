@@ -216,6 +216,7 @@ struct BrowseProvider: Codable, Identifiable {
     let gender: String
     let locationName: String
     let distanceText: String
+    let photoURL: String?
     let latitude: Double?
     let longitude: Double?
     let categories: [String]
@@ -235,6 +236,7 @@ struct BrowseProvider: Codable, Identifiable {
         gender: String,
         locationName: String,
         distanceText: String,
+        photoURL: String?,
         latitude: Double?,
         longitude: Double?,
         categories: [String],
@@ -253,6 +255,7 @@ struct BrowseProvider: Codable, Identifiable {
         self.gender = gender
         self.locationName = locationName
         self.distanceText = distanceText
+        self.photoURL = photoURL
         self.latitude = latitude
         self.longitude = longitude
         self.categories = categories
@@ -273,6 +276,7 @@ struct BrowseProvider: Codable, Identifiable {
         case gender
         case locationName
         case distanceText
+        case photoURL
         case latitude
         case longitude
         case categories
@@ -295,6 +299,7 @@ struct BrowseProvider: Codable, Identifiable {
             gender: try container.decodeIfPresent(String.self, forKey: .gender) ?? "Kadin",
             locationName: try container.decodeIfPresent(String.self, forKey: .locationName) ?? "Konum bilgisi yakinda",
             distanceText: try container.decodeIfPresent(String.self, forKey: .distanceText) ?? "Mesafe bilgisi yakinda",
+            photoURL: try container.decodeIfPresent(String.self, forKey: .photoURL),
             latitude: try container.decodeIfPresent(Double.self, forKey: .latitude),
             longitude: try container.decodeIfPresent(Double.self, forKey: .longitude),
             categories: ProviderCategoryMapper.displayLabels(from: try container.decodeIfPresent([String].self, forKey: .categories) ?? []),
@@ -328,6 +333,7 @@ struct ProviderDetail: Codable, Identifiable {
     let completedSittings: Int
     let locationName: String
     let distanceText: String
+    let photoURL: String?
     let latitude: Double?
     let longitude: Double?
     let skills: [String]
@@ -347,6 +353,7 @@ struct ProviderDetail: Codable, Identifiable {
         completedSittings: Int,
         locationName: String,
         distanceText: String,
+        photoURL: String?,
         latitude: Double?,
         longitude: Double?,
         skills: [String],
@@ -365,6 +372,7 @@ struct ProviderDetail: Codable, Identifiable {
         self.completedSittings = completedSittings
         self.locationName = locationName
         self.distanceText = distanceText
+        self.photoURL = photoURL
         self.latitude = latitude
         self.longitude = longitude
         self.skills = skills
@@ -385,6 +393,7 @@ struct ProviderDetail: Codable, Identifiable {
         case completedSittings
         case locationName
         case distanceText
+        case photoURL
         case latitude
         case longitude
         case skills
@@ -407,6 +416,7 @@ struct ProviderDetail: Codable, Identifiable {
             completedSittings: try container.decodeIfPresent(Int.self, forKey: .completedSittings) ?? 0,
             locationName: try container.decodeIfPresent(String.self, forKey: .locationName) ?? "Konum bilgisi yakinda",
             distanceText: try container.decodeIfPresent(String.self, forKey: .distanceText) ?? "",
+            photoURL: try container.decodeIfPresent(String.self, forKey: .photoURL),
             latitude: try container.decodeIfPresent(Double.self, forKey: .latitude),
             longitude: try container.decodeIfPresent(Double.self, forKey: .longitude),
             skills: ProviderCategoryMapper.displayLabels(from: try container.decodeIfPresent([String].self, forKey: .skills) ?? []),

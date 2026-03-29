@@ -12,14 +12,7 @@ struct NannyCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(avatarGradient)
-                .frame(width: 80, height: 80)
-                .overlay {
-                    Text(initials)
-                        .font(.title3.bold())
-                        .foregroundStyle(.white)
-                }
+            avatarView
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .top) {
@@ -77,5 +70,36 @@ struct NannyCard: View {
         ]
         let index = abs(provider.displayName.hashValue) % gradients.count
         return LinearGradient(colors: gradients[index], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    @ViewBuilder
+    private var avatarView: some View {
+        if let photoURL = provider.photoURL, let url = URL(string: photoURL) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                default:
+                    avatarPlaceholder
+                }
+            }
+            .frame(width: 80, height: 80)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        } else {
+            avatarPlaceholder
+        }
+    }
+
+    private var avatarPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(avatarGradient)
+            .frame(width: 80, height: 80)
+            .overlay {
+                Text(initials)
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+            }
     }
 }

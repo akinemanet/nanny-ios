@@ -60,14 +60,7 @@ struct NannyProfileView: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 14) {
-                            Circle()
-                                .fill(profileAvatarGradient)
-                                .frame(width: 72, height: 72)
-                                .overlay {
-                                    Text(profileInitials)
-                                        .font(.title.bold())
-                                        .foregroundStyle(.white)
-                                }
+                            profileAvatarView
 
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(detail?.displayName ?? provider.displayName)
@@ -284,6 +277,41 @@ struct NannyProfileView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    @ViewBuilder
+    private var profileAvatarView: some View {
+        if let photoURL = detail?.photoURL ?? provider.photoURL, let url = URL(string: photoURL) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                default:
+                    profileAvatarPlaceholder
+                }
+            }
+            .frame(width: 72, height: 72)
+            .clipShape(Circle())
+            .overlay {
+                Circle()
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            }
+        } else {
+            profileAvatarPlaceholder
+        }
+    }
+
+    private var profileAvatarPlaceholder: some View {
+        Circle()
+            .fill(profileAvatarGradient)
+            .frame(width: 72, height: 72)
+            .overlay {
+                Text(profileInitials)
+                    .font(.title.bold())
+                    .foregroundStyle(.white)
+            }
     }
 
     private func loadFavorites() async {

@@ -846,6 +846,7 @@ struct BookingDetailView: View {
             gender: "Kadın",
             locationName: booking.address ?? "Konum daha sonra netlesecek",
             distanceText: "Daha once rezervasyon yapildi",
+            photoURL: nil,
             latitude: nil,
             longitude: nil,
             categories: ["Tekrar Rezervasyon"],
