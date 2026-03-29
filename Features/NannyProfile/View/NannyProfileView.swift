@@ -66,7 +66,7 @@ struct NannyProfileView: View {
                                 Text(detail?.displayName ?? provider.displayName)
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.white)
-                                Text("\(detail?.locationName ?? provider.locationName) • \(resolvedDistanceText)")
+                                Text("\(resolvedLocationName) • \(resolvedDistanceText)")
                                     .foregroundStyle(.white.opacity(0.9))
                             }
                         }
@@ -83,12 +83,12 @@ struct NannyProfileView: View {
                 HStack {
                     profileStat(String(format: "%.1f", detail?.rating ?? provider.rating), "Puan")
                     profileStat("\(detail?.reviews.count ?? 0)", "Yorum")
-                    profileStat("\(detail?.age ?? 24)", "Yaş")
+                    profileStat(ageDisplayText, "Yaş")
                 }
 
                 HStack(spacing: 12) {
                     infoCard(title: "Saatlik Ücret", value: "₺\(detail?.hourlyRate ?? provider.hourlyRate) / saat")
-                    infoCard(title: "Tamamlanan", value: "\(detail?.completedSittings ?? 37) oturum")
+                    infoCard(title: "Tamamlanan", value: completedSittingsText)
                 }
 
                 if let educationLevel = detail?.educationLevel, !educationLevel.isEmpty {
@@ -108,7 +108,7 @@ struct NannyProfileView: View {
                     Text("Deneyim")
                         .font(.headline)
                         .foregroundStyle(DS.Colors.textPrimary)
-                    Text("Yenidoğan ve \(detail?.age ?? 12) yaşına kadar çocuklarla deneyim")
+                    Text(experienceSummaryText)
                         .foregroundStyle(DS.Colors.textSecondary)
 
                     HStack {
@@ -250,8 +250,30 @@ struct NannyProfileView: View {
             originLongitude: selectedLongitude,
             to: detail?.latitude ?? provider.latitude,
             destinationLongitude: detail?.longitude ?? provider.longitude,
-            fallback: detail?.distanceText ?? provider.distanceText
+            fallback: sanitizedDistanceText(detail?.distanceText ?? provider.distanceText)
         )
+    }
+
+    private var resolvedLocationName: String {
+        sanitizedLocationName(detail?.locationName ?? provider.locationName)
+    }
+
+    private var ageDisplayText: String {
+        let age = detail?.age ?? provider.age
+        return age > 0 ? "\(age)" : "-"
+    }
+
+    private var completedSittingsText: String {
+        let count = detail?.completedSittings ?? provider.completedSittings
+        return count > 0 ? "\(count) oturum" : "-"
+    }
+
+    private var experienceSummaryText: String {
+        let age = detail?.age ?? provider.age
+        if age > 0 {
+            return "Yenidoğan ve \(age) yaşına kadar çocuklarla deneyim"
+        }
+        return "Farklı yaş gruplarıyla bakım deneyimi"
     }
 
     private func scheduleChip(_ day: String, _ state: String) -> some View {
@@ -346,6 +368,26 @@ struct NannyProfileView: View {
             return out.string(from: date)
         }
         return value
+    }
+
+    private func sanitizedLocationName(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return provider.locationName }
+        let lowered = trimmed.lowercased()
+        if lowered.contains("san francisco") || lowered.contains("california") {
+            return provider.locationName
+        }
+        return trimmed
+    }
+
+    private func sanitizedDistanceText(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Mesafe bilgisi yakinda" }
+        let lowered = trimmed.lowercased()
+        if lowered.contains("mi away") || lowered.contains("miles away") {
+            return "Mesafe bilgisi yakinda"
+        }
+        return trimmed
     }
 
     private func availabilityStatusText(_ value: String) -> String {

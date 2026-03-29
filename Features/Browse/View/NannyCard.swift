@@ -27,9 +27,10 @@ struct NannyCard: View {
                         .foregroundStyle(Color.pink.opacity(0.75))
                 }
 
-                Text("\(provider.distanceText) • \(provider.age) yaş")
+                Text(subtitleText)
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
+                    .lineLimit(2)
 
                 HStack(spacing: 6) {
                     ForEach(0..<4, id: \.self) { _ in
@@ -37,11 +38,13 @@ struct NannyCard: View {
                             .font(.caption2)
                             .foregroundStyle(DS.Colors.accent)
                     }
-                    Text("12")
-                        .font(.caption)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Text("•")
-                        .foregroundStyle(DS.Colors.textSecondary)
+                    if provider.reviewCount > 0 {
+                        Text("\(provider.reviewCount)")
+                            .font(.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Text("•")
+                            .foregroundStyle(DS.Colors.textSecondary)
+                    }
                     Text("₺\(provider.hourlyRate)/saat")
                         .font(.subheadline.bold())
                         .foregroundStyle(DS.Colors.textPrimary)
@@ -59,6 +62,13 @@ struct NannyCard: View {
     private var initials: String {
         let parts = provider.displayName.split(separator: " ").prefix(2)
         return parts.compactMap { $0.first.map(String.init) }.joined()
+    }
+
+    private var subtitleText: String {
+        if provider.age > 0 {
+            return "\(provider.distanceText) • \(provider.age) yaş"
+        }
+        return provider.distanceText
     }
 
     private var avatarGradient: LinearGradient {

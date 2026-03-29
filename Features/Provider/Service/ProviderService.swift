@@ -177,7 +177,7 @@ final class ProviderService {
     private func makeBrowseProvider(id: String, payoutStatus: String, seed: SeededProviderProfile) -> BrowseProvider {
         return BrowseProvider(
             id: id,
-            displayName: seed.displayName,
+            displayName: sanitizedDisplayName(seed.displayName),
             rating: seed.rating,
             hourlyRate: seed.hourlyRate,
             payoutStatus: payoutStatus,
@@ -202,7 +202,7 @@ final class ProviderService {
     private func normalizeBrowseProvider(_ provider: BrowseProvider) -> BrowseProvider {
         BrowseProvider(
             id: provider.id,
-            displayName: provider.displayName,
+            displayName: sanitizedDisplayName(provider.displayName),
             rating: provider.rating,
             hourlyRate: provider.hourlyRate,
             payoutStatus: provider.payoutStatus,
@@ -225,7 +225,7 @@ final class ProviderService {
     private func normalizeProviderDetail(_ provider: ProviderDetail) -> ProviderDetail {
         ProviderDetail(
             id: provider.id,
-            displayName: provider.displayName,
+            displayName: sanitizedDisplayName(provider.displayName),
             rating: provider.rating,
             hourlyRate: provider.hourlyRate,
             payoutStatus: provider.payoutStatus,
@@ -252,6 +252,14 @@ final class ProviderService {
         let digitCount = trimmed.filter(\.isNumber).count
         if digitCount > max(8, trimmed.count / 2) { return "Mesafe bilgisi yakinda" }
         return trimmed
+    }
+
+    private func sanitizedDisplayName(_ text: String) -> String {
+        let cleaned = text
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "'", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? "Bakici" : cleaned
     }
 }
 
