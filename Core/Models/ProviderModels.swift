@@ -276,7 +276,7 @@ struct BrowseProvider: Codable, Identifiable {
         case gender
         case locationName
         case distanceText
-        case photoURL
+        case photoURL = "photoUrl"
         case latitude
         case longitude
         case categories
@@ -393,7 +393,7 @@ struct ProviderDetail: Codable, Identifiable {
         case completedSittings
         case locationName
         case distanceText
-        case photoURL
+        case photoURL = "photoUrl"
         case latitude
         case longitude
         case skills
