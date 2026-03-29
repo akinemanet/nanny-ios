@@ -35,10 +35,7 @@ struct NannyCard: View {
                     .lineLimit(2)
 
                 if !provider.categories.isEmpty {
-                    Text(provider.categories.prefix(3).joined(separator: " • "))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(DS.Colors.primary)
-                        .lineLimit(2)
+                    categoryPills
                 }
 
                 HStack(spacing: 6) {
@@ -80,6 +77,14 @@ struct NannyCard: View {
         return provider.distanceText
     }
 
+    private var visibleCategories: [String] {
+        Array(provider.categories.prefix(3))
+    }
+
+    private var categoryPills: some View {
+        FlexibleTagRow(tags: visibleCategories)
+    }
+
     private var avatarGradient: LinearGradient {
         let gradients: [[Color]] = [
             [Color(red: 0.20, green: 0.54, blue: 0.90), Color(red: 0.49, green: 0.74, blue: 0.98)],
@@ -113,6 +118,39 @@ struct NannyCard: View {
                     .font(.title3.bold())
                     .foregroundStyle(.white)
             }
+    }
+}
+
+private struct FlexibleTagRow: View {
+    let tags: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(rowGroups.indices, id: \.self) { rowIndex in
+                HStack(spacing: 6) {
+                    ForEach(rowGroups[rowIndex], id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(DS.Colors.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(DS.Colors.primary.opacity(0.10), in: Capsule())
+                    }
+                }
+            }
+        }
+    }
+
+    private var rowGroups: [[String]] {
+        var rows: [[String]] = [[]]
+        for tag in tags {
+            if let last = rows.last, last.count < 2 {
+                rows[rows.count - 1].append(tag)
+            } else {
+                rows.append([tag])
+            }
+        }
+        return rows
     }
 }
 
