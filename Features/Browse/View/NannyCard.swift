@@ -144,6 +144,8 @@ struct RemoteImageView<Placeholder: View>: View {
 
 @MainActor
 final class RemoteImageLoader: ObservableObject {
+    private static let imageCache = NSCache<NSURL, UIImage>()
+
     @Published var image: UIImage?
 
     func load(from url: URL?) async {
@@ -152,14 +154,28 @@ final class RemoteImageLoader: ObservableObject {
             return
         }
 
+        if let cachedImage = Self.imageCache.object(forKey: url as NSURL) {
+            image = cachedImage
+            return
+        }
+
         do {
-            let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+            let request = URLRequest(url: url, cachePolicy: .useProtocolCachePolicy)
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            guard let http = response as? HTTPURLResponse else {
                 image = nil
                 return
             }
-            image = UIImage(data: data)
+            guard (200...299).contains(http.statusCode) else {
+                image = nil
+                return
+            }
+            guard let decoded = UIImage(data: data) else {
+                image = nil
+                return
+            }
+            image = decoded
+            Self.imageCache.setObject(decoded, forKey: url as NSURL)
         } catch {
             image = nil
         }
