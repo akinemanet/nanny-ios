@@ -304,15 +304,8 @@ struct NannyProfileView: View {
     @ViewBuilder
     private var profileAvatarView: some View {
         if let photoURL = detail?.photoURL ?? provider.photoURL, let url = URL(string: photoURL) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                default:
-                    profileAvatarPlaceholder
-                }
+            RemoteImageView(url: url) {
+                profileAvatarPlaceholder
             }
             .frame(width: 72, height: 72)
             .clipShape(Circle())

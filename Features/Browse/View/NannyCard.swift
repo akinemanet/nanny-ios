@@ -85,15 +85,8 @@ struct NannyCard: View {
     @ViewBuilder
     private var avatarView: some View {
         if let photoURL = provider.photoURL, let url = URL(string: photoURL) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                default:
-                    avatarPlaceholder
-                }
+            RemoteImageView(url: url) {
+                avatarPlaceholder
             }
             .frame(width: 80, height: 80)
             .clipShape(RoundedRectangle(cornerRadius: 16))
