@@ -268,6 +268,7 @@ private struct ProviderOnboardingSummaryResponse: Decodable {
     let summary: ProviderOnboardingSummary
 
     enum CodingKeys: String, CodingKey {
+        case summary
         case account
         case profile
         case onboarding
@@ -288,6 +289,13 @@ private struct ProviderOnboardingSummaryResponse: Decodable {
     }
 
     init(from decoder: Decoder) throws {
+        if let wrapped = try? decoder.container(keyedBy: CodingKeys.self),
+           wrapped.contains(.summary),
+           let nestedSummary = try wrapped.decodeIfPresent(ProviderOnboardingSummary.self, forKey: .summary) {
+            self.summary = nestedSummary
+            return
+        }
+
         if let nested = try? NestedSummary(from: decoder), let summary = nested.summary {
             self.summary = summary
             return
