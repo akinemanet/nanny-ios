@@ -621,52 +621,62 @@ struct ProviderDashboardView: View {
     }
 
     private func loadProviderSummary() async {
-        async let notificationsTask = session.deps.notificationService.listNotifications()
-        async let conversationsTask = session.deps.chatService.listConversations()
-        async let bookingsTask = session.deps.bookingService.listBookings()
-        async let careRequestsTask = session.deps.bookingService.listProviderCareRequests(providerUserID: currentProviderID)
+        providerSummaryError = nil
+        careRequestError = nil
 
         do {
-            let (notifications, conversations, bookings, careRequests) = try await (notificationsTask, conversationsTask, bookingsTask, careRequestsTask)
-            self.conversations = conversations.conversations
-            self.bookings = bookings
-            self.careRequests = careRequests
-            async let unreadNotificationSummaryTask = session.deps.notificationService.unreadNotificationCount(
+            careRequests = try await session.deps.bookingService.listProviderCareRequests(providerUserID: currentProviderID)
+        } catch {
+            careRequests = []
+            careRequestError = error.localizedDescription
+        }
+
+        do {
+            let notifications = try await session.deps.notificationService.listNotifications()
+            unreadNotifications = try await session.deps.notificationService.unreadNotificationCount(
                 fallback: notifications.notifications
             )
-            async let unreadMessageSummaryTask = session.deps.chatService.unreadConversationCount(
-                fallback: conversations.conversations
+        } catch {
+            unreadNotifications = 0
+        }
+
+        do {
+            let conversationsResponse = try await session.deps.chatService.listConversations()
+            conversations = conversationsResponse.conversations
+            unreadMessages = try await session.deps.chatService.unreadConversationCount(
+                fallback: conversationsResponse.conversations
             )
-            async let earningsSummaryTask = session.deps.bookingService.providerEarningsSummary(
-                fallback: bookings
+        } catch {
+            conversations = []
+            unreadMessages = 0
+        }
+
+        do {
+            let loadedBookings = try await session.deps.bookingService.listBookings()
+            bookings = loadedBookings
+            earningsSummaryOverride = try await session.deps.bookingService.providerEarningsSummary(
+                fallback: loadedBookings
             )
 
-            unreadNotifications = try await unreadNotificationSummaryTask
-            unreadMessages = try await unreadMessageSummaryTask
-            earningsSummaryOverride = try await earningsSummaryTask
             do {
-                todayBookings = try await session.deps.bookingService.providerTodayBookings(fallback: bookings)
-                pendingRequestBookings = try await session.deps.bookingService.providerPendingRequests(fallback: bookings)
+                todayBookings = try await session.deps.bookingService.providerTodayBookings(fallback: loadedBookings)
+                pendingRequestBookings = try await session.deps.bookingService.providerPendingRequests(fallback: loadedBookings)
             } catch {
-                todayBookings = bookings.filter { isToday($0.startTime) }.sorted { $0.startTime < $1.startTime }
-                pendingRequestBookings = bookings.filter {
+                todayBookings = loadedBookings.filter { isToday($0.startTime) }.sorted { $0.startTime < $1.startTime }
+                pendingRequestBookings = loadedBookings.filter {
                     let status = $0.status.uppercased()
                     return status == "REQUESTED" || status == "PENDING"
                 }
                 .sorted { $0.startTime < $1.startTime }
             }
-            providerSummaryError = nil
-            careRequestError = nil
         } catch {
-            unreadNotifications = 0
-            unreadMessages = 0
-            conversations = []
             bookings = []
-            careRequests = []
             todayBookings = []
             pendingRequestBookings = []
             earningsSummaryOverride = nil
-            providerSummaryError = error.localizedDescription
+            if providerSummaryError == nil {
+                providerSummaryError = error.localizedDescription
+            }
         }
     }
 
