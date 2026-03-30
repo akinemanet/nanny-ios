@@ -44,6 +44,7 @@ struct PayoutAccountResponse: Codable {
 struct ProviderOnboardingProfile: Codable {
     let educationLevel: String
     let about: String
+    let experience: String
     let categories: [String]
     let age: Int?
     let hourlyRate: Int?
@@ -59,6 +60,7 @@ struct ProviderOnboardingProfile: Codable {
     init(
         educationLevel: String = "",
         about: String = "",
+        experience: String = "",
         categories: [String] = [],
         age: Int? = nil,
         hourlyRate: Int? = nil,
@@ -73,6 +75,7 @@ struct ProviderOnboardingProfile: Codable {
     ) {
         self.educationLevel = educationLevel
         self.about = about
+        self.experience = experience
         self.categories = categories
         self.age = age
         self.hourlyRate = hourlyRate
@@ -89,6 +92,7 @@ struct ProviderOnboardingProfile: Codable {
     enum CodingKeys: String, CodingKey {
         case educationLevel
         case about
+        case experience
         case categories
         case age
         case hourlyRate
@@ -107,6 +111,7 @@ struct ProviderOnboardingProfile: Codable {
         self.init(
             educationLevel: try container.decodeIfPresent(String.self, forKey: .educationLevel) ?? "",
             about: try container.decodeIfPresent(String.self, forKey: .about) ?? "",
+            experience: try container.decodeIfPresent(String.self, forKey: .experience) ?? "",
             categories: try container.decodeIfPresent([String].self, forKey: .categories) ?? [],
             age: try container.decodeIfPresent(Int.self, forKey: .age),
             hourlyRate: try container.decodeIfPresent(Int.self, forKey: .hourlyRate),
@@ -144,6 +149,7 @@ struct UpsertProviderProfileRequest: Codable {
     let fullName: String
     let educationLevel: String
     let about: String
+    let experience: String
     let categories: [String]
     let age: Int
     let hourlyRate: Int
@@ -340,6 +346,7 @@ struct ProviderDetail: Codable, Identifiable {
     let payoutStatus: String
     let educationLevel: String
     let about: String
+    let experience: String
     let experienceYears: Int
     let age: Int
     let completedSittings: Int
@@ -360,6 +367,7 @@ struct ProviderDetail: Codable, Identifiable {
         payoutStatus: String,
         educationLevel: String,
         about: String,
+        experience: String,
         experienceYears: Int,
         age: Int,
         completedSittings: Int,
@@ -379,6 +387,7 @@ struct ProviderDetail: Codable, Identifiable {
         self.payoutStatus = payoutStatus
         self.educationLevel = educationLevel
         self.about = about
+        self.experience = experience
         self.experienceYears = experienceYears
         self.age = age
         self.completedSittings = completedSittings
@@ -400,6 +409,7 @@ struct ProviderDetail: Codable, Identifiable {
         case payoutStatus
         case educationLevel
         case about
+        case experience
         case experienceYears
         case age
         case completedSittings
@@ -423,6 +433,7 @@ struct ProviderDetail: Codable, Identifiable {
             payoutStatus: try container.decodeIfPresent(String.self, forKey: .payoutStatus) ?? "PENDING",
             educationLevel: try container.decodeIfPresent(String.self, forKey: .educationLevel) ?? "",
             about: try container.decodeIfPresent(String.self, forKey: .about) ?? "",
+            experience: try container.decodeIfPresent(String.self, forKey: .experience) ?? "",
             experienceYears: try container.decodeIfPresent(Int.self, forKey: .experienceYears) ?? 0,
             age: try container.decodeIfPresent(Int.self, forKey: .age) ?? 0,
             completedSittings: try container.decodeIfPresent(Int.self, forKey: .completedSittings) ?? 0,

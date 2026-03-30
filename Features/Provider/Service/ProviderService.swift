@@ -231,6 +231,7 @@ final class ProviderService {
             payoutStatus: provider.payoutStatus,
             educationLevel: provider.educationLevel,
             about: provider.about,
+            experience: provider.experience,
             experienceYears: provider.experienceYears,
             age: provider.age,
             completedSittings: provider.completedSittings,
@@ -271,8 +272,12 @@ private struct ProviderOnboardingSummaryResponse: Decodable {
         case profile
         case onboarding
         case categories
+        case age
+        case hourlyRate
+        case dailyRate
         case educationLevel
         case about
+        case experience
         case profilePhotoName
         case profilePhotoUrl
         case criminalRecordFileName
@@ -292,7 +297,11 @@ private struct ProviderOnboardingSummaryResponse: Decodable {
         let profile = ProviderOnboardingProfile(
             educationLevel: try container.decodeIfPresent(String.self, forKey: .educationLevel) ?? "",
             about: try container.decodeIfPresent(String.self, forKey: .about) ?? "",
+            experience: try container.decodeIfPresent(String.self, forKey: .experience) ?? "",
             categories: try container.decodeIfPresent([String].self, forKey: .categories) ?? [],
+            age: try container.decodeIfPresent(Int.self, forKey: .age),
+            hourlyRate: try container.decodeIfPresent(Int.self, forKey: .hourlyRate),
+            dailyRate: try container.decodeIfPresent(Int.self, forKey: .dailyRate),
             profilePhotoName: try container.decodeIfPresent(String.self, forKey: .profilePhotoName) ?? "",
             profilePhotoUrl: try container.decodeIfPresent(String.self, forKey: .profilePhotoUrl) ?? "",
             criminalRecordFileName: try container.decodeIfPresent(String.self, forKey: .criminalRecordFileName) ?? "",

@@ -27,6 +27,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
     @Published var identityNumber = ""
     @Published var educationLevel = ""
     @Published var about = ""
+    @Published var experience = ""
     @Published var selectedCategories: [String] = []
     @Published var age = ""
     @Published var hourlyRate = ""
@@ -69,6 +70,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
             }
             educationLevel = summary.profile.educationLevel
             about = summary.profile.about
+            experience = summary.profile.experience
             selectedCategories = ProviderCategoryMapper.displayLabels(from: summary.profile.categories)
             age = summary.profile.age.map(String.init) ?? age
             hourlyRate = summary.profile.hourlyRate.map(String.init) ?? hourlyRate
@@ -111,6 +113,11 @@ final class ProviderOnboardingViewModel: ObservableObject {
 
         guard !about.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             errorMessage = "Lütfen hakkında alanını doldur."
+            return false
+        }
+
+        guard !experience.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            errorMessage = "Lütfen deneyim alanını doldur."
             return false
         }
 
@@ -191,6 +198,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
                 fullName: fullName,
                 educationLevel: educationLevel,
                 about: about,
+                experience: experience,
                 categories: ProviderCategoryMapper.backendServices(from: selectedCategories),
                 age: parsedAge,
                 hourlyRate: parsedHourlyRate,
@@ -207,6 +215,7 @@ final class ProviderOnboardingViewModel: ObservableObject {
                     }
                     educationLevel = summary.profile.educationLevel
                     about = summary.profile.about
+                    experience = summary.profile.experience
                     selectedCategories = ProviderCategoryMapper.displayLabels(from: summary.profile.categories)
                     age = response.profile?.age.map(String.init) ?? summary.profile.age.map(String.init) ?? String(parsedAge)
                     hourlyRate = response.profile?.hourlyRate.map(String.init) ?? String(parsedHourlyRate)

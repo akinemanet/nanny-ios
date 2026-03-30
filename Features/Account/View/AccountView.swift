@@ -1338,6 +1338,7 @@ struct AccountView: View {
             fullName: fullName,
             educationLevel: payload.educationLevel,
             about: payload.about,
+            experience: payload.experience,
             categories: ProviderCategoryMapper.backendServices(from: payload.categories),
             age: payload.age,
             hourlyRate: payload.hourlyRate,
@@ -1435,6 +1436,7 @@ struct AccountView: View {
                     profile: ProviderOnboardingProfile(
                         educationLevel: existingProfile.educationLevel,
                         about: existingProfile.about,
+                        experience: existingProfile.experience,
                         categories: existingProfile.categories,
                         age: existingProfile.age,
                         hourlyRate: existingProfile.hourlyRate,
@@ -1460,6 +1462,7 @@ struct AccountView: View {
                         profile: ProviderOnboardingProfile(
                             educationLevel: existingProfile.educationLevel,
                             about: existingProfile.about,
+                            experience: existingProfile.experience,
                             categories: existingProfile.categories,
                             age: existingProfile.age,
                             hourlyRate: existingProfile.hourlyRate,
@@ -1495,6 +1498,7 @@ private struct ProviderProfileEditPayload {
     let phone: String
     let educationLevel: String
     let about: String
+    let experience: String
     let categories: [String]
     let age: Int
     let hourlyRate: Int
@@ -1618,6 +1622,7 @@ private struct ProviderProfileEditView: View {
     @State private var phone: String
     @State private var educationLevel: String
     @State private var about: String
+    @State private var experience: String
     @State private var selectedCategories: [String]
     @State private var age: String
     @State private var hourlyRate: String
@@ -1656,6 +1661,7 @@ private struct ProviderProfileEditView: View {
         _phone = State(initialValue: account?.gsmNumber ?? "")
         _educationLevel = State(initialValue: profile?.educationLevel ?? "")
         _about = State(initialValue: profile?.about ?? "")
+        _experience = State(initialValue: profile?.experience ?? "")
         _selectedCategories = State(initialValue: ProviderCategoryMapper.displayLabels(from: profile?.categories ?? []))
         _age = State(initialValue: profile?.age.map(String.init) ?? "")
         _hourlyRate = State(initialValue: profile?.hourlyRate.map(String.init) ?? "")
@@ -1714,6 +1720,17 @@ private struct ProviderProfileEditView: View {
                     )
                 }
 
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Deneyim")
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    AppTextArea(
+                        placeholder: "Çalıştığın yaş grupları ve bakım deneyimini anlat.",
+                        text: $experience,
+                        minHeight: 140
+                    )
+                }
+
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Kategoriler")
                         .font(.headline)
@@ -1755,6 +1772,7 @@ private struct ProviderProfileEditView: View {
                                 phone: phone.trimmingCharacters(in: .whitespacesAndNewlines),
                                 educationLevel: educationLevel,
                                 about: about.trimmingCharacters(in: .whitespacesAndNewlines),
+                                experience: experience.trimmingCharacters(in: .whitespacesAndNewlines),
                                 categories: selectedCategories,
                                 age: Int(age.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
                                 hourlyRate: Int(hourlyRate.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,

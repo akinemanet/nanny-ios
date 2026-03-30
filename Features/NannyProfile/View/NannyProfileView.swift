@@ -110,7 +110,7 @@ struct NannyProfileView: View {
                     Text("Deneyim")
                         .font(.headline)
                         .foregroundStyle(DS.Colors.textPrimary)
-                    Text(experienceSummaryText)
+                    Text(experienceText)
                         .foregroundStyle(DS.Colors.textSecondary)
 
                     HStack {
@@ -285,12 +285,12 @@ struct NannyProfileView: View {
         return skills.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
-    private var experienceSummaryText: String {
-        let age = detail?.age ?? provider.age
-        if age > 0 {
-            return "Yenidoğan ve \(age) yaşına kadar çocuklarla deneyim"
+    private var experienceText: String {
+        let trimmed = detail?.experience.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmed.isEmpty {
+            return trimmed
         }
-        return "Farklı yaş gruplarıyla bakım deneyimi"
+        return "Bakıcı henüz deneyim bilgisini eklemedi."
     }
 
     private func scheduleChip(_ day: String, _ state: String) -> some View {

@@ -51,6 +51,7 @@ struct ProviderOnboardingView: View {
                 basicInfoCard
                 pricingCard
                 educationCard
+                experienceCard
                 aboutCard
                 categoriesCard
                 documentsCard
@@ -252,6 +253,20 @@ struct ProviderOnboardingView: View {
             AppTextArea(
                 placeholder: "Deneyimini, çalışma yaklaşımını ve ailelere neler sunduğunu anlat.",
                 text: $vm.about,
+                minHeight: 140
+            )
+        }
+    }
+
+    private var experienceCard: some View {
+        AppCard {
+            Text("Deneyim")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            AppTextArea(
+                placeholder: "Kaç yıldır çalıştığını, hangi yaş gruplarıyla deneyimin olduğunu ve güçlü yönlerini yaz.",
+                text: $vm.experience,
                 minHeight: 140
             )
         }
