@@ -1291,12 +1291,6 @@ struct AccountView: View {
     }
 
     private func saveProviderProfile(_ payload: ProviderProfileEditPayload) async {
-        guard let currentAccount = providerAccount else {
-            providerAccountError = "Bakıcı hesap bilgileri yüklenmeden profil güncellenemiyor."
-            providerProfileNotice = nil
-            return
-        }
-
         guard payload.age >= 18 else {
             providerAccountError = "Lütfen geçerli bir yaş gir."
             providerProfileNotice = nil
@@ -1318,17 +1312,6 @@ struct AccountView: View {
         providerAccountError = nil
         providerProfileNotice = nil
 
-        let payoutRequest = UpsertPayoutAccountRequest(
-            address: currentAccount.address,
-            contactName: payload.contactName,
-            contactSurname: payload.contactSurname,
-            email: payload.email,
-            gsmNumber: payload.phone,
-            name: payload.storeName,
-            iban: currentAccount.iban,
-            identityNumber: currentAccount.identityNumber
-        )
-
         let fullName = [payload.contactName, payload.contactSurname]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -1348,8 +1331,20 @@ struct AccountView: View {
         )
 
         do {
-            let payoutResponse = try await session.deps.providerService.upsertPayoutAccount(payoutRequest)
-            providerAccount = payoutResponse.account
+            if let currentAccount = providerAccount {
+                let payoutRequest = UpsertPayoutAccountRequest(
+                    address: currentAccount.address,
+                    contactName: payload.contactName,
+                    contactSurname: payload.contactSurname,
+                    email: payload.email,
+                    gsmNumber: payload.phone,
+                    name: payload.storeName,
+                    iban: currentAccount.iban,
+                    identityNumber: currentAccount.identityNumber
+                )
+                let payoutResponse = try await session.deps.providerService.upsertPayoutAccount(payoutRequest)
+                providerAccount = payoutResponse.account
+            }
 
             do {
                 let response = try await session.deps.providerService.upsertProviderProfile(profileRequest)
@@ -1360,12 +1355,52 @@ struct AccountView: View {
                     }
                     providerProfileNotice = "Bakıcı profili backend ile eşzamanlandı."
                 } else {
+                    let existingProfile = providerSummary?.profile ?? ProviderOnboardingProfile()
+                    providerSummary = ProviderOnboardingSummary(
+                        account: providerAccount,
+                        profile: ProviderOnboardingProfile(
+                            educationLevel: payload.educationLevel,
+                            about: payload.about,
+                            experience: payload.experience,
+                            categories: ProviderCategoryMapper.backendServices(from: payload.categories),
+                            age: payload.age,
+                            hourlyRate: payload.hourlyRate,
+                            dailyRate: payload.dailyRate,
+                            profilePhotoName: existingProfile.profilePhotoName,
+                            profilePhotoUrl: existingProfile.profilePhotoUrl,
+                            criminalRecordFileName: existingProfile.criminalRecordFileName,
+                            criminalRecordUrl: existingProfile.criminalRecordUrl,
+                            profilePhotoStatus: existingProfile.profilePhotoStatus,
+                            criminalRecordStatus: existingProfile.criminalRecordStatus,
+                            approvalStatus: existingProfile.approvalStatus
+                        )
+                    )
                     providerProfileNotice = "Bakıcı profili ve fiyat bilgisi güncellendi."
                 }
             } catch let error as APIError {
                 switch error {
                 case .http(let code, _):
                     if code == 404 || code == 405 {
+                        let existingProfile = providerSummary?.profile ?? ProviderOnboardingProfile()
+                        providerSummary = ProviderOnboardingSummary(
+                            account: providerAccount,
+                            profile: ProviderOnboardingProfile(
+                                educationLevel: payload.educationLevel,
+                                about: payload.about,
+                                experience: payload.experience,
+                                categories: ProviderCategoryMapper.backendServices(from: payload.categories),
+                                age: payload.age,
+                                hourlyRate: payload.hourlyRate,
+                                dailyRate: payload.dailyRate,
+                                profilePhotoName: existingProfile.profilePhotoName,
+                                profilePhotoUrl: existingProfile.profilePhotoUrl,
+                                criminalRecordFileName: existingProfile.criminalRecordFileName,
+                                criminalRecordUrl: existingProfile.criminalRecordUrl,
+                                profilePhotoStatus: existingProfile.profilePhotoStatus,
+                                criminalRecordStatus: existingProfile.criminalRecordStatus,
+                                approvalStatus: existingProfile.approvalStatus
+                            )
+                        )
                         providerProfileNotice = "Bakıcı profili güncellendi. Profil endpoint'i hazır olmadığından bazı alanlar cihazda tutuluyor."
                     } else {
                         throw error
@@ -1668,6 +1703,28 @@ private struct ProviderProfileEditView: View {
         _dailyRate = State(initialValue: profile?.dailyRate.map(String.init) ?? "")
     }
 
+    private func applyIncomingValues() {
+        if let account {
+            if contactName.isEmpty { contactName = account.contactName }
+            if contactSurname.isEmpty { contactSurname = account.contactSurname }
+            if storeName.isEmpty { storeName = account.name }
+            if email.isEmpty { email = account.email }
+            if phone.isEmpty { phone = account.gsmNumber }
+        }
+
+        if let profile {
+            if educationLevel.isEmpty { educationLevel = profile.educationLevel }
+            if about.isEmpty { about = profile.about }
+            if experience.isEmpty { experience = profile.experience }
+            if selectedCategories.isEmpty {
+                selectedCategories = ProviderCategoryMapper.displayLabels(from: profile.categories)
+            }
+            if age.isEmpty, let value = profile.age, value > 0 { age = String(value) }
+            if hourlyRate.isEmpty, let value = profile.hourlyRate, value > 0 { hourlyRate = String(value) }
+            if dailyRate.isEmpty, let value = profile.dailyRate, value > 0 { dailyRate = String(value) }
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -1808,6 +1865,13 @@ private struct ProviderProfileEditView: View {
                 }
                 .foregroundStyle(DS.Colors.primary)
             }
+        }
+        .onAppear(perform: applyIncomingValues)
+        .onChange(of: account?.contactName) { _, _ in
+            applyIncomingValues()
+        }
+        .onChange(of: profile?.educationLevel) { _, _ in
+            applyIncomingValues()
         }
     }
 
