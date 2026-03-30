@@ -125,9 +125,7 @@ struct HomeView: View {
             .sheet(isPresented: $showCreateCareRequest) {
                 NavigationStack {
                     ParentCareRequestComposer { draft in
-                        Task {
-                            await createCareRequest(draft)
-                        }
+                        try await createCareRequest(draft)
                     }
                 }
             }
@@ -1145,11 +1143,22 @@ struct HomeView: View {
         }
     }
 
-    private func createCareRequest(_ draft: ParentCareRequestDraft) async {
-        guard let user = session.me?.user else { return }
+    private func createCareRequest(_ draft: ParentCareRequestDraft) async throws {
+        guard let user = session.me?.user else {
+            throw APIError.http(401, "Oturum bulunamadı.".data(using: .utf8))
+        }
+
+        let service: String
+        switch draft.serviceLabel {
+        case "Özel Ders":
+            service = "TUTOR"
+        case "Özel Eğitim":
+            service = "SPECIAL_ED"
+        default:
+            service = "BABYSITTER"
+        }
 
         do {
-            let service = ProviderCategoryMapper.backendServices(from: [draft.serviceLabel]).first ?? "BABYSITTER"
             _ = try await session.deps.bookingService.createCareRequest(
                 input: CreateCareRequestInput(
                     service: service,
@@ -1169,6 +1178,7 @@ struct HomeView: View {
             await loadCareRequests()
         } catch {
             careRequestError = error.localizedDescription
+            throw error
         }
     }
 
@@ -1370,8 +1380,9 @@ private struct ParentCareRequestComposer: View {
     @State private var startTime = Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: Date()) ?? Date()
     @State private var endTime = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date().addingTimeInterval(3 * 60 * 60)
     @State private var validationError: String?
+    @State private var isSubmitting = false
 
-    let onSubmit: (ParentCareRequestDraft) -> Void
+    let onSubmit: (ParentCareRequestDraft) async throws -> Void
 
     private let services = ["Bebek Bakımı", "Özel Ders", "Özel Eğitim"]
 
@@ -1415,14 +1426,17 @@ private struct ParentCareRequestComposer: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Yayınla") {
-                    submit()
+                    Task {
+                        await submit()
+                    }
                 }
                 .fontWeight(.semibold)
+                .disabled(isSubmitting)
             }
         }
     }
 
-    private func submit() {
+    private func submit() async {
         let calendar = Calendar.current
         let mergedStart = merge(date: date, time: startTime, calendar: calendar)
         let mergedEnd = merge(date: date, time: endTime, calendar: calendar)
@@ -1432,14 +1446,23 @@ private struct ParentCareRequestComposer: View {
             return
         }
 
-        onSubmit(
-            ParentCareRequestDraft(
-                serviceLabel: selectedService,
-                note: note,
-                startAt: mergedStart,
-                endAt: mergedEnd
+        validationError = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        do {
+            try await onSubmit(
+                ParentCareRequestDraft(
+                    serviceLabel: selectedService,
+                    note: note,
+                    startAt: mergedStart,
+                    endAt: mergedEnd
+                )
             )
-        )
+            dismiss()
+        } catch {
+            validationError = error.localizedDescription
+        }
     }
 
     private func merge(date: Date, time: Date, calendar: Calendar) -> Date {
