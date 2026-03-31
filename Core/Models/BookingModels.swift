@@ -354,7 +354,7 @@ struct CareRequestCandidate: Codable, Identifiable, Hashable {
     let appliedAt: String
 
     enum CodingKeys: String, CodingKey {
-        case providerUserID
+        case providerUserID = "providerUserId"
         case providerDisplayName
         case providerPhone
         case appliedAt
@@ -399,7 +399,7 @@ struct CareRequestItem: Codable, Identifiable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case parentUserID
+        case parentUserID = "parentUserId"
         case parentDisplayName
         case parentPhone
         case service
@@ -410,7 +410,7 @@ struct CareRequestItem: Codable, Identifiable, Hashable {
         case createdAt
         case status
         case candidates
-        case assignedProviderUserID
+        case assignedProviderUserID = "assignedProviderUserId"
         case assignedProviderDisplayName
     }
 
