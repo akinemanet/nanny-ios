@@ -167,7 +167,7 @@ struct BookingRecord: Decodable, Identifiable {
             try container.decodeIfPresent(String.self, forKey: .providerUserID)
             ?? providerContainer?.id
             ?? providerContainer?.userID
-            ?? "provider"
+            ?? "bakici"
         providerDisplayName =
             try container.decodeIfPresent(String.self, forKey: .providerDisplayName)
             ?? container.decodeIfPresent(String.self, forKey: .providerDisplayNameAlt)

@@ -29,7 +29,7 @@ struct BookingListView: View {
                 Picker("Durum", selection: $selectedTab) {
                     Text("Aktif").tag(0)
                     Text("Tamamlanan").tag(1)
-                    Text("Iptal").tag(2)
+                    Text("İptal").tag(2)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
@@ -239,7 +239,7 @@ struct BookingListView: View {
         case 1:
             return "Tamamlanan Rezervasyon Yok"
         default:
-            return "Iptal Edilen Rezervasyon Yok"
+            return "İptal Edilen Rezervasyon Yok"
         }
     }
 
@@ -257,11 +257,11 @@ struct BookingListView: View {
     private var emptyStateDescription: String {
         switch selectedTab {
         case 0:
-            return "Guncel rezervasyonlarin burada gorunecek."
+            return "Güncel rezervasyonların burada görünecek."
         case 1:
-            return "Tamamlanan rezervasyonlarin burada gorunecek."
+            return "Tamamlanan rezervasyonların burada görünecek."
         default:
-            return "Iptal edilen rezervasyonlarin burada gorunecek."
+            return "İptal edilen rezervasyonların burada görünecek."
         }
     }
 
@@ -416,7 +416,7 @@ struct BookingDetailView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: DS.Size.buttonHeight)
                             } else {
-                                Text("Iptal Talebi Olustur")
+                                Text("İptal Talebi Oluştur")
                                     .frame(maxWidth: .infinity)
                                     .frame(height: DS.Size.buttonHeight)
                             }
@@ -429,7 +429,7 @@ struct BookingDetailView: View {
                 }
                 infoCard(
                     title: "Rezervasyon Bilgisi",
-                    message: "Odeme adimini burada tamamlayabilir, gecmis rezervasyonlar icin hizlica yeni bir takvim olusturabilir ve aktif kayitlar icin iptal talebi baslatabilirsin."
+                    message: "Ödeme adımını burada tamamlayabilir, geçmiş rezervasyonlar için hızlıca yeni bir takvim oluşturabilir ve aktif kayıtlar için iptal talebi başlatabilirsin."
                 )
             }
             .padding()
@@ -469,15 +469,15 @@ struct BookingDetailView: View {
                 }
             }
         }
-        .alert("Iptal talebi olusturulsun mu?", isPresented: $showCancelConfirmation) {
-            Button("Vazgec", role: .cancel) {}
-            Button("Iptal Talebi Gonder", role: .destructive) {
+        .alert("İptal talebi oluşturulsun mu?", isPresented: $showCancelConfirmation) {
+            Button("Vazgeç", role: .cancel) {}
+            Button("İptal Talebi Gönder", role: .destructive) {
                 Task {
                     await submitCancellationRequest()
                 }
             }
         } message: {
-            Text("Once backend iptal endpoint'i denenecek. Sunucuda bu akış hazir degilse uygulama lokal durum guncellemesiyle devam edecek.")
+            Text("Önce backend iptal endpoint'i denenecek. Sunucuda bu akış hazır değilse uygulama lokal durum güncellemesiyle devam edecek.")
         }
     }
 

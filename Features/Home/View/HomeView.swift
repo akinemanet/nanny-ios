@@ -134,6 +134,18 @@ struct HomeView: View {
                     }
                 }
             }
+            .onAppear {
+                Task {
+                    viewModel.replaceServicesIfNeeded(
+                        bookingService: session.deps.bookingService,
+                        providerService: session.deps.providerService,
+                        notificationService: session.deps.notificationService,
+                        chatService: session.deps.chatService
+                    )
+                    await viewModel.load()
+                    await loadCareRequests()
+                }
+            }
             .task {
                 viewModel.replaceServicesIfNeeded(
                     bookingService: session.deps.bookingService,

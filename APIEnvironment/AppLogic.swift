@@ -1190,12 +1190,12 @@ struct BookingStatusPresentation {
         switch status.uppercased() {
         case "ACCEPTED", "CONFIRMED":
             base = BookingStatusPresentation(
-                localizedStatus: "Onaylandi",
+                localizedStatus: "Onaylandı",
                 statusTone: .primary,
-                paymentSummaryText: "Odeme adimi hazir",
+                paymentSummaryText: "Ödeme adımı hazır",
                 paymentSummaryTone: .primary,
-                paymentLabel: "Hazir",
-                paymentDescription: "Rezervasyon onaylandi. Uygunsa simdi checkout adimina gecip odemeyi tamamlayabilirsin.",
+                paymentLabel: "Hazır",
+                paymentDescription: "Rezervasyon onaylandı. Uygunsa şimdi checkout adımına geçip ödemeyi tamamlayabilirsin.",
                 paymentTone: .primary,
                 paymentIcon: "creditcard",
                 canPay: true,
@@ -1209,7 +1209,7 @@ struct BookingStatusPresentation {
                 paymentSummaryText: "Hizmet aktif",
                 paymentSummaryTone: .primary,
                 paymentLabel: "Aktif",
-                paymentDescription: "Rezervasyon baslatildi. Hizmet tamamlandiginda kaydi tamamlanmis olarak isaretleyebilirsin.",
+                paymentDescription: "Rezervasyon başlatıldı. Hizmet tamamlandığında kaydı tamamlanmış olarak işaretleyebilirsin.",
                 paymentTone: .primary,
                 paymentIcon: "figure.walk",
                 canPay: false,
@@ -1220,10 +1220,10 @@ struct BookingStatusPresentation {
             base = BookingStatusPresentation(
                 localizedStatus: "Beklemede",
                 statusTone: .accent,
-                paymentSummaryText: "Odeme beklemede",
+                paymentSummaryText: "Ödeme beklemede",
                 paymentSummaryTone: .accent,
                 paymentLabel: "Beklemede",
-                paymentDescription: "Rezervasyon talebin alindi. Onay sureci tamamlanirken odeme henuz beklemede.",
+                paymentDescription: "Rezervasyon talebin alındı. Onay süreci tamamlanırken ödeme henüz beklemede.",
                 paymentTone: .accent,
                 paymentIcon: "clock.badge",
                 canPay: true,
@@ -1232,12 +1232,12 @@ struct BookingStatusPresentation {
             )
         case "COMPLETED":
             base = BookingStatusPresentation(
-                localizedStatus: "Tamamlandi",
+                localizedStatus: "Tamamlandı",
                 statusTone: .primary,
-                paymentSummaryText: "Odeme tamamlandi",
+                paymentSummaryText: "Ödeme tamamlandı",
                 paymentSummaryTone: .primary,
-                paymentLabel: "Tamamlandi",
-                paymentDescription: "Bu rezervasyon tamamlanmis gorunuyor. Gerekirse ayni bakici ile yeni bir rezervasyon olusturabilirsin.",
+                paymentLabel: "Tamamlandı",
+                paymentDescription: "Bu rezervasyon tamamlanmış görünüyor. Gerekirse aynı bakıcı ile yeni bir rezervasyon oluşturabilirsin.",
                 paymentTone: .primary,
                 paymentIcon: "checkmark.circle",
                 canPay: false,
@@ -1246,12 +1246,12 @@ struct BookingStatusPresentation {
             )
         case "CANCELED", "CANCELLED":
             base = BookingStatusPresentation(
-                localizedStatus: "Iptal Edildi",
+                localizedStatus: "İptal Edildi",
                 statusTone: .danger,
-                paymentSummaryText: "Odeme kapatildi",
+                paymentSummaryText: "Ödeme kapatıldı",
                 paymentSummaryTone: .danger,
-                paymentLabel: "Kapatildi",
-                paymentDescription: "Bu rezervasyon kapatildi. Tekrar ihtiyacin olursa ayni bakici icin yeni bir takvim sec.",
+                paymentLabel: "Kapatıldı",
+                paymentDescription: "Bu rezervasyon kapatıldı. Tekrar ihtiyacın olursa aynı bakıcı için yeni bir takvim seç.",
                 paymentTone: .danger,
                 paymentIcon: "xmark.circle",
                 canPay: false,
@@ -1262,10 +1262,10 @@ struct BookingStatusPresentation {
             base = BookingStatusPresentation(
                 localizedStatus: status,
                 statusTone: .neutral,
-                paymentSummaryText: "Odeme durumu bilinmiyor",
+                paymentSummaryText: "Ödeme durumu bilinmiyor",
                 paymentSummaryTone: .neutral,
                 paymentLabel: "Bilinmiyor",
-                paymentDescription: "Odeme durumu backend tarafindan netlestiginde burada daha ayrintili bilgi gorunecek.",
+                paymentDescription: "Ödeme durumu backend tarafından netleştiğinde burada daha ayrıntılı bilgi görünecek.",
                 paymentTone: .neutral,
                 paymentIcon: "questionmark.circle",
                 canPay: false,
@@ -1282,34 +1282,34 @@ struct BookingStatusPresentation {
         switch paymentStatus.uppercased() {
         case "PAID", "SUCCEEDED", "SUCCESS":
             return withPayment(
-                summary: "Odeme tamamlandi",
+                summary: "Ödeme tamamlandı",
                 tone: .primary,
-                label: "Tamamlandi",
-                description: "Odeme backend tarafinda basarili gorunuyor.",
+                label: "Tamamlandı",
+                description: "Ödeme backend tarafında başarılı görünüyor.",
                 icon: "checkmark.circle.fill"
             )
         case "PENDING", "PROCESSING":
             return withPayment(
-                summary: "Odeme isleniyor",
+                summary: "Ödeme işleniyor",
                 tone: .accent,
-                label: "Isleniyor",
-                description: "Odeme baslatildi. Son durum backend onayi geldikce guncellenecek.",
+                label: "İşleniyor",
+                description: "Ödeme başlatıldı. Son durum backend onayı geldikçe güncellenecek.",
                 icon: "hourglass"
             )
         case "REQUIRES_ACTION", "REQUIRES_PAYMENT_METHOD", "UNPAID":
             return withPayment(
-                summary: "Odeme aksiyonu gerekiyor",
+                summary: "Ödeme aksiyonu gerekiyor",
                 tone: .accent,
                 label: "Aksiyon Gerekli",
-                description: "Odemenin tamamlanmasi icin checkout adimina geri donulmesi gerekiyor.",
+                description: "Ödemenin tamamlanması için checkout adımına geri dönülmesi gerekiyor.",
                 icon: "exclamationmark.circle"
             )
         case "FAILED", "CANCELED", "CANCELLED":
             return withPayment(
-                summary: "Odeme basarisiz",
+                summary: "Ödeme başarısız",
                 tone: .danger,
-                label: "Basarisiz",
-                description: "Odeme backend tarafinda basarisiz ya da iptal edilmis gorunuyor.",
+                label: "Başarısız",
+                description: "Ödeme backend tarafında başarısız ya da iptal edilmiş görünüyor.",
                 icon: "xmark.octagon"
             )
         default:
