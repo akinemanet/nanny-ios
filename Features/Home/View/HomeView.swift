@@ -9,6 +9,7 @@ import Combine
 
 struct HomeView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
     @AppStorage("accountPreferenceQuietHoursStart") private var quietHoursStart = "22:00"
     @AppStorage("accountPreferenceQuietHoursEnd") private var quietHoursEnd = "07:00"
@@ -157,6 +158,19 @@ struct HomeView: View {
                 guard let notification = payload.object as? AppNotification else { return }
                 Task {
                     await handleRemoteNotificationOpen(notification)
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active, session.isLoggedIn else { return }
+                Task {
+                    viewModel.replaceServicesIfNeeded(
+                        bookingService: session.deps.bookingService,
+                        providerService: session.deps.providerService,
+                        notificationService: session.deps.notificationService,
+                        chatService: session.deps.chatService
+                    )
+                    await viewModel.load()
+                    await loadCareRequests()
                 }
             }
         }
@@ -1038,11 +1052,8 @@ struct HomeView: View {
     }
 
     private func localizedService(_ service: String) -> String {
-        service
-            .replacingOccurrences(of: "_", with: " ")
-            .capitalized
-            .replacingOccurrences(of: "Babysitting", with: "Bebek Bakimi")
-            .replacingOccurrences(of: "Tutoring", with: "Ozel Ders")
+        ProviderCategoryMapper.displayLabels(from: [service]).first
+            ?? service.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private func bookingPresentation(for booking: BookingItem) -> BookingStatusPresentation {

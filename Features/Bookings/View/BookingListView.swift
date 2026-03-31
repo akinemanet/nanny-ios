@@ -134,11 +134,8 @@ struct BookingListView: View {
     }
 
     private func localizedService(_ service: String) -> String {
-        service
-            .replacingOccurrences(of: "_", with: " ")
-            .capitalized
-            .replacingOccurrences(of: "Babysitting", with: "Bebek Bakımı")
-            .replacingOccurrences(of: "Tutoring", with: "Özel Ders")
+        ProviderCategoryMapper.displayLabels(from: [service]).first
+            ?? service.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private func localizedStatus(_ status: String) -> String {
