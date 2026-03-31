@@ -114,23 +114,35 @@ struct BookingListView: View {
     }
 
     private func formattedDate(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
         let out = DateFormatter()
+        out.locale = Locale(identifier: "tr_TR")
         out.dateStyle = .medium
-        if let date = iso.date(from: value) {
+        if let date = parseISODate(value) {
             return out.string(from: date)
         }
         return value
     }
 
     private func formattedTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
         let out = DateFormatter()
+        out.locale = Locale(identifier: "tr_TR")
         out.timeStyle = .short
-        if let date = iso.date(from: value) {
+        if let date = parseISODate(value) {
             return out.string(from: date)
         }
         return value
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: value)
     }
 
     private func localizedService(_ service: String) -> String {
@@ -157,40 +169,53 @@ struct BookingListView: View {
         HStack(alignment: .top, spacing: 14) {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(DS.Colors.surface)
-                .frame(width: 72, height: 72)
+                .frame(width: 56, height: 56)
                 .overlay {
                     Image(systemName: "calendar")
-                        .font(.title3)
+                        .font(.headline)
                         .foregroundStyle(DS.Colors.primary)
                 }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(booking.provider.displayName)
-                    .font(.headline)
-                    .foregroundStyle(DS.Colors.textPrimary)
+                HStack(alignment: .top, spacing: 8) {
+                    Text(booking.provider.displayName)
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+
+                    Spacer(minLength: 8)
+
+                    if booking.totalPrice > 0 {
+                        Text(CurrencyFormatting.formattedAmount(booking.totalPrice, currencyCode: preferredCurrency))
+                            .font(.headline)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                            .lineLimit(1)
+                    }
+                }
+
                 Text(localizedService(booking.service))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(DS.Colors.textSecondary)
-                Text(formattedDate(booking.startTime))
+                    .lineLimit(1)
+
+                Text("\(formattedDate(booking.startTime)) • \(formattedTime(booking.startTime)) - \(formattedTime(booking.endTime))")
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
-                Text("\(formattedTime(booking.startTime)) - \(formattedTime(booking.endTime))")
-                    .font(.subheadline)
-                    .foregroundStyle(DS.Colors.textSecondary)
+                    .lineLimit(2)
+
                 Text(paymentStatusText(for: booking))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(paymentStatusColor(for: booking))
+                    .lineLimit(2)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 10) {
-                if booking.totalPrice > 0 {
-                    Text(CurrencyFormatting.formattedAmount(booking.totalPrice, currencyCode: preferredCurrency))
-                        .font(.headline)
-                        .foregroundStyle(DS.Colors.textPrimary)
-                }
                 statusChip(for: booking.status)
+                    .fixedSize()
             }
         }
         .padding(16)
