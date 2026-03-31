@@ -46,22 +46,23 @@ struct ChatView: View {
 
     var body: some View {
         VStack {
+            if let error = viewModel.error {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal)
+            }
+
+            profileContextBanner
+
             if viewModel.messages.isEmpty, viewModel.error == nil {
                 ContentUnavailableView(
                     "Mesaj Yok",
                     systemImage: "message",
                     description: Text("Bu konuşmada henüz mesaj yok.")
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                if let error = viewModel.error {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal)
-                }
-
-                profileContextBanner
-
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(viewModel.messages) { item in
@@ -76,54 +77,54 @@ struct ChatView: View {
                     }
                     .padding()
                 }
-
-                if viewModel.isParticipantTyping {
-                    HStack(spacing: 8) {
-                        Image(systemName: isQuietHoursActive ? "moon.zzz.fill" : "ellipsis.message.fill")
-                            .foregroundStyle(typingIndicatorTint)
-                        Text(isQuietHoursActive ? "Yaziyor, sessiz modda" : "Yaziyor...")
-                            .font(.footnote)
-                            .foregroundStyle(typingIndicatorTint)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(typingIndicatorBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .padding(.horizontal)
-                    .padding(.bottom, 4)
-                    .transition(.opacity)
-                }
-
-                Divider()
-
-                HStack {
-                    Button {
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(DS.Colors.primary)
-                    }
-
-                    TextField("Mesaj...", text: $message)
-                        .textFieldStyle(.roundedBorder)
-                        .onChange(of: message) { _, newValue in
-                            viewModel.userTypingChanged(chatID: chatID, text: newValue.trimmingCharacters(in: .whitespacesAndNewlines))
-                        }
-
-                    Button {
-                        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
-                        Task {
-                            await viewModel.sendMessage(chatID: chatID, text: trimmed)
-                        }
-                        message = ""
-                    } label: {
-                        Image(systemName: "paperplane.fill")
-                    }
-                }
-                .padding()
             }
+
+            if viewModel.isParticipantTyping {
+                HStack(spacing: 8) {
+                    Image(systemName: isQuietHoursActive ? "moon.zzz.fill" : "ellipsis.message.fill")
+                        .foregroundStyle(typingIndicatorTint)
+                    Text(isQuietHoursActive ? "Yaziyor, sessiz modda" : "Yaziyor...")
+                        .font(.footnote)
+                        .foregroundStyle(typingIndicatorTint)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(typingIndicatorBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal)
+                .padding(.bottom, 4)
+                .transition(.opacity)
+            }
+
+            Divider()
+
+            HStack {
+                Button {
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(DS.Colors.primary)
+                }
+
+                TextField("Mesaj...", text: $message)
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: message) { _, newValue in
+                        viewModel.userTypingChanged(chatID: chatID, text: newValue.trimmingCharacters(in: .whitespacesAndNewlines))
+                    }
+
+                Button {
+                    let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    Task {
+                        await viewModel.sendMessage(chatID: chatID, text: trimmed)
+                    }
+                    message = ""
+                } label: {
+                    Image(systemName: "paperplane.fill")
+                }
+            }
+            .padding()
         }
         .navigationTitle(title)
         .toolbar {
