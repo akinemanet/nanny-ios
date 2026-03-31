@@ -253,6 +253,16 @@ final class ChatService {
         )
     }
 
+    func startConversation(participantID: String) async throws -> ConversationItem {
+        let response: StartConversationResponse = try await api.request(
+            "v1/chats",
+            method: "POST",
+            body: StartConversationReq(participantUserID: participantID),
+            needsAuth: true
+        )
+        return response.conversation
+    }
+
     func sendMessage(chatID: String, text: String) async throws -> ChatMessage {
         try await api.request(
             "v1/chats/\(chatID)/messages",
@@ -316,6 +326,18 @@ final class ChatService {
 
         throw lastError ?? APIError.invalidURL
     }
+}
+
+private struct StartConversationReq: Encodable {
+    let participantUserID: String
+
+    enum CodingKeys: String, CodingKey {
+        case participantUserID = "participant_user_id"
+    }
+}
+
+private struct StartConversationResponse: Decodable {
+    let conversation: ConversationItem
 }
 
 private struct ChatUnreadSummaryResponse: Decodable {

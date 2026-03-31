@@ -559,7 +559,9 @@ struct BookingDetailView: View {
 
                 HStack(spacing: 10) {
                     Button {
-                        openConversation()
+                        Task {
+                            await openConversation()
+                        }
                     } label: {
                         iconCircle("message")
                     }
@@ -748,7 +750,7 @@ struct BookingDetailView: View {
         }
     }
 
-    private func openConversation() {
+    private func openConversation() async {
         if let conversation = DashboardRouting.conversation(
             forProviderID: booking.provider.id,
             participantName: resolvedProviderDisplayName,
@@ -756,7 +758,13 @@ struct BookingDetailView: View {
         ) {
             selectedConversation = conversation
         } else {
-            showChatList = true
+            do {
+                let conversation = try await session.deps.chatService.startConversation(participantID: booking.provider.id)
+                conversations.insert(conversation, at: 0)
+                selectedConversation = conversation
+            } catch {
+                showChatList = true
+            }
         }
     }
 
