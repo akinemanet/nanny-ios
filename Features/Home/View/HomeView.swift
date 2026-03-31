@@ -1171,6 +1171,10 @@ struct HomeView: View {
         do {
             careRequests = try await session.deps.bookingService.listParentCareRequests(parentUserID: userID)
             careRequestError = nil
+        } catch is CancellationError {
+            return
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            return
         } catch {
             careRequestError = error.localizedDescription
         }
@@ -1351,6 +1355,10 @@ final class HomeDashboardViewModel: ObservableObject {
             favorites = snapshot.favorites
             notifications = snapshot.notifications
             conversations = snapshot.conversations
+        } catch is CancellationError {
+            return
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            return
         } catch {
             errorMessage = error.localizedDescription
         }
