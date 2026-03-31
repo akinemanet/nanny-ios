@@ -328,16 +328,16 @@ struct BookingDetailView: View {
                 if let contextBadgeText, !contextBadgeText.isEmpty {
                     detailContextBadge(text: contextBadgeText)
                 }
-                detailRow("Hizmet", value: booking.service.replacingOccurrences(of: "_", with: " ").capitalized)
-                detailRow("Bakıcı", value: booking.provider.displayName)
+                detailRow("Hizmet", value: localizedService(booking.service))
+                detailRow("Bakıcı", value: resolvedProviderDisplayName)
                 if let address = booking.address {
                     detailRow("Adres", value: address)
                 }
                 if let cancellationNotice {
-                    infoCard(title: "Durum Guncellendi", message: cancellationNotice)
+                    infoCard(title: "Durum Güncellendi", message: cancellationNotice)
                 }
                 if let rescheduleNotice {
-                    infoCard(title: "Rezervasyon Guncellendi", message: rescheduleNotice)
+                    infoCard(title: "Rezervasyon Güncellendi", message: rescheduleNotice)
                 }
                 if let cancellationError {
                     Text(cancellationError)
@@ -395,7 +395,7 @@ struct BookingDetailView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: DS.Size.buttonHeight)
                             } else {
-                                Text("Tarih ve Saati Degistir")
+                                Text("Tarih ve Saati Değiştir")
                                     .frame(maxWidth: .infinity)
                                     .frame(height: DS.Size.buttonHeight)
                             }
@@ -500,7 +500,7 @@ struct BookingDetailView: View {
                     }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(booking.provider.displayName)
+                    Text(resolvedProviderDisplayName)
                         .font(.title2.bold())
                         .foregroundStyle(DS.Colors.textPrimary)
                     Text(localizedStatus(effectiveStatus))
@@ -593,7 +593,7 @@ struct BookingDetailView: View {
             HStack {
                 Image(systemName: paymentStatusIcon)
                     .foregroundStyle(paymentStatusTint)
-                Text("Odeme Durumu")
+                Text("Ödeme Durumu")
                     .font(.headline)
                     .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
@@ -693,10 +693,9 @@ struct BookingDetailView: View {
 
     private var hourlyRateText: String {
         guard booking.totalPrice > 0 else { return "-" }
-        let iso = ISO8601DateFormatter()
         guard
-            let start = iso.date(from: booking.startTime),
-            let end = iso.date(from: booking.endTime)
+            let start = parseISODate(booking.startTime),
+            let end = parseISODate(booking.endTime)
         else {
             return "-"
         }
@@ -715,24 +714,28 @@ struct BookingDetailView: View {
     }
 
     private func detailFormattedDate(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
         let out = DateFormatter()
         out.dateFormat = "EEEE,\nd MMM yyyy"
         out.locale = Locale(identifier: "tr_TR")
-        if let date = iso.date(from: value) {
+        if let date = parseISODate(value) {
             return out.string(from: date)
         }
         return value
     }
 
     private func detailFormattedTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
         let out = DateFormatter()
+        out.locale = Locale(identifier: "tr_TR")
         out.timeStyle = .short
-        if let date = iso.date(from: value) {
+        if let date = parseISODate(value) {
             return out.string(from: date)
         }
         return value
+    }
+
+    private func localizedService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first
+            ?? service.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private func localizedStatus(_ status: String) -> String {
@@ -740,10 +743,9 @@ struct BookingDetailView: View {
     }
 
     private func bookingDuration(_ booking: BookingItem) -> String {
-        let iso = ISO8601DateFormatter()
         guard
-            let start = iso.date(from: booking.startTime),
-            let end = iso.date(from: booking.endTime)
+            let start = parseISODate(booking.startTime),
+            let end = parseISODate(booking.endTime)
         else {
             return "-"
         }
@@ -758,6 +760,26 @@ struct BookingDetailView: View {
             return "\(hours)h"
         }
         return "\(minutes)m"
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: value)
+    }
+
+    private var resolvedProviderDisplayName: String {
+        let trimmed = booking.provider.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed.lowercased() == "provider" || trimmed.lowercased() == "bakici" {
+            return "Bakıcı"
+        }
+        return trimmed
     }
 
     private var canPay: Bool {
@@ -835,14 +857,14 @@ struct BookingDetailView: View {
     private var rebookProvider: BrowseProvider {
         BrowseProvider(
             id: booking.provider.id,
-            displayName: booking.provider.displayName,
+            displayName: resolvedProviderDisplayName,
             rating: 4.8,
             hourlyRate: booking.provider.hourlyRate ?? max(booking.totalPrice, 500),
             payoutStatus: "APPROVED",
             age: 30,
             gender: "Kadın",
-            locationName: booking.address ?? "Konum daha sonra netlesecek",
-            distanceText: "Daha once rezervasyon yapildi",
+            locationName: booking.address ?? "Konum daha sonra netleşecek",
+            distanceText: "Daha önce rezervasyon yapıldı",
             photoURL: nil,
             latitude: nil,
             longitude: nil,
@@ -867,7 +889,7 @@ struct BookingDetailView: View {
             let updatedBooking = canceledBooking ?? makeCancelledBooking()
             localStatusOverride = updatedBooking.status
             localPaymentStatusOverride = updatedBooking.paymentStatus
-            cancellationNotice = "Iptal talebin backend tarafina iletildi ve rezervasyon durumu guncellendi."
+            cancellationNotice = "İptal talebin backend tarafına iletildi ve rezervasyon durumu güncellendi."
             onBookingUpdated(updatedBooking)
         } catch let error as APIError {
             switch error {
@@ -876,7 +898,7 @@ struct BookingDetailView: View {
                     let updatedBooking = makeCancelledBooking()
                     localStatusOverride = updatedBooking.status
                     localPaymentStatusOverride = updatedBooking.paymentStatus
-                    cancellationNotice = "Iptal endpoint'i backend tarafinda henuz acik degil. Rezervasyon bu cihazda iptal edildi olarak gosteriliyor."
+                    cancellationNotice = "İptal endpoint'i backend tarafında henüz açık değil. Rezervasyon bu cihazda iptal edildi olarak gösteriliyor."
                     onBookingUpdated(updatedBooking)
                 } else {
                     cancellationError = error.localizedDescription
@@ -934,7 +956,7 @@ struct BookingDetailView: View {
                     localEndTimeOverride = updatedBooking.endTime
                     localStatusOverride = updatedBooking.status
                     localPaymentStatusOverride = updatedBooking.paymentStatus
-                    rescheduleNotice = "Yeniden planlama endpoint'i backend tarafinda henuz acik degil. Yeni tarih bu cihazda guncellendi olarak gosteriliyor."
+                    rescheduleNotice = "Yeniden planlama endpoint'i backend tarafında henüz açık değil. Yeni tarih bu cihazda güncellendi olarak gösteriliyor."
                     onBookingUpdated(updatedBooking)
                     showReschedule = false
                 } else {
