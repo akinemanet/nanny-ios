@@ -95,35 +95,35 @@ struct BookingRecord: Decodable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case parentUserID = "parent_user_id"
-        case providerUserID = "provider_user_id"
+        case parentUserID = "parentUserId"
+        case providerUserID = "providerUserId"
         case service
-        case startAt = "start_at"
-        case endAt = "end_at"
-        case bookingType = "booking_type"
+        case startAt
+        case endAt
+        case bookingType
         case status
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-        case totalPrice = "total_price"
+        case createdAt
+        case updatedAt
+        case totalPrice
         case totalPriceAlt = "price_total"
         case totalPriceLegacy = "amount"
         case address
-        case paymentStatus = "payment_status"
+        case paymentStatus
         case paymentStatusAlt = "checkout_status"
         case paymentStatusLegacy = "payment_state"
-        case providerDisplayName = "provider_display_name"
+        case providerDisplayName
         case providerDisplayNameAlt = "provider_name"
-        case providerHourlyRate = "provider_hourly_rate"
+        case providerHourlyRate
         case providerHourlyRateAlt = "hourly_rate"
-        case familyDisplayName = "family_display_name"
+        case familyDisplayName
         case familyDisplayNameAlt = "parent_display_name"
-        case familyAbout = "family_about"
+        case familyAbout
         case familyAboutAlt = "parent_about"
-        case familyLocationName = "family_location_name"
+        case familyLocationName
         case familyLocationNameAlt = "parent_location_name"
-        case familyLocationLatitude = "family_location_latitude"
+        case familyLocationLatitude
         case familyLocationLatitudeAlt = "parent_location_latitude"
-        case familyLocationLongitude = "family_location_longitude"
+        case familyLocationLongitude
         case familyLocationLongitudeAlt = "parent_location_longitude"
         case provider
         case parent
@@ -143,11 +143,11 @@ struct BookingRecord: Decodable, Identifiable {
 
         id = try container.decode(String.self, forKey: .id)
         parentUserID = try container.decodeIfPresent(String.self, forKey: .parentUserID)
-        service = try container.decode(String.self, forKey: .service)
-        startAt = try container.decode(String.self, forKey: .startAt)
-        endAt = try container.decode(String.self, forKey: .endAt)
-        bookingType = try container.decode(String.self, forKey: .bookingType)
-        status = try container.decode(String.self, forKey: .status)
+        service = try container.decodeIfPresent(String.self, forKey: .service) ?? "BABYSITTER"
+        startAt = try container.decodeIfPresent(String.self, forKey: .startAt) ?? ""
+        endAt = try container.decodeIfPresent(String.self, forKey: .endAt) ?? ""
+        bookingType = try container.decodeIfPresent(String.self, forKey: .bookingType) ?? "HOURLY"
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? "PENDING"
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
         updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
         totalPrice =
@@ -167,7 +167,7 @@ struct BookingRecord: Decodable, Identifiable {
             try container.decodeIfPresent(String.self, forKey: .providerUserID)
             ?? providerContainer?.id
             ?? providerContainer?.userID
-            ?? ""
+            ?? "provider"
         providerDisplayName =
             try container.decodeIfPresent(String.self, forKey: .providerDisplayName)
             ?? container.decodeIfPresent(String.self, forKey: .providerDisplayNameAlt)
