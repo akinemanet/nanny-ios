@@ -265,12 +265,17 @@ final class BookingService {
                 "v1/care-requests/my",
                 method: "GET",
                 body: Optional<Empty>.none,
-                needsAuth: true
+                needsAuth: true,
+                cachePolicy: .reloadIgnoringLocalCacheData
             )
             return response.items.sorted { $0.startAt < $1.startAt }
         } catch let error as APIError {
             switch error {
             case .http(let code, _) where code == 404 || code == 405:
+                return loadCareRequests()
+                    .filter { $0.parentUserID == parentUserID }
+                    .sorted { $0.startAt < $1.startAt }
+            case .decoding:
                 return loadCareRequests()
                     .filter { $0.parentUserID == parentUserID }
                     .sorted { $0.startAt < $1.startAt }
@@ -286,12 +291,21 @@ final class BookingService {
                 "v1/care-requests/my",
                 method: "GET",
                 body: Optional<Empty>.none,
-                needsAuth: true
+                needsAuth: true,
+                cachePolicy: .reloadIgnoringLocalCacheData
             )
             return response.items.sorted { $0.startAt < $1.startAt }
         } catch let error as APIError {
             switch error {
             case .http(let code, _) where code == 404 || code == 405:
+                return loadCareRequests()
+                    .filter { request in
+                        request.isOpen
+                            || request.assignedProviderUserID == providerUserID
+                            || request.candidates.contains(where: { $0.providerUserID == providerUserID })
+                    }
+                    .sorted { $0.startAt < $1.startAt }
+            case .decoding:
                 return loadCareRequests()
                     .filter { request in
                         request.isOpen
@@ -345,7 +359,8 @@ final class BookingService {
                     endAt: iso.string(from: input.endAt),
                     locationName: locationName
                 ),
-                needsAuth: true
+                needsAuth: true,
+                cachePolicy: .reloadIgnoringLocalCacheData
             )
             return response.request
         } catch let error as APIError {
@@ -387,7 +402,8 @@ final class BookingService {
                 "v1/care-requests/\(requestID)/apply",
                 method: "POST",
                 body: Optional<Empty>.none,
-                needsAuth: true
+                needsAuth: true,
+                cachePolicy: .reloadIgnoringLocalCacheData
             )
             return response.request
         } catch let error as APIError {
@@ -433,7 +449,8 @@ final class BookingService {
                 "v1/care-requests/\(requestID)/candidates/\(candidateProviderUserID)/approve",
                 method: "POST",
                 body: Optional<Empty>.none,
-                needsAuth: true
+                needsAuth: true,
+                cachePolicy: .reloadIgnoringLocalCacheData
             )
             return response.request
         } catch let error as APIError {
