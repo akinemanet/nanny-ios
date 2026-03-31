@@ -16,6 +16,7 @@ private enum ProviderRequestFilter: String, CaseIterable {
 
 struct ProviderDashboardView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("providerAvailabilitySelections") private var storedAvailabilitySelections = "{}"
     @AppStorage("providerAvailabilityWeeklyTemplates") private var storedWeeklyTemplates = "{}"
     @AppStorage("providerAvailabilityFocusedDate") private var focusedAvailabilityDate = ""
@@ -260,11 +261,18 @@ struct ProviderDashboardView: View {
             .navigationDestination(isPresented: $showAvailabilityManager) {
                 ProviderCalendarView()
             }
-            .task {
+            .task(id: currentProviderID) {
+                guard session.isLoggedIn else { return }
                 await loadProviderSummary()
             }
             .refreshable {
                 await loadProviderSummary()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active, session.isLoggedIn else { return }
+                Task {
+                    await loadProviderSummary()
+                }
             }
         }
     }
