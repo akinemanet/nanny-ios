@@ -26,13 +26,14 @@ final class BookingService {
     }
 
     func listBookings() async throws -> [BookingItem] {
+        let providerIndex = (try? await fetchProviderIndex()) ?? [:]
         let response: BookingsResponse = try await api.request(
             "v1/bookings/my",
             method: "GET",
             body: Optional<Empty>.none,
             needsAuth: true
         )
-        return response.items.map(Self.toBookingItem)
+        return response.items.map { Self.toBookingItem($0, providerIndex: providerIndex) }
     }
 
     func providerTodayBookings(
@@ -506,20 +507,43 @@ final class BookingService {
         return .http(statusCode, payload)
     }
 
+    private func fetchProviderIndex() async throws -> [String: BrowseProvider] {
+        let response: ProvidersResponse = try await api.request(
+            "v1/providers",
+            method: "GET",
+            body: Optional<Empty>.none,
+            needsAuth: false,
+            cachePolicy: .reloadIgnoringLocalCacheData
+        )
+
+        return Dictionary(uniqueKeysWithValues: response.providers.map { ($0.id, $0) })
+    }
+
     private static func toBookingItem(_ record: BookingRecord) -> BookingItem {
-        BookingItem(
+        toBookingItem(record, providerIndex: [:])
+    }
+
+    private static func toBookingItem(_ record: BookingRecord, providerIndex: [String: BrowseProvider]) -> BookingItem {
+        let enrichedProvider = providerIndex[record.providerUserID]
+        let durationHours = bookingDurationHours(startAt: record.startAt, endAt: record.endAt)
+        let resolvedHourlyRate = record.providerHourlyRate ?? enrichedProvider?.hourlyRate
+        let resolvedTotalPrice = record.totalPrice
+            ?? resolvedHourlyRate.map { max($0 * durationHours, $0) }
+            ?? 0
+
+        return BookingItem(
             id: record.id,
             service: record.service,
             status: record.status,
             startTime: record.startAt,
             endTime: record.endAt,
-            totalPrice: record.totalPrice ?? 0,
-            address: record.address,
+            totalPrice: resolvedTotalPrice,
+            address: record.address ?? enrichedProvider?.locationName,
             paymentStatus: record.paymentStatus,
             provider: BookingProvider(
                 id: record.providerUserID,
-                displayName: record.providerDisplayName ?? "Provider",
-                hourlyRate: record.providerHourlyRate
+                displayName: record.providerDisplayName ?? enrichedProvider?.displayName ?? "Bakıcı",
+                hourlyRate: resolvedHourlyRate
             ),
             parentUserID: record.parentUserID,
             familyDisplayName: record.familyDisplayName,
@@ -528,6 +552,31 @@ final class BookingService {
             familyLocationLatitude: record.familyLocationLatitude,
             familyLocationLongitude: record.familyLocationLongitude
         )
+    }
+
+    private static func bookingDurationHours(startAt: String, endAt: String) -> Int {
+        guard
+            let start = parseISODate(startAt),
+            let end = parseISODate(endAt),
+            end > start
+        else {
+            return 1
+        }
+
+        let rawHours = end.timeIntervalSince(start) / 3600
+        return max(Int(rawHours.rounded(.up)), 1)
+    }
+
+    private static func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: value)
     }
 }
 
