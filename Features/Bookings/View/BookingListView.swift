@@ -183,6 +183,21 @@ struct BookingListView: View {
                         .foregroundStyle(DS.Colors.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
+                        .layoutPriority(1)
+
+                    Spacer(minLength: 8)
+
+                    statusChip(for: booking.status)
+                        .fixedSize()
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(localizedService(booking.service))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .layoutPriority(1)
 
                     Spacer(minLength: 8)
 
@@ -191,32 +206,23 @@ struct BookingListView: View {
                             .font(.headline)
                             .foregroundStyle(DS.Colors.textPrimary)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                     }
                 }
-
-                Text(localizedService(booking.service))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .lineLimit(1)
 
                 Text("\(formattedDate(booking.startTime)) • \(formattedTime(booking.startTime)) - \(formattedTime(booking.endTime))")
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                 Text(paymentStatusText(for: booking))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(paymentStatusColor(for: booking))
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 10) {
-                statusChip(for: booking.status)
-                    .fixedSize()
-            }
         }
         .padding(16)
         .background(.white)
