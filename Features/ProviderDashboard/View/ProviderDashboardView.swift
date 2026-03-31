@@ -417,7 +417,7 @@ struct ProviderDashboardView: View {
                                     Text(localizedCareService(request.service))
                                         .font(.headline)
                                         .foregroundStyle(DS.Colors.textPrimary)
-                                    Text(request.parentDisplayName)
+                                    Text(resolvedParentDisplayName(for: request))
                                         .font(.subheadline.weight(.medium))
                                         .foregroundStyle(DS.Colors.textSecondary)
                                     Text("\(formattedDate(request.startAt)) • \(formattedTime(request.startAt)) - \(formattedTime(request.endAt))")
@@ -700,8 +700,7 @@ struct ProviderDashboardView: View {
     }
 
     private func formattedDate(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
-        guard let date = iso.date(from: value) else { return value }
+        guard let date = parseISODate(value) else { return value }
 
         let output = DateFormatter()
         output.locale = Locale(identifier: "tr_TR")
@@ -710,8 +709,7 @@ struct ProviderDashboardView: View {
     }
 
     private func formattedTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
-        guard let date = iso.date(from: value) else { return value }
+        guard let date = parseISODate(value) else { return value }
 
         let output = DateFormatter()
         output.locale = Locale(identifier: "tr_TR")
@@ -720,9 +718,36 @@ struct ProviderDashboardView: View {
     }
 
     private func isToday(_ value: String) -> Bool {
-        let iso = ISO8601DateFormatter()
-        guard let date = iso.date(from: value) else { return false }
+        guard let date = parseISODate(value) else { return false }
         return Calendar.current.isDateInToday(date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
+    }
+
+    private func resolvedParentDisplayName(for request: CareRequestItem) -> String {
+        let trimmed = request.parentDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == request.parentPhone || isLikelyPhoneNumber(trimmed) {
+            return "Aile"
+        }
+        return trimmed
+    }
+
+    private func isLikelyPhoneNumber(_ value: String) -> Bool {
+        let allowed = CharacterSet(charactersIn: "+0123456789")
+        let scalarView = value.unicodeScalars
+        guard !scalarView.isEmpty, scalarView.allSatisfy(allowed.contains) else { return false }
+        let digits = value.filter(\.isNumber)
+        return digits.count >= 10
     }
 
     private func providerHasApplied(to request: CareRequestItem) -> Bool {

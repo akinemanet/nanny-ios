@@ -33,6 +33,7 @@ struct HomeView: View {
     @State private var careRequestNotice: String?
     @State private var isLoadingCareRequests = false
     @State private var showCreateCareRequest = false
+    @State private var selectedCandidateProvider: BrowseProvider?
 
     @MainActor
     init() {
@@ -104,6 +105,9 @@ struct HomeView: View {
                         viewModel.applyConversationUpdate(updatedConversation)
                     }
                 )
+            }
+            .navigationDestination(item: $selectedCandidateProvider) { provider in
+                NannyProfileView(provider: provider)
             }
             .sheet(isPresented: $showCheckout, onDismiss: {
                 Task {
@@ -356,9 +360,33 @@ struct HomeView: View {
                                     ForEach(request.candidates) { candidate in
                                         HStack {
                                             VStack(alignment: .leading, spacing: 2) {
-                                                Text(candidate.providerDisplayName)
-                                                    .font(.subheadline.weight(.semibold))
-                                                    .foregroundStyle(DS.Colors.textPrimary)
+                                                Button {
+                                                    selectedCandidateProvider = BrowseProvider(
+                                                        id: candidate.providerUserID,
+                                                        displayName: candidate.providerDisplayName,
+                                                        rating: 0,
+                                                        hourlyRate: 0,
+                                                        payoutStatus: "PENDING",
+                                                        age: 0,
+                                                        gender: "",
+                                                        locationName: "",
+                                                        distanceText: "",
+                                                        photoURL: nil,
+                                                        latitude: nil,
+                                                        longitude: nil,
+                                                        categories: [],
+                                                        reviewCount: 0,
+                                                        completedSittings: 0,
+                                                        availableDates: [],
+                                                        availableStartHour: 9,
+                                                        availableEndHour: 18
+                                                    )
+                                                } label: {
+                                                    Text(candidate.providerDisplayName)
+                                                        .font(.subheadline.weight(.semibold))
+                                                        .foregroundStyle(DS.Colors.primary)
+                                                }
+                                                .buttonStyle(.plain)
                                                 Text("Aday oldu: \(formattedTime(candidate.appliedAt))")
                                                     .font(.caption)
                                                     .foregroundStyle(DS.Colors.textSecondary)
@@ -928,30 +956,23 @@ struct HomeView: View {
     }
 
     private func formattedDate(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
+        guard let date = parseISODate(value) else { return value }
         let out = DateFormatter()
         out.locale = Locale(identifier: "tr_TR")
         out.dateStyle = .medium
-        if let date = iso.date(from: value) {
-            return out.string(from: date)
-        }
-        return value
+        return out.string(from: date)
     }
 
     private func formattedTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
+        guard let date = parseISODate(value) else { return value }
         let out = DateFormatter()
         out.locale = Locale(identifier: "tr_TR")
         out.timeStyle = .short
-        if let date = iso.date(from: value) {
-            return out.string(from: date)
-        }
-        return value
+        return out.string(from: date)
     }
 
     private func formattedConversationTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
-        guard let date = iso.date(from: value) else { return value }
+        guard let date = parseISODate(value) else { return value }
 
         let calendar = Calendar(identifier: .gregorian)
         let formatter = DateFormatter()
@@ -966,6 +987,18 @@ struct HomeView: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
     }
 
     private func conversationInitials(for conversation: ConversationItem) -> String {

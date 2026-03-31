@@ -224,7 +224,7 @@ struct ProviderOnboardingProfileUploadState: Codable {
     let criminalRecordStatus: String?
     let approvalStatus: String?
 }
-struct BrowseProvider: Codable, Identifiable {
+struct BrowseProvider: Codable, Identifiable, Hashable {
     let id: String
     let displayName: String
     let rating: Double
