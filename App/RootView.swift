@@ -158,6 +158,8 @@ private struct ProviderRootView: View {
 }
 
 private struct ProviderMainTabView: View {
+    @EnvironmentObject private var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
     let account: ProviderAccount?
 
     var body: some View {
@@ -174,15 +176,31 @@ private struct ProviderMainTabView: View {
                 Label("Müsaitlik", systemImage: "calendar")
             }
 
-            ChatListView()
-                .tabItem {
-                    Label("Mesajlar", systemImage: "message")
-                }
+            if let messageBadgeValue {
+                ChatListView()
+                    .tabItem {
+                        Label("Mesajlar", systemImage: "message")
+                    }
+                    .badge(messageBadgeValue)
+            } else {
+                ChatListView()
+                    .tabItem {
+                        Label("Mesajlar", systemImage: "message")
+                    }
+            }
 
-            NotificationsView()
-                .tabItem {
-                    Label("Bildirimler", systemImage: "bell")
-                }
+            if let notificationBadgeValue {
+                NotificationsView()
+                    .tabItem {
+                        Label("Bildirimler", systemImage: "bell")
+                    }
+                    .badge(notificationBadgeValue)
+            } else {
+                NotificationsView()
+                    .tabItem {
+                        Label("Bildirimler", systemImage: "bell")
+                    }
+            }
 
             AccountView()
                 .tabItem {
@@ -193,6 +211,23 @@ private struct ProviderMainTabView: View {
         .toolbarBackground(.white, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarColorScheme(.light, for: .tabBar)
+        .task {
+            await session.refreshInboxState()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task {
+                await session.refreshInboxState()
+            }
+        }
+    }
+
+    private var messageBadgeValue: Int? {
+        session.unreadMessageCount > 0 ? session.unreadMessageCount : nil
+    }
+
+    private var notificationBadgeValue: Int? {
+        session.unreadNotificationCount > 0 ? session.unreadNotificationCount : nil
     }
 }
 

@@ -624,6 +624,17 @@ struct AppNotification: Decodable, Identifiable {
     }
 }
 
+extension AppNotification {
+    var isMessageNotification: Bool {
+        let haystack = "\(title) \(body) \(type ?? "")"
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "tr_TR"))
+            .lowercased()
+        return haystack.contains("mesaj")
+            || haystack.contains("sohbet")
+            || haystack.contains("chat")
+    }
+}
+
 struct ConversationsResponse: Decodable {
     let conversations: [ConversationItem]
 }
