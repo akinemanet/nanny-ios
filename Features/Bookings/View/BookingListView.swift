@@ -334,6 +334,9 @@ struct BookingDetailView: View {
     @State private var localPaymentStatusOverride: String?
     @State private var localStartTimeOverride: String?
     @State private var localEndTimeOverride: String?
+    @State private var conversations: [ConversationItem] = []
+    @State private var selectedConversation: ConversationItem?
+    @State private var showChatList = false
     @State private var cancellationNotice: String?
     @State private var cancellationError: String?
     @State private var rescheduleNotice: String?
@@ -468,6 +471,12 @@ struct BookingDetailView: View {
         .background(DS.Colors.background.ignoresSafeArea())
         .navigationTitle("Rezervasyon Detayı")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $selectedConversation) { conversation in
+            ChatView(chatID: conversation.id, title: conversation.participantName)
+        }
+        .navigationDestination(isPresented: $showChatList) {
+            ChatListView()
+        }
         .navigationDestination(isPresented: $showRebook) {
             BookingCalendarView(provider: rebookProvider)
         }
@@ -510,6 +519,9 @@ struct BookingDetailView: View {
         } message: {
             Text("Önce backend iptal endpoint'i denenecek. Sunucuda bu akış hazır değilse uygulama lokal durum güncellemesiyle devam edecek.")
         }
+        .task {
+            await loadConversations()
+        }
     }
 
     private func header(for booking: BookingItem) -> some View {
@@ -546,7 +558,13 @@ struct BookingDetailView: View {
                 Spacer()
 
                 HStack(spacing: 10) {
-                    iconCircle("message")
+                    Button {
+                        openConversation()
+                    } label: {
+                        iconCircle("message")
+                    }
+                    .buttonStyle(.plain)
+
                     iconCircle("phone")
                 }
             }
@@ -720,6 +738,26 @@ struct BookingDetailView: View {
             .background(.white)
             .clipShape(Circle())
             .overlay(Circle().stroke(DS.Colors.border, lineWidth: 1))
+    }
+
+    private func loadConversations() async {
+        do {
+            conversations = try await session.deps.chatService.listConversations().conversations
+        } catch {
+            conversations = []
+        }
+    }
+
+    private func openConversation() {
+        if let conversation = DashboardRouting.conversation(
+            forProviderID: booking.provider.id,
+            participantName: resolvedProviderDisplayName,
+            conversations: conversations
+        ) {
+            selectedConversation = conversation
+        } else {
+            showChatList = true
+        }
     }
 
     private var hourlyRateText: String {
