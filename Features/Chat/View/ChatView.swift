@@ -245,6 +245,6 @@ struct ChatView: View {
         if !trimmedAbout.isEmpty {
             return trimmedAbout
         }
-        return familyLocationName
+        return StoredLocation.localizedDisplayName(familyLocationName)
     }
 }
