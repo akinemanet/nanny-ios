@@ -160,8 +160,19 @@ struct NotificationsView: View {
                                 Spacer()
                             }
                             .padding(.vertical, 6)
+                            .padding(.horizontal, 2)
+                            .padding(14)
+                            .background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .stroke(DS.Colors.border.opacity(0.55), lineWidth: 1)
+                            }
                         }
                         .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             if !item.read {
                                 Button("Okundu") {
@@ -180,6 +191,7 @@ struct NotificationsView: View {
                         }
                     }
                 }
+                .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .background(DS.Colors.background)
             }
