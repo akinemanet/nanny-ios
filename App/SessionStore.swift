@@ -22,10 +22,18 @@ final class SessionStore: ObservableObject {
     private var inboxRefreshTask: Task<Void, Never>?
     private var knownUnreadMessageNotificationIDs: Set<String> = []
     private var hasPrimedUnreadMessageState = false
+    private var cancellables: Set<AnyCancellable> = []
+
+    private enum PushTokenSyncKeys {
+        static let currentToken = "pushCurrentFCMToken"
+        static let lastSyncedToken = "pushLastSyncedFCMToken"
+        static let lastSyncedUserID = "pushLastSyncedFCMUserID"
+    }
 
     init(deps: AppDependencies) {
         self.deps = deps
         self.isLoggedIn = deps.tokenStore.getToken() != nil
+        observePushTokenUpdates()
     }
 
     func bootstrap() async {
@@ -42,6 +50,7 @@ final class SessionStore: ObservableObject {
         do {
             me = try await deps.auth.me()
             isLoggedIn = true
+            await syncStoredPushTokenIfNeeded()
             startInboxRefreshLoop()
             await refreshInboxState()
         } catch {
@@ -133,6 +142,40 @@ final class SessionStore: ObservableObject {
         knownUnreadMessageNotificationIDs = []
         hasPrimedUnreadMessageState = false
         updateApplicationBadgeCount()
+    }
+
+    private func observePushTokenUpdates() {
+        NotificationCenter.default.publisher(for: .didReceivePushRegistrationToken)
+            .compactMap { $0.userInfo?["token"] as? String }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] token in
+                guard let self else { return }
+                Task { await self.registerPushTokenIfNeeded(token) }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func syncStoredPushTokenIfNeeded() async {
+        let defaults = UserDefaults.standard
+        guard let token = defaults.string(forKey: PushTokenSyncKeys.currentToken), !token.isEmpty else { return }
+        await registerPushTokenIfNeeded(token)
+    }
+
+    private func registerPushTokenIfNeeded(_ token: String) async {
+        guard isLoggedIn, let userID = me?.user.id, !token.isEmpty else { return }
+
+        let defaults = UserDefaults.standard
+        let lastSyncedToken = defaults.string(forKey: PushTokenSyncKeys.lastSyncedToken)
+        let lastSyncedUserID = defaults.string(forKey: PushTokenSyncKeys.lastSyncedUserID)
+        guard lastSyncedToken != token || lastSyncedUserID != userID else { return }
+
+        do {
+            try await deps.notificationService.registerPushToken(token, platform: "ios")
+            defaults.set(token, forKey: PushTokenSyncKeys.lastSyncedToken)
+            defaults.set(userID, forKey: PushTokenSyncKeys.lastSyncedUserID)
+        } catch {
+            // Keep the token locally; a later bootstrap/refresh can retry syncing.
+        }
     }
 
     private func updateApplicationBadgeCount() {

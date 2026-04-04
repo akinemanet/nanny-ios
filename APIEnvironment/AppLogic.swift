@@ -9,6 +9,7 @@ import Foundation
 
 extension Notification.Name {
     static let appDidOpenRemoteNotification = Notification.Name("appDidOpenRemoteNotification")
+    static let didReceivePushRegistrationToken = Notification.Name("didReceivePushRegistrationToken")
 }
 
 enum DashboardNotificationDestination: Equatable {

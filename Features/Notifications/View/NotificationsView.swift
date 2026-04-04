@@ -151,7 +151,7 @@ struct NotificationsView: View {
 
                                     HStack(spacing: 6) {
                                         Image(systemName: destinationIcon(for: item))
-                                        Text(item.createdAt)
+                                        Text(formattedNotificationTimestamp(item.createdAt))
                                     }
                                     .font(.caption)
                                     .foregroundStyle(DS.Colors.textSecondary)
@@ -513,6 +513,43 @@ struct NotificationsView: View {
         }
     }
 
+    private func formattedNotificationTimestamp(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+
+        let calendar = Calendar.current
+        let locale = Locale(identifier: "tr_TR")
+
+        if calendar.isDateInToday(date) {
+            return date.formatted(.dateTime.locale(locale).hour().minute())
+        }
+
+        if calendar.isDateInYesterday(date) {
+            let timeText = date.formatted(.dateTime.locale(locale).hour().minute())
+            return "Dün \(timeText)"
+        }
+
+        return date.formatted(
+            .dateTime
+                .locale(locale)
+                .day()
+                .month(.wide)
+                .hour()
+                .minute()
+        )
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractionalFormatter.date(from: value) {
+            return date
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
+    }
+
     private enum ProviderNotificationCategory {
         case requests
         case operations
@@ -560,6 +597,13 @@ struct NotificationsView: View {
 
 final class NotificationService {
     private struct Empty: Encodable {}
+    private struct RegisterPushTokenReq: Encodable {
+        let token: String
+        let platform: String
+    }
+    private struct PushTokenMutationResponse: Decodable {
+        let ok: Bool
+    }
     private let api: APIClient
 
     init(api: APIClient) {
@@ -685,6 +729,15 @@ final class NotificationService {
         }
 
         throw lastError ?? APIError.invalidURL
+    }
+
+    func registerPushToken(_ token: String, platform: String) async throws {
+        let _: PushTokenMutationResponse = try await api.request(
+            "v1/me/push-token",
+            method: "POST",
+            body: RegisterPushTokenReq(token: token, platform: platform),
+            needsAuth: true
+        )
     }
 
     func sendBookingStatusNotification(

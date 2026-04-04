@@ -3,6 +3,10 @@ import FirebaseCore
 import FirebaseMessaging
 import UserNotifications
 
+private enum PushTokenStorageKeys {
+    static let currentFCMToken = "pushCurrentFCMToken"
+}
+
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
@@ -92,6 +96,13 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 
 extension AppDelegate: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        _ = fcmToken
+        guard let fcmToken, !fcmToken.isEmpty else { return }
+
+        UserDefaults.standard.set(fcmToken, forKey: PushTokenStorageKeys.currentFCMToken)
+        NotificationCenter.default.post(
+            name: .didReceivePushRegistrationToken,
+            object: nil,
+            userInfo: ["token": fcmToken]
+        )
     }
 }
