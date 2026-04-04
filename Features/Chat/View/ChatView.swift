@@ -10,6 +10,7 @@ import Combine
 
 struct ChatView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.openURL) private var openURL
     @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
     @AppStorage("accountPreferenceQuietHoursStart") private var quietHoursStart = "22:00"
     @AppStorage("accountPreferenceQuietHoursEnd") private var quietHoursEnd = "07:00"
@@ -23,6 +24,7 @@ struct ChatView: View {
     let onConversationUpdated: ((ConversationItem) -> Void)?
 
     @State private var message = ""
+    @State private var callErrorMessage: String?
     @StateObject private var viewModel: ChatViewModel
 
     init(
@@ -129,9 +131,28 @@ struct ChatView: View {
         .navigationTitle(title)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Image(systemName: "video.fill")
-                Image(systemName: "phone.fill")
+                Button {
+                    startCall(using: "facetime")
+                } label: {
+                    Image(systemName: "video.fill")
+                }
+
+                Button {
+                    startCall(using: "tel")
+                } label: {
+                    Image(systemName: "phone.fill")
+                }
             }
+        }
+        .alert("Arama Başlatılamadı", isPresented: Binding(
+            get: { callErrorMessage != nil },
+            set: { if !$0 { callErrorMessage = nil } }
+        )) {
+            Button("Tamam", role: .cancel) {
+                callErrorMessage = nil
+            }
+        } message: {
+            Text(callErrorMessage ?? "")
         }
         .task {
             viewModel.replaceServiceIfNeeded(session.deps.chatService)
@@ -148,6 +169,32 @@ struct ChatView: View {
         .onReceive(viewModel.$latestConversationUpdate.compactMap { $0 }) { conversation in
             onConversationUpdated?(conversation)
         }
+    }
+
+    private func startCall(using scheme: String) {
+        guard let phone = normalizedDialablePhone(from: title) else {
+            callErrorMessage = "Bu kişi için aranabilir bir telefon numarası bulunamadı."
+            return
+        }
+
+        guard let url = URL(string: "\(scheme)://\(phone)") else {
+            callErrorMessage = "Arama bağlantısı oluşturulamadı."
+            return
+        }
+
+        openURL(url) { accepted in
+            if !accepted {
+                callErrorMessage = scheme == "facetime"
+                    ? "FaceTime başlatılamadı. Cihazda FaceTime kapalı olabilir."
+                    : "Telefon araması başlatılamadı."
+            }
+        }
+    }
+
+    private func normalizedDialablePhone(from text: String) -> String? {
+        let allowed = Set("+0123456789")
+        let cleaned = String(text.filter { allowed.contains($0) })
+        return cleaned.count >= 10 ? cleaned : nil
     }
 
     private var profileContextBanner: some View {
