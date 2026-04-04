@@ -102,6 +102,19 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    func createCall(participantName: String, status: String) async {
+        do {
+            let created = try await service.createCall(
+                participantName: participantName,
+                direction: "OUTGOING",
+                status: status
+            )
+            calls.insert(created, at: 0)
+        } catch {
+            // Call history should not block the native dialer/FaceTime handoff.
+        }
+    }
+
     func markConversationRead(chatID: String) async -> Bool {
         do {
             try await service.markConversationRead(chatID: chatID)
@@ -281,6 +294,19 @@ final class ChatService {
         )
     }
 
+    func createCall(participantName: String, direction: String, status: String) async throws -> CallItem {
+        try await api.request(
+            "v1/calls",
+            method: "POST",
+            body: CreateCallReq(
+                participantName: participantName,
+                direction: direction,
+                status: status
+            ),
+            needsAuth: true
+        )
+    }
+
     func markConversationRead(chatID: String) async throws {
         let candidates: [(path: String, method: String)] = [
             ("v1/chats/\(chatID)/read", "POST"),
@@ -338,6 +364,12 @@ private struct StartConversationReq: Encodable {
 
 private struct StartConversationResponse: Decodable {
     let conversation: ConversationItem
+}
+
+private struct CreateCallReq: Encodable {
+    let participantName: String
+    let direction: String
+    let status: String
 }
 
 private struct ChatUnreadSummaryResponse: Decodable {

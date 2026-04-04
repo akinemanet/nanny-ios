@@ -187,6 +187,14 @@ struct ChatView: View {
                 callErrorMessage = scheme == "facetime"
                     ? "FaceTime başlatılamadı. Cihazda FaceTime kapalı olabilir."
                     : "Telefon araması başlatılamadı."
+                return
+            }
+
+            Task {
+                await viewModel.createCall(
+                    participantName: title,
+                    status: scheme == "facetime" ? "VIDEO" : "VOICE"
+                )
             }
         }
     }

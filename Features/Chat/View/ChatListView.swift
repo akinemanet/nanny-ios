@@ -158,24 +158,42 @@ struct ChatListView: View {
                             Button {
                                 showCallScreen = true
                             } label: {
-                                HStack {
+                                HStack(alignment: .top, spacing: 12) {
                                     Circle()
-                                        .fill(Color.gray.opacity(0.3))
+                                        .fill(callStatusColor(for: call).opacity(0.14))
                                         .frame(width: 48, height: 48)
+                                        .overlay {
+                                            Image(systemName: callIcon(for: call))
+                                                .foregroundStyle(callStatusColor(for: call))
+                                        }
 
-                                    VStack(alignment: .leading) {
+                                    VStack(alignment: .leading, spacing: 6) {
                                         Text(call.participantName)
                                             .font(.headline)
-                                        Text(call.direction.capitalized)
-                                            .foregroundStyle(call.status.uppercased() == "MISSED" ? .red : .green)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+
+                                        HStack(spacing: 8) {
+                                            Text(localizedCallDirection(call.direction))
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(DS.Colors.textSecondary)
+
+                                            Text(localizedCallStatus(call.status))
+                                                .font(.caption2.bold())
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(callStatusColor(for: call).opacity(0.14))
+                                                .foregroundStyle(callStatusColor(for: call))
+                                                .clipShape(Capsule())
+                                        }
+
+                                        Text(formattedConversationTimestamp(call.createdAt))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
                                     }
 
                                     Spacer()
-
-                                    Text(formattedConversationTimestamp(call.createdAt))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
                                 }
+                                .padding(.vertical, 4)
                             }
                             .buttonStyle(.plain)
                         }
@@ -236,6 +254,54 @@ struct ChatListView: View {
 
     private var unreadBadgeForeground: Color {
         isQuietHoursActive ? .indigo : .white
+    }
+
+    private func localizedCallDirection(_ value: String) -> String {
+        switch value.uppercased() {
+        case "INCOMING":
+            return "Gelen"
+        case "OUTGOING":
+            return "Giden"
+        case "MISSED":
+            return "Cevapsız"
+        default:
+            return "Arama"
+        }
+    }
+
+    private func localizedCallStatus(_ value: String) -> String {
+        switch value.uppercased() {
+        case "VIDEO":
+            return "Görüntülü"
+        case "VOICE":
+            return "Sesli"
+        case "MISSED":
+            return "Cevapsız"
+        case "COMPLETED":
+            return "Tamamlandı"
+        default:
+            return value.capitalized
+        }
+    }
+
+    private func callIcon(for call: CallItem) -> String {
+        switch call.status.uppercased() {
+        case "VIDEO":
+            return "video.fill"
+        default:
+            return call.direction.uppercased() == "INCOMING" ? "phone.arrow.down.left.fill" : "phone.fill"
+        }
+    }
+
+    private func callStatusColor(for call: CallItem) -> Color {
+        switch call.status.uppercased() {
+        case "MISSED":
+            return .red
+        case "VIDEO":
+            return .purple
+        default:
+            return .green
+        }
     }
 
     private func formattedConversationTimestamp(_ value: String) -> String {
