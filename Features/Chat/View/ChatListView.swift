@@ -137,7 +137,7 @@ struct ChatListView: View {
                                     Spacer()
 
                                     VStack(alignment: .trailing, spacing: 6) {
-                                        Text(chat.lastMessageAt)
+                                        Text(formattedConversationTimestamp(chat.lastMessageAt))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                         if chat.unreadCount > 0 {
@@ -172,7 +172,7 @@ struct ChatListView: View {
 
                                     Spacer()
 
-                                    Text(call.createdAt)
+                                    Text(formattedConversationTimestamp(call.createdAt))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -236,6 +236,44 @@ struct ChatListView: View {
 
     private var unreadBadgeForeground: Color {
         isQuietHoursActive ? .indigo : .white
+    }
+
+    private func formattedConversationTimestamp(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+
+        let now = Date()
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+
+        if calendar.isDate(date, inSameDayAs: now) {
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return formatter.string(from: date)
+        }
+
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) {
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return "Dün \(formatter.string(from: date))"
+        }
+
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let basic = ISO8601DateFormatter()
+        basic.formatOptions = [.withInternetDateTime]
+        return basic.date(from: value)
     }
 
     private var providerConversationFilterBar: some View {
