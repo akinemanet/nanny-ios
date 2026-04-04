@@ -59,7 +59,7 @@ struct ChatListView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "moon.zzz.fill")
                             .foregroundStyle(.indigo)
-                        Text("Sessiz saatler aktif. Okunmamis sohbetler daha yumuşak vurguyla gösteriliyor.")
+                        Text("Sessiz saatler aktif. Okunmamış sohbetler daha yumuşak vurguyla gösteriliyor.")
                             .font(.footnote)
                             .foregroundStyle(DS.Colors.textSecondary)
                     }

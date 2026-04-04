@@ -83,7 +83,7 @@ struct ChatView: View {
                 HStack(spacing: 8) {
                     Image(systemName: isQuietHoursActive ? "moon.zzz.fill" : "ellipsis.message.fill")
                         .foregroundStyle(typingIndicatorTint)
-                    Text(isQuietHoursActive ? "Yaziyor, sessiz modda" : "Yaziyor...")
+                    Text(isQuietHoursActive ? "Yazıyor, sessiz modda" : "Yazıyor...")
                         .font(.footnote)
                         .foregroundStyle(typingIndicatorTint)
                 }
@@ -237,7 +237,7 @@ struct ChatView: View {
         if !familyDisplayName.isEmpty {
             return "\(familyDisplayName) profili aktif"
         }
-        return "Profil baglami hazir"
+        return "Profil bağlamı hazır"
     }
 
     private var resolvedFamilyBannerSubtitle: String {
