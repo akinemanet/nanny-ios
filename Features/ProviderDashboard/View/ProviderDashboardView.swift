@@ -409,7 +409,7 @@ struct ProviderDashboardView: View {
                     systemImage: "figure.2.and.child.holdinghands"
                 )
             } else {
-                ForEach(visibleCareRequests.prefix(4)) { request in
+                ForEach(visibleCareRequests) { request in
                     AppCard {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(alignment: .top) {
