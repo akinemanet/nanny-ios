@@ -990,6 +990,10 @@ struct HomeView: View {
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
                     .multilineTextAlignment(.center)
+                Text(emptyCardSuggestedStep(for: title))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(DS.Colors.primary)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
@@ -999,12 +1003,15 @@ struct HomeView: View {
     private func errorCard(message: String) -> some View {
         AppCard {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Veriler yüklenemedi")
+                Text("Şu anda yüklenemedi")
                     .font(.headline)
                     .foregroundStyle(.red)
                 Text(message)
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
+                Text("Önerilen adım: Birkaç saniye sonra tekrar dene. Sorun sürerse ekranı yenile.")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(DS.Colors.primary)
                 Button("Tekrar Dene") {
                     Task {
                         await viewModel.load()
@@ -1014,6 +1021,28 @@ struct HomeView: View {
                 .foregroundStyle(DS.Colors.primary)
             }
         }
+    }
+
+    private func emptyCardSuggestedStep(for title: String) -> String {
+        let normalized = title.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "tr_TR")).lowercased()
+
+        if normalized.contains("talep") {
+            return "Önerilen adım: Yeni bir talep oluşturup başvuruları burada takip et."
+        }
+        if normalized.contains("rezervasyon") {
+            return "Önerilen adım: Uygun bakıcıları keşfedip yeni bir rezervasyon başlat."
+        }
+        if normalized.contains("favori") {
+            return "Önerilen adım: Beğendiğin bir profili favorilere ekleyip burada hızlıca ulaş."
+        }
+        if normalized.contains("konusma") || normalized.contains("konuşma") {
+            return "Önerilen adım: Bir bakıcıyla mesajlaşmaya başladığında son konuşmalar burada görünür."
+        }
+        if normalized.contains("bildirim") {
+            return "Önerilen adım: Yeni mesajlar ve rezervasyon gelişmeleri burada toplanır."
+        }
+
+        return "Önerilen adım: İlgili işlemi başlatınca bu alan otomatik olarak dolacak."
     }
 
     private func secondaryActionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {

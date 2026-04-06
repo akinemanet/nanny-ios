@@ -87,7 +87,7 @@ struct ChatListView: View {
 
                     if selectedTab == 0, filteredConversations.isEmpty, viewModel.error == nil {
                         emptyState(
-                            title: isProvider ? "Aktif konuşma yok" : "Sohbet Yok",
+                            title: isProvider ? "Aktif konuşma yok" : "Sohbet yok",
                             systemImage: "message",
                             description: isProvider
                                 ? "Ailelerle mesajlaştığında konuşmaların burada görünecek."
@@ -99,7 +99,7 @@ struct ChatListView: View {
 
                     if selectedTab == 1, viewModel.calls.isEmpty, viewModel.error == nil {
                         emptyState(
-                            title: "Arama Yok",
+                            title: "Arama yok",
                             systemImage: "phone",
                             description: "Henüz hiç arama geçmişin yok."
                         )
@@ -376,6 +376,10 @@ struct ChatListView: View {
                 .font(.subheadline)
                 .foregroundStyle(DS.Colors.textSecondary)
                 .multilineTextAlignment(.center)
+            Text("Önerilen adım: Yeni bir mesaj ya da arama başladığında burada kolayca devam edebilirsin.")
+                .font(.footnote.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.Colors.primary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)

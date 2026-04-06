@@ -84,7 +84,7 @@ struct NotificationsView: View {
 
                     if filteredItems.isEmpty, errorMessage == nil {
                         emptyState(
-                            title: isProvider ? "Bildirim yok" : "Bildirim Yok",
+                            title: isProvider ? "Bildirim yok" : "Bildirim yok",
                             systemImage: "bell",
                             description: isProvider
                                 ? "Yeni talepler ve operasyon bildirimleri burada görünecek."
@@ -599,6 +599,10 @@ struct NotificationsView: View {
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(DS.Colors.textSecondary)
+            Text("Önerilen adım: Yeni gelişmeler oldukça bu ekran otomatik olarak dolacak.")
+                .font(.footnote.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.Colors.primary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)

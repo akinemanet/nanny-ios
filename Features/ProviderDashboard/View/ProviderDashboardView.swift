@@ -1169,12 +1169,32 @@ struct ProviderDashboardView: View {
                 .font(.footnote)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(DS.Colors.textSecondary)
+            Text(providerEmptySuggestedStep(for: title))
+                .font(.footnote.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.Colors.primary)
         }
         .frame(maxWidth: .infinity)
         .padding()
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(radius: 3)
+    }
+
+    private func providerEmptySuggestedStep(for title: String) -> String {
+        let normalized = title.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "tr_TR")).lowercased()
+
+        if normalized.contains("program") {
+            return "Önerilen adım: Takvimini açık tut, uygun olduğun saatler doldukça burada görünür."
+        }
+        if normalized.contains("bekleyen") || normalized.contains("talep") {
+            return "Önerilen adım: Takvimini güncel tut, yeni aile talepleri geldiğinde burada inceleyebilirsin."
+        }
+        if normalized.contains("acik aile talebi") || normalized.contains("açık aile talebi") {
+            return "Önerilen adım: Yeni talepler için paneli yenile ya da birazdan tekrar kontrol et."
+        }
+
+        return "Önerilen adım: Yeni hareket olduğunda bu alan otomatik olarak dolacak."
     }
 
     private func handleProviderDecision(for booking: BookingItem, status: String) async {
