@@ -216,6 +216,22 @@ struct BookingListView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
+                if !bookingActivityCues(for: booking).isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(bookingActivityCues(for: booking), id: \.self) { cue in
+                                Text(cue)
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(DS.Colors.primary.opacity(0.10))
+                                    .foregroundStyle(DS.Colors.primary)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+
                 Text(paymentStatusText(for: booking))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(paymentStatusColor(for: booking))
@@ -244,6 +260,27 @@ struct BookingListView: View {
 
     private func paymentStatusColor(for booking: BookingItem) -> Color {
         toneColor(for: BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus).paymentSummaryTone)
+    }
+
+    private func bookingActivityCues(for booking: BookingItem) -> [String] {
+        var cues: [String] = []
+
+        if let start = parseISODate(booking.startTime) {
+            if Calendar.current.isDateInToday(start) {
+                cues.append("Bugün")
+            } else if Date().timeIntervalSince(start) < 0, start.timeIntervalSinceNow < 24 * 60 * 60 {
+                cues.append("Yaklaşıyor")
+            }
+        }
+
+        let presentation = BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus)
+        if presentation.canPay {
+            cues.append("Ödeme bekliyor")
+        } else if booking.status.uppercased() == "ACCEPTED" {
+            cues.append("Hazır")
+        }
+
+        return Array(cues.prefix(2))
     }
 
     private func toneColor(for tone: BookingPresentationTone) -> Color {

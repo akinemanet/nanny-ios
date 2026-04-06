@@ -1000,6 +1000,22 @@ struct ProviderDashboardView: View {
                 }
             }
 
+            if !providerBookingActivityCues(for: booking).isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(providerBookingActivityCues(for: booking), id: \.self) { cue in
+                            Text(cue)
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(DS.Colors.primary.opacity(0.10))
+                                .foregroundStyle(DS.Colors.primary)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+
             HStack(spacing: 8) {
                 Image(systemName: "person.text.rectangle")
                     .foregroundStyle(DS.Colors.accent)
@@ -1168,6 +1184,29 @@ struct ProviderDashboardView: View {
             }
         }
         .shadow(radius: 3)
+    }
+
+    private func providerBookingActivityCues(for booking: BookingItem) -> [String] {
+        var cues: [String] = []
+
+        if let start = parseISODate(booking.startTime) {
+            if Calendar.current.isDateInToday(start) {
+                cues.append("Bugün")
+            } else if Date().timeIntervalSince(start) < 0, start.timeIntervalSinceNow < 24 * 60 * 60 {
+                cues.append("Yaklaşıyor")
+            }
+
+            if Date().timeIntervalSince(start) < 0, start.timeIntervalSinceNow < 2 * 60 * 60 {
+                cues.append("Saat yaklaştı")
+            }
+        }
+
+        let presentation = BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus)
+        if presentation.canPay {
+            cues.append("Ödeme bekliyor")
+        }
+
+        return Array(cues.prefix(2))
     }
 
     private func providerSecondaryActionButton(

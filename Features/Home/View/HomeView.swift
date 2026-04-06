@@ -963,6 +963,22 @@ struct HomeView: View {
                         .clipShape(Capsule())
                 }
 
+                if !bookingActivityCues(for: booking).isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(bookingActivityCues(for: booking), id: \.self) { cue in
+                                Text(cue)
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(DS.Colors.primary.opacity(0.10))
+                                    .foregroundStyle(DS.Colors.primary)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+
                 HStack(spacing: 10) {
                     secondaryActionButton(
                         title: "Rezervasyonu Aç",
@@ -1199,6 +1215,26 @@ struct HomeView: View {
 
     private func bookingPresentation(for booking: BookingItem) -> BookingStatusPresentation {
         BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus)
+    }
+
+    private func bookingActivityCues(for booking: BookingItem) -> [String] {
+        var cues: [String] = []
+
+        if let start = parseISODate(booking.startTime) {
+            if Calendar.current.isDateInToday(start) {
+                cues.append("Bugün")
+            } else if Date().timeIntervalSince(start) < 0, start.timeIntervalSinceNow < 24 * 60 * 60 {
+                cues.append("Yaklaşıyor")
+            }
+        }
+
+        if bookingPresentation(for: booking).canPay {
+            cues.append("Ödeme bekliyor")
+        } else if booking.status.uppercased() == "ACCEPTED" {
+            cues.append("Hazır")
+        }
+
+        return Array(cues.prefix(2))
     }
 
     private func toneColor(for tone: BookingPresentationTone) -> Color {
