@@ -624,6 +624,15 @@ struct HomeView: View {
                                             .foregroundStyle(conversationAccent(for: conversation))
                                             .clipShape(Capsule())
                                     }
+                                    if let activityCue = conversationActivityCue(for: conversation) {
+                                        Text(activityCue)
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(DS.Colors.accent.opacity(0.12))
+                                            .foregroundStyle(DS.Colors.accent)
+                                            .clipShape(Capsule())
+                                    }
 
                                     Text(conversation.lastMessage)
                                         .font(.subheadline)
@@ -724,6 +733,15 @@ struct HomeView: View {
                                             .foregroundStyle(dashboardNotificationTint(for: item))
                                             .clipShape(Capsule())
                                     }
+                                    if let activityCue = notificationActivityCue(for: item) {
+                                        Text(activityCue)
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(DS.Colors.accent.opacity(0.12))
+                                            .foregroundStyle(DS.Colors.accent)
+                                            .clipShape(Capsule())
+                                    }
                                     familyContextLine
                                     Text(item.createdAt)
                                         .font(.caption)
@@ -816,6 +834,19 @@ struct HomeView: View {
 
     private func dashboardNotificationProximityBadge(for item: AppNotification) -> String? {
         FamilyNotificationPresentation.proximityBadgeText(from: item.body)
+    }
+
+    private func notificationActivityCue(for item: AppNotification) -> String? {
+        if !item.read {
+            return "Yeni gelişme"
+        }
+
+        guard let date = parseISODate(item.createdAt) else { return nil }
+        if Date().timeIntervalSince(date) < 6 * 60 * 60 {
+            return "Yakın zamanda geldi"
+        }
+
+        return nil
     }
 
     private var unreadNotificationBackground: Color {
@@ -1129,6 +1160,19 @@ struct HomeView: View {
         if let participantID = conversation.participantID,
            viewModel.favorites.contains(where: { $0.providerId == participantID }) {
             return "Favori Bakıcı"
+        }
+
+        return nil
+    }
+
+    private func conversationActivityCue(for conversation: ConversationItem) -> String? {
+        if conversation.unreadCount > 0 {
+            return "Yeni mesaj"
+        }
+
+        guard let date = parseISODate(conversation.lastMessageAt) else { return nil }
+        if Date().timeIntervalSince(date) < 6 * 60 * 60 {
+            return "Az önce hareket oldu"
         }
 
         return nil

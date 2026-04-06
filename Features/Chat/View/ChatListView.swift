@@ -129,6 +129,15 @@ struct ChatListView: View {
                                     VStack(alignment: .leading) {
                                         Text(chat.participantName)
                                             .font(.headline)
+                                        if let cue = conversationActivityCue(for: chat) {
+                                            Text(cue)
+                                                .font(.caption2.bold())
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(DS.Colors.accent.opacity(0.12))
+                                                .foregroundStyle(DS.Colors.accent)
+                                                .clipShape(Capsule())
+                                        }
                                         Text(chat.lastMessage)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
@@ -254,6 +263,19 @@ struct ChatListView: View {
 
     private var unreadBadgeForeground: Color {
         isQuietHoursActive ? .indigo : .white
+    }
+
+    private func conversationActivityCue(for chat: ConversationItem) -> String? {
+        if chat.unreadCount > 0 {
+            return "Yeni mesaj"
+        }
+
+        guard let date = parseISODate(chat.lastMessageAt) else { return nil }
+        if Date().timeIntervalSince(date) < 6 * 60 * 60 {
+            return "Az önce hareket oldu"
+        }
+
+        return nil
     }
 
     private func localizedCallDirection(_ value: String) -> String {

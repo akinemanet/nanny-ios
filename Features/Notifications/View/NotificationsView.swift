@@ -141,6 +141,15 @@ struct NotificationsView: View {
                                             .foregroundStyle(notificationAccentColor(for: item))
                                             .clipShape(Capsule())
                                     }
+                                    if let activityCue = notificationActivityCue(for: item) {
+                                        Text(activityCue)
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(DS.Colors.accent.opacity(0.12))
+                                            .foregroundStyle(DS.Colors.accent)
+                                            .clipShape(Capsule())
+                                    }
 
                                     HStack(spacing: 6) {
                                         Image(systemName: "person.text.rectangle")
@@ -468,6 +477,19 @@ struct NotificationsView: View {
 
     private func notificationProximityBadge(for item: AppNotification) -> String? {
         FamilyNotificationPresentation.proximityBadgeText(from: item.body)
+    }
+
+    private func notificationActivityCue(for item: AppNotification) -> String? {
+        if !item.read {
+            return "Yeni gelişme"
+        }
+
+        guard let date = parseISODate(item.createdAt) else { return nil }
+        if Date().timeIntervalSince(date) < 6 * 60 * 60 {
+            return "Yakın zamanda geldi"
+        }
+
+        return nil
     }
 
     private var quietHoursNotice: some View {
