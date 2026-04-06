@@ -10,6 +10,7 @@ import Foundation
 extension Notification.Name {
     static let appDidOpenRemoteNotification = Notification.Name("appDidOpenRemoteNotification")
     static let didReceivePushRegistrationToken = Notification.Name("didReceivePushRegistrationToken")
+    static let didReceiveAPNSToken = Notification.Name("didReceiveAPNSToken")
 }
 
 enum DashboardNotificationDestination: Equatable {
@@ -311,20 +312,20 @@ struct BookingStatusNotificationContent: Equatable {
         switch status.uppercased() {
         case "CONFIRMED":
             return BookingStatusNotificationContent(
-                title: "Bakici Onay Verdi",
-                body: "\(providerName), \(context) talebini onayladi.",
+                title: "Bakıcı Onay Verdi",
+                body: "\(providerName), \(context) talebini onayladı.",
                 type: "booking_confirmed"
             )
         case "CANCELED":
             return BookingStatusNotificationContent(
-                title: "Bakici Reddetti",
+                title: "Bakıcı Reddetti",
                 body: "\(providerName), \(context) talebini reddetti.",
                 type: "booking_rejected"
             )
         default:
             return BookingStatusNotificationContent(
-                title: "Hizmet Tamamlandi",
-                body: "\(providerName), \(context) hizmetini tamamladigini bildirdi.",
+                title: "Hizmet Tamamlandı",
+                body: "\(providerName), \(context) hizmetini tamamladığını bildirdi.",
                 type: "booking_completed"
             )
         }
@@ -381,8 +382,8 @@ struct FamilyNotificationPresentation: Equatable {
             return FamilyNotificationPresentation(
                 tintKey: "green",
                 icon: "checkmark.seal.fill",
-                badgeText: "Hizli Donus",
-                highlightText: "Bakicin talebine hizli yanit verdi."
+                badgeText: "Hızlı Dönüş",
+                highlightText: "Bakıcın talebine hızlı yanıt verdi."
             )
         case "booking_rejected":
             return FamilyNotificationPresentation(

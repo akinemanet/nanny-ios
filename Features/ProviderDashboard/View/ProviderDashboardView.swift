@@ -370,7 +370,7 @@ struct ProviderDashboardView: View {
             if filteredPendingRequests.isEmpty {
                 emptyProviderCard(
                     title: "Bekleyen talep yok",
-                    message: "Yeni rezervasyon talepleri geldiginde burada gorunecek.",
+                    message: "Yeni rezervasyon talepleri geldiğinde burada görünecek.",
                     systemImage: "tray"
                 )
             } else {

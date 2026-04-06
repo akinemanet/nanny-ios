@@ -947,7 +947,7 @@ struct HomeView: View {
     private func errorCard(message: String) -> some View {
         AppCard {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Veriler yuklenemedi")
+                Text("Veriler yüklenemedi")
                     .font(.headline)
                     .foregroundStyle(.red)
                 Text(message)
