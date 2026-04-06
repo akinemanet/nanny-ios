@@ -1131,7 +1131,7 @@ struct HomeView: View {
         } catch {
             let message = error.localizedDescription
             if message.localizedCaseInsensitiveContains("iyzico keys not configured") {
-                checkoutError = "Ödeme şu anda kullanılamıyor. Ödeme sağlayıcısı backend tarafında henüz yapılandırılmamış."
+                checkoutError = "Ödeme şu anda kullanılamıyor. Lütfen kısa süre sonra tekrar dene."
             } else if message.localizedCaseInsensitiveContains("http 500") {
                 checkoutError = "Ödeme bağlantısı şu anda oluşturulamıyor. Lütfen daha sonra tekrar dene."
             } else {
@@ -1257,7 +1257,7 @@ struct HomeView: View {
                 parentPhone: user.phone,
                 locationName: familyLocationName
             )
-            careRequestNotice = "Talebin yayınlandı. Aday olan bakıcılar burada görünecek."
+            careRequestNotice = "Talebin yayınlandı. Bakıcılar başvurdukça burada görüp içlerinden birini seçebilirsin."
             careRequestError = nil
             showCreateCareRequest = false
             await loadCareRequests()
@@ -1276,7 +1276,7 @@ struct HomeView: View {
                 candidateProviderUserID: candidate.providerUserID,
                 parentUserID: userID
             )
-            careRequestNotice = "\(candidate.providerDisplayName) talebin için seçildi."
+            careRequestNotice = "\(candidate.providerDisplayName) seçildi. Sıradaki adımda rezervasyon ve ödeme detayları açılacak."
             careRequestError = nil
             await loadCareRequests()
         } catch {

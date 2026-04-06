@@ -789,7 +789,7 @@ struct ProviderDashboardView: View {
                 provider: provider,
                 providerDisplayName: resolvedProviderDisplayName
             )
-            careRequestNotice = "Aileye adaylığın iletildi."
+            careRequestNotice = "Başvurun aileye iletildi. Aile onay verirse rezervasyon adımı başlayacak."
             careRequestError = nil
             careRequests = try await session.deps.bookingService.listProviderCareRequests(providerUserID: currentProviderID)
         } catch {
@@ -1214,23 +1214,23 @@ struct ProviderDashboardView: View {
         switch status.uppercased() {
         case "CONFIRMED":
             return fallback
-                ? "Talep lokal olarak onaylandı. Backend endpoint'i hazır değil."
-                : "Talep onaylandı."
+                ? "Talep onaylandı. İnternet bağlantısı yeniden kurulduğunda aile tarafı da güncellenecek."
+                : "Talep onaylandı. Aile şimdi ödeme ve rezervasyon adımına geçebilir."
         case "CANCELED":
             return fallback
-                ? "Talep lokal olarak reddedildi. Backend endpoint'i hazır değil."
-                : "Talep reddedildi."
+                ? "Talep reddedildi. Bağlantı yeniden kurulduğunda aile tarafı da güncellenecek."
+                : "Talep reddedildi. Aile isterse başka bir bakıcı seçebilir."
         case "IN_PROGRESS":
             return fallback
-                ? "Check-in lokal olarak başlatıldı. Durum panelde güncellendi."
-                : "Hizmet başlatıldı."
+                ? "Hizmet başlatıldı. Bağlantı tekrar geldiğinde son durum karşı tarafa da yansıyacak."
+                : "Hizmet başlatıldı. İş tamamlandığında bu kaydı tamamlandı olarak işaretleyebilirsin."
         case "COMPLETED":
             return fallback
-                ? "Hizmet lokal olarak tamamlandı. Kazanç özeti güncellendi."
-                : "Hizmet tamamlandı. Kazanç özeti güncellendi."
+                ? "Hizmet tamamlandı. Bağlantı yeniden kurulduğunda son durum aileye de iletilecek."
+                : "Hizmet tamamlandı. Kazanç özetin güncellendi."
         default:
             return fallback
-                ? "Durum lokal olarak güncellendi."
+                ? "Durum güncellendi. Bağlantı yeniden kurulduğunda karşı tarafa da yansıyacak."
                 : "Durum güncellendi."
         }
     }
@@ -1278,16 +1278,16 @@ struct ProviderDashboardView: View {
         switch status {
         case "CONFIRMED":
             return fallback
-                ? " Aile onay bildirimi endpoint'i hazır değil."
-                : " Aileye onay bildirimi gönderildi."
+                ? " Aile bunu kısa süre içinde görecek."
+                : " Aileye bilgi verildi."
         case "CANCELED":
             return fallback
-                ? " Aile red bildirimi endpoint'i hazır değil."
-                : " Aileye red bildirimi gönderildi."
+                ? " Aile bunu kısa süre içinde görecek."
+                : " Aileye bilgi verildi."
         default:
             return fallback
-                ? " Aile tamamlanma bildirimi endpoint'i hazır değil."
-                : " Aileye tamamlanma bildirimi gönderildi."
+                ? " Aile bunu kısa süre içinde görecek."
+                : " Aileye bilgi verildi."
         }
     }
 

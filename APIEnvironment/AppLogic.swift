@@ -1194,10 +1194,10 @@ struct BookingStatusPresentation {
             base = BookingStatusPresentation(
                 localizedStatus: "Onaylandı",
                 statusTone: .primary,
-                paymentSummaryText: "Ödeme adımı hazır",
+                paymentSummaryText: "Sıradaki adım ödeme",
                 paymentSummaryTone: .primary,
                 paymentLabel: "Hazır",
-                paymentDescription: "Rezervasyon onaylandı. Uygunsa şimdi checkout adımına geçip ödemeyi tamamlayabilirsin.",
+                paymentDescription: "Rezervasyon onaylandı. Hazırsan şimdi ödeme adımına geçip rezervasyonu tamamlayabilirsin.",
                 paymentTone: .primary,
                 paymentIcon: "creditcard",
                 canPay: true,
@@ -1211,7 +1211,7 @@ struct BookingStatusPresentation {
                 paymentSummaryText: "Hizmet aktif",
                 paymentSummaryTone: .primary,
                 paymentLabel: "Aktif",
-                paymentDescription: "Rezervasyon başlatıldı. Hizmet tamamlandığında kaydı tamamlanmış olarak işaretleyebilirsin.",
+                paymentDescription: "Hizmet başladı. İş bittiğinde bu kaydı tamamlandı olarak işaretleyebilirsin.",
                 paymentTone: .primary,
                 paymentIcon: "figure.walk",
                 canPay: false,
@@ -1222,10 +1222,10 @@ struct BookingStatusPresentation {
             base = BookingStatusPresentation(
                 localizedStatus: "Beklemede",
                 statusTone: .accent,
-                paymentSummaryText: "Ödeme beklemede",
+                paymentSummaryText: "Onay bekleniyor",
                 paymentSummaryTone: .accent,
                 paymentLabel: "Beklemede",
-                paymentDescription: "Rezervasyon talebin alındı. Onay süreci tamamlanırken ödeme henüz beklemede.",
+                paymentDescription: "Rezervasyon talebin alındı. Karşı taraf onay verdiğinde ödeme adımı açılacak.",
                 paymentTone: .accent,
                 paymentIcon: "clock.badge",
                 canPay: true,
@@ -1267,7 +1267,7 @@ struct BookingStatusPresentation {
                 paymentSummaryText: "Ödeme durumu bilinmiyor",
                 paymentSummaryTone: .neutral,
                 paymentLabel: "Bilinmiyor",
-                paymentDescription: "Ödeme durumu backend tarafından netleştiğinde burada daha ayrıntılı bilgi görünecek.",
+                paymentDescription: "Ödeme durumunu şu anda net okuyamadık. Birkaç saniye sonra tekrar kontrol edebilirsin.",
                 paymentTone: .neutral,
                 paymentIcon: "questionmark.circle",
                 canPay: false,
@@ -1287,7 +1287,7 @@ struct BookingStatusPresentation {
                 summary: "Ödeme tamamlandı",
                 tone: .primary,
                 label: "Tamamlandı",
-                description: "Ödeme backend tarafında başarılı görünüyor.",
+                description: "Ödeme tamamlandı. Rezervasyonun planlandığı şekilde devam edecek.",
                 icon: "checkmark.circle.fill"
             )
         case "PENDING", "PROCESSING":
@@ -1295,7 +1295,7 @@ struct BookingStatusPresentation {
                 summary: "Ödeme işleniyor",
                 tone: .accent,
                 label: "İşleniyor",
-                description: "Ödeme başlatıldı. Son durum backend onayı geldikçe güncellenecek.",
+                description: "Ödeme alındı ve işleniyor. Sonuç kesinleştiğinde burada güncellenecek.",
                 icon: "hourglass"
             )
         case "REQUIRES_ACTION", "REQUIRES_PAYMENT_METHOD", "UNPAID":
@@ -1311,7 +1311,7 @@ struct BookingStatusPresentation {
                 summary: "Ödeme başarısız",
                 tone: .danger,
                 label: "Başarısız",
-                description: "Ödeme backend tarafında başarısız ya da iptal edilmiş görünüyor.",
+                description: "Ödeme tamamlanmadı. İstersen tekrar deneyebilir ya da başka bir ödeme yöntemi seçebilirsin.",
                 icon: "xmark.octagon"
             )
         default:
