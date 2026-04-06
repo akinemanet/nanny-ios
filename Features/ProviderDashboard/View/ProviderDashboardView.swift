@@ -40,6 +40,7 @@ struct ProviderDashboardView: View {
     @State private var selectedConversation: ConversationItem?
     @State private var selectedBooking: BookingItem?
     @State private var showChatList = false
+    @State private var showAllCareRequests = false
     @State private var showAvailabilityManager = false
     @State private var selectedRequestFilter: ProviderRequestFilter = .all
     @State private var careRequests: [CareRequestItem] = []
@@ -258,6 +259,16 @@ struct ProviderDashboardView: View {
             .navigationDestination(isPresented: $showChatList) {
                 ChatListView()
             }
+            .navigationDestination(isPresented: $showAllCareRequests) {
+                ProviderCareRequestsListView(
+                    requests: $careRequests,
+                    currentProviderID: currentProviderID,
+                    requestActionInFlightID: requestActionInFlightID,
+                    onApply: { request in
+                        Task { await apply(to: request) }
+                    }
+                )
+            }
             .navigationDestination(isPresented: $showAvailabilityManager) {
                 ProviderCalendarView()
             }
@@ -393,6 +404,13 @@ struct ProviderDashboardView: View {
                     .font(.headline)
                     .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
+                if visibleCareRequests.count > 3 {
+                    Button("Tümünü Gör") {
+                        showAllCareRequests = true
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(DS.Colors.primary)
+                }
                 Text("\(visibleCareRequests.count)")
                     .font(.caption.bold())
                     .padding(.horizontal, 10)
@@ -409,7 +427,7 @@ struct ProviderDashboardView: View {
                     systemImage: "figure.2.and.child.holdinghands"
                 )
             } else {
-                ForEach(visibleCareRequests) { request in
+                ForEach(visibleCareRequests.prefix(3)) { request in
                     AppCard {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(alignment: .top) {
@@ -1513,5 +1531,212 @@ private struct ProviderBookingDetailView: View {
         output.locale = Locale(identifier: "tr_TR")
         output.timeStyle = .short
         return output.string(from: date)
+    }
+}
+
+private struct ProviderCareRequestsListView: View {
+    @Binding var requests: [CareRequestItem]
+    let currentProviderID: String
+    let requestActionInFlightID: String?
+    let onApply: (CareRequestItem) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Yeni talepleri burada daha rahat inceleyip hangi aileye aday olacağına karar verebilirsin.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.Colors.textSecondary)
+
+                if visibleRequests.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(visibleRequests) { request in
+                        AppCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(localizedCareService(request.service))
+                                            .font(.headline)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                        Text(resolvedParentDisplayName(for: request))
+                                            .font(.subheadline.weight(.medium))
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                        Text("\(formattedDate(request.startAt)) • \(formattedTime(request.startAt)) - \(formattedTime(request.endAt))")
+                                            .font(.caption)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    Text(statusLabel(for: request))
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(statusColor(for: request).opacity(0.14))
+                                        .foregroundStyle(statusColor(for: request))
+                                        .clipShape(Capsule())
+                                }
+
+                                HStack(spacing: 12) {
+                                    metaCard("Konum", request.locationName)
+                                    metaCard("Aday", "\(request.candidates.count)")
+                                }
+
+                                if !request.note.isEmpty {
+                                    metaCard("Not", request.note)
+                                }
+
+                                if request.assignedProviderUserID == currentProviderID {
+                                    metaCard("Durum", "Aile bu işi sana atadı.")
+                                } else if hasApplied(to: request) {
+                                    metaCard("Durum", "Bu talebe aday oldun. Ailenin onayı bekleniyor.")
+                                } else if request.isOpen {
+                                    Button {
+                                        onApply(request)
+                                    } label: {
+                                        HStack {
+                                            if requestActionInFlightID == request.id {
+                                                ProgressView()
+                                                    .tint(.white)
+                                            }
+                                            Text(requestActionInFlightID == request.id ? "Gönderiliyor" : "Aday Ol")
+                                                .frame(maxWidth: .infinity)
+                                        }
+                                        .frame(height: DS.Size.buttonHeight)
+                                        .background(DS.Colors.primary)
+                                        .foregroundStyle(.white)
+                                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(requestActionInFlightID == request.id)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .background(DS.Colors.background.ignoresSafeArea())
+        .navigationTitle("Aile Talepleri")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var visibleRequests: [CareRequestItem] {
+        requests.sorted { $0.startAt < $1.startAt }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "figure.2.and.child.holdinghands")
+                .font(.title2)
+                .foregroundStyle(DS.Colors.accent)
+            Text("Açık aile talebi yok")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+            Text("Yeni talepler geldiğinde bu ekranda tam liste halinde görünecek.")
+                .font(.footnote)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(radius: 3)
+    }
+
+    private func metaCard(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(DS.Colors.textSecondary)
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(DS.Colors.textPrimary)
+                .lineLimit(title == "Not" ? 4 : 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(DS.Colors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func resolvedParentDisplayName(for request: CareRequestItem) -> String {
+        let trimmed = request.parentDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == request.parentPhone || isLikelyPhoneNumber(trimmed) {
+            return "Aile"
+        }
+        return trimmed
+    }
+
+    private func isLikelyPhoneNumber(_ value: String) -> Bool {
+        let allowed = CharacterSet(charactersIn: "+0123456789")
+        let scalarView = value.unicodeScalars
+        guard !scalarView.isEmpty, scalarView.allSatisfy(allowed.contains) else { return false }
+        let digits = value.filter(\.isNumber)
+        return digits.count >= 10
+    }
+
+    private func hasApplied(to request: CareRequestItem) -> Bool {
+        request.candidates.contains(where: { $0.providerUserID == currentProviderID })
+    }
+
+    private func statusLabel(for request: CareRequestItem) -> String {
+        if request.assignedProviderUserID == currentProviderID {
+            return "Seçildin"
+        }
+        if hasApplied(to: request) {
+            return "Aday oldun"
+        }
+        if request.isMatched {
+            return "Dolu"
+        }
+        return "Açık"
+    }
+
+    private func statusColor(for request: CareRequestItem) -> Color {
+        if request.assignedProviderUserID == currentProviderID {
+            return .green
+        }
+        if hasApplied(to: request) {
+            return DS.Colors.primary
+        }
+        if request.isMatched {
+            return .gray
+        }
+        return .orange
+    }
+
+    private func localizedCareService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first ?? service
+    }
+
+    private func formattedDate(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "tr_TR")
+        output.dateStyle = .medium
+        return output.string(from: date)
+    }
+
+    private func formattedTime(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "tr_TR")
+        output.timeStyle = .short
+        return output.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
     }
 }
