@@ -44,7 +44,7 @@ struct NotificationsView: View {
                         .foregroundStyle(DS.Colors.textPrimary)
                     Spacer()
                     if unreadCount > 0 {
-                        Button("Tumunu Okundu Yap") {
+                        Button("Tümünü Okundu Yap") {
                             Task {
                                 await markAllAsRead()
                             }
@@ -194,7 +194,7 @@ struct NotificationsView: View {
                             }
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button("Ac") {
+                            Button("Aç") {
                                 openNotification(item)
                             }
                             .tint(DS.Colors.accent)
@@ -496,7 +496,7 @@ struct NotificationsView: View {
         HStack(spacing: 10) {
             Image(systemName: "moon.zzz.fill")
                 .foregroundStyle(.indigo)
-            Text("Sessiz saatler acik. Bildirimler burada görünmeye devam eder, ama dikkat cekici vurgular azaltilir.")
+            Text("Sessiz saatler açık. Bildirimler burada görünmeye devam eder, ama dikkat çekici vurgular azalır.")
                 .font(.footnote)
                 .foregroundStyle(DS.Colors.textSecondary)
         }

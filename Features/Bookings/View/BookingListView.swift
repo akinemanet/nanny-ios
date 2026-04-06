@@ -554,7 +554,7 @@ struct BookingDetailView: View {
                 }
             }
         } message: {
-            Text("Önce backend iptal endpoint'i denenecek. Sunucuda bu akış hazır değilse uygulama lokal durum güncellemesiyle devam edecek.")
+            Text("İptal talebin şimdi gönderilecek. İşlem şu anda tamamlanamazsa rezervasyon durumu bu cihazda güncellenecek.")
         }
         .task {
             await loadConversations()
@@ -1003,7 +1003,7 @@ struct BookingDetailView: View {
             let updatedBooking = canceledBooking ?? makeCancelledBooking()
             localStatusOverride = updatedBooking.status
             localPaymentStatusOverride = updatedBooking.paymentStatus
-            cancellationNotice = "İptal talebin backend tarafına iletildi ve rezervasyon durumu güncellendi."
+            cancellationNotice = "İptal talebin alındı ve rezervasyon durumu güncellendi."
             onBookingUpdated(updatedBooking)
         } catch let error as APIError {
             switch error {
@@ -1012,7 +1012,7 @@ struct BookingDetailView: View {
                     let updatedBooking = makeCancelledBooking()
                     localStatusOverride = updatedBooking.status
                     localPaymentStatusOverride = updatedBooking.paymentStatus
-                    cancellationNotice = "İptal endpoint'i backend tarafında henüz açık değil. Rezervasyon bu cihazda iptal edildi olarak gösteriliyor."
+                    cancellationNotice = "İptal talebin bu cihazda işlendi. Durum güncellendi."
                     onBookingUpdated(updatedBooking)
                 } else {
                     cancellationError = error.localizedDescription
@@ -1070,7 +1070,7 @@ struct BookingDetailView: View {
                     localEndTimeOverride = updatedBooking.endTime
                     localStatusOverride = updatedBooking.status
                     localPaymentStatusOverride = updatedBooking.paymentStatus
-                    rescheduleNotice = "Yeniden planlama endpoint'i backend tarafında henüz açık değil. Yeni tarih bu cihazda güncellendi olarak gösteriliyor."
+                    rescheduleNotice = "Yeni tarih ve saat bu cihazda güncellendi."
                     onBookingUpdated(updatedBooking)
                     showReschedule = false
                 } else {
@@ -1125,7 +1125,7 @@ struct BookingDetailView: View {
         } catch {
             let message = error.localizedDescription
             if message.localizedCaseInsensitiveContains("iyzico keys not configured") {
-                checkoutError = "Ödeme şu anda kullanılamıyor. Ödeme sağlayıcısı henüz backend tarafında yapılandırılmamış."
+                checkoutError = "Ödeme şu anda kullanılamıyor. Lütfen daha sonra tekrar dene."
             } else {
                 checkoutError = message
             }

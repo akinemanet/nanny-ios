@@ -1029,7 +1029,7 @@ struct ProviderDashboardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "car.fill")
                         .foregroundStyle(DS.Colors.primary)
-                    Text("Tahmini ulasim: \(estimatedTravelTime)")
+                    Text("Tahmini ulaşım: \(estimatedTravelTime)")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(DS.Colors.primary)
                     Spacer()
@@ -1109,7 +1109,7 @@ struct ProviderDashboardView: View {
                 Button {
                     selectedBooking = booking
                 } label: {
-                    Text("Detayi Ac")
+                    Text("Detayı Aç")
                         .frame(maxWidth: .infinity)
                         .frame(height: 40)
                 }
