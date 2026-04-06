@@ -88,6 +88,19 @@ struct NannyProfileView: View {
                     profileStat(ageDisplayText, "Yaş")
                 }
 
+                if !trustBadges.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Güven Göstergeleri")
+                            .font(.headline)
+                            .foregroundStyle(DS.Colors.textPrimary)
+
+                        trustBadgeFlow
+                    }
+                    .padding()
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+
                 HStack(spacing: 12) {
                     infoCard(title: "Saatlik Ücret", value: "₺\(detail?.hourlyRate ?? provider.hourlyRate) / saat")
                     infoCard(title: "Tamamlanan", value: completedSittingsText)
@@ -293,6 +306,72 @@ struct NannyProfileView: View {
         return "Bakıcı henüz deneyim bilgisini eklemedi."
     }
 
+    private var trustBadges: [ProfileTrustBadge] {
+        var badges: [ProfileTrustBadge] = []
+
+        if isVerifiedProfile {
+            badges.append(ProfileTrustBadge(
+                title: "Onaylı Profil",
+                detail: "Profil bilgileri tamamlandı",
+                systemImage: "checkmark.shield.fill",
+                tint: .green
+            ))
+        }
+
+        if ratingValue >= 4.7, reviewCountValue >= 3 {
+            badges.append(ProfileTrustBadge(
+                title: "Yüksek Memnuniyet",
+                detail: "\(reviewCountValue) yorumla güçlü puan",
+                systemImage: "star.fill",
+                tint: .orange
+            ))
+        }
+
+        if completedSittingsCount >= 10 {
+            badges.append(ProfileTrustBadge(
+                title: "Tecrübeli",
+                detail: "\(completedSittingsCount) tamamlanan iş",
+                systemImage: "figure.2.and.child.holdinghands",
+                tint: DS.Colors.primary
+            ))
+        }
+
+        if !(detail?.availability ?? []).isEmpty {
+            badges.append(ProfileTrustBadge(
+                title: "Takvimi Güncel",
+                detail: "Uygun günlerini paylaşmış",
+                systemImage: "calendar.badge.checkmark",
+                tint: .indigo
+            ))
+        }
+
+        if resolvedSkills.count >= 2 {
+            badges.append(ProfileTrustBadge(
+                title: "Çok Yönlü Destek",
+                detail: "\(resolvedSkills.count) hizmet alanı",
+                systemImage: "sparkles",
+                tint: DS.Colors.accent
+            ))
+        }
+
+        return badges
+    }
+
+    private var trustBadgeFlow: some View {
+        VStack(spacing: 10) {
+            ForEach(Array(trustBadges.chunked(into: 2).enumerated()), id: \.offset) { _, row in
+                HStack(spacing: 10) {
+                    ForEach(row) { badge in
+                        trustBadgeCard(badge)
+                    }
+                    if row.count == 1 {
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+    }
+
     private func scheduleChip(_ day: String, _ state: String) -> some View {
         VStack(spacing: 4) {
             Text(day)
@@ -306,6 +385,35 @@ struct NannyProfileView: View {
         .padding(.vertical, 10)
         .background(state == "Rezerve" ? Color.gray.opacity(0.15) : DS.Colors.primary.opacity(0.15))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func trustBadgeCard(_ badge: ProfileTrustBadge) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(badge.tint.opacity(0.14))
+                .frame(width: 36, height: 36)
+                .overlay {
+                    Image(systemName: badge.systemImage)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(badge.tint)
+                }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(badge.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text(badge.detail)
+                    .font(.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(DS.Colors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private func loadDetail() async {
@@ -417,6 +525,15 @@ struct NannyProfileView: View {
         return parts.compactMap { $0.first.map(String.init) }.joined()
     }
 
+    private var completedSittingsCount: Int {
+        detail?.completedSittings ?? provider.completedSittings
+    }
+
+    private var isVerifiedProfile: Bool {
+        let status = (detail?.payoutStatus ?? provider.payoutStatus).uppercased()
+        return status == "APPROVED" || status == "ACTIVE"
+    }
+
     private var profileAvatarGradient: LinearGradient {
         let gradients: [[Color]] = [
             [Color(red: 0.20, green: 0.54, blue: 0.90), Color(red: 0.49, green: 0.74, blue: 0.98)],
@@ -427,5 +544,22 @@ struct NannyProfileView: View {
         let name = detail?.displayName ?? provider.displayName
         let index = abs(name.hashValue) % gradients.count
         return LinearGradient(colors: gradients[index], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
+private struct ProfileTrustBadge: Identifiable {
+    let id = UUID()
+    let title: String
+    let detail: String
+    let systemImage: String
+    let tint: Color
+}
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [self] }
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
     }
 }
