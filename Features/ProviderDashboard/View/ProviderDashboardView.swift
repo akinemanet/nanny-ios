@@ -458,6 +458,10 @@ struct ProviderDashboardView: View {
                                     .clipShape(Capsule())
                             }
 
+                            if !providerLiveSignals(for: request).isEmpty {
+                                providerLiveSignalsRow(providerLiveSignals(for: request))
+                            }
+
                             HStack(spacing: 12) {
                                 careRequestMetaCard("Konum", request.locationName)
                                 careRequestMetaCard("Aday", "\(request.candidates.count)")
@@ -862,6 +866,50 @@ struct ProviderDashboardView: View {
             return .gray
         }
         return .orange
+    }
+
+    private func providerLiveSignals(for request: CareRequestItem) -> [String] {
+        var signals: [String] = []
+
+        if isRecentProviderRequestUpdate(request.createdAt) {
+            signals.append("Yeni talep")
+        }
+
+        if request.candidates.count >= 2 {
+            signals.append("İlgi yüksek")
+        } else if request.isOpen, isSameDayOrTomorrow(request.startAt) {
+            signals.append("Yakın zamanlı")
+        }
+
+        return Array(signals.prefix(2))
+    }
+
+    @ViewBuilder
+    private func providerLiveSignalsRow(_ signals: [String]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(signals, id: \.self) { signal in
+                    Text(signal)
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(DS.Colors.primary.opacity(0.10))
+                        .foregroundStyle(DS.Colors.primary)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+    }
+
+    private func isRecentProviderRequestUpdate(_ value: String) -> Bool {
+        guard let date = parseISODate(value) else { return false }
+        return Calendar.current.isDateInToday(date) || Date().timeIntervalSince(date) < 12 * 60 * 60
+    }
+
+    private func isSameDayOrTomorrow(_ value: String) -> Bool {
+        guard let date = parseISODate(value) else { return false }
+        let calendar = Calendar.current
+        return calendar.isDateInToday(date) || calendar.isDateInTomorrow(date)
     }
 
     private func providerBookingCard(
@@ -1663,6 +1711,10 @@ private struct ProviderCareRequestsListView: View {
                                         .clipShape(Capsule())
                                 }
 
+                                if !liveSignals(for: request).isEmpty {
+                                    liveSignalsRow(liveSignals(for: request))
+                                }
+
                                 HStack(spacing: 12) {
                                     metaCard("Konum", request.locationName)
                                     metaCard("Aday", "\(request.candidates.count)")
@@ -1743,6 +1795,50 @@ private struct ProviderCareRequestsListView: View {
                 }
             }
         }
+    }
+
+    private func liveSignals(for request: CareRequestItem) -> [String] {
+        var signals: [String] = []
+
+        if isRecentUpdate(request.createdAt) {
+            signals.append("Yeni talep")
+        }
+
+        if request.candidates.count >= 2 {
+            signals.append("İlgi yüksek")
+        } else if isSameDayOrTomorrow(request.startAt) {
+            signals.append("Yakın zamanlı")
+        }
+
+        return Array(signals.prefix(2))
+    }
+
+    @ViewBuilder
+    private func liveSignalsRow(_ signals: [String]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(signals, id: \.self) { signal in
+                    Text(signal)
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(DS.Colors.primary.opacity(0.10))
+                        .foregroundStyle(DS.Colors.primary)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+    }
+
+    private func isRecentUpdate(_ value: String) -> Bool {
+        guard let date = parseISODate(value) else { return false }
+        return Calendar.current.isDateInToday(date) || Date().timeIntervalSince(date) < 12 * 60 * 60
+    }
+
+    private func isSameDayOrTomorrow(_ value: String) -> Bool {
+        guard let date = parseISODate(value) else { return false }
+        let calendar = Calendar.current
+        return calendar.isDateInToday(date) || calendar.isDateInTomorrow(date)
     }
 
     private var resultsSummary: some View {

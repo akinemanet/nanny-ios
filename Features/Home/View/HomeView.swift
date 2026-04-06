@@ -392,6 +392,10 @@ struct HomeView: View {
                                     .clipShape(Capsule())
                             }
 
+                            if !parentLiveSignals(for: request).isEmpty {
+                                liveSignalsRow(parentLiveSignals(for: request))
+                            }
+
                             if !request.note.isEmpty {
                                 Text(request.note)
                                     .font(.subheadline)
@@ -1369,6 +1373,45 @@ struct HomeView: View {
         request.isMatched ? .green : DS.Colors.accent
     }
 
+    private func parentLiveSignals(for request: CareRequestItem) -> [String] {
+        var signals: [String] = []
+
+        if request.isOpen, let latestCandidate = request.candidates.max(by: { $0.appliedAt < $1.appliedAt }),
+           isRecentCareRequestUpdate(latestCandidate.appliedAt) {
+            signals.append("Yeni aday var")
+        }
+
+        if !request.isMatched, !request.candidates.isEmpty {
+            signals.append("Karar bekliyor")
+        } else if isRecentCareRequestUpdate(request.createdAt) {
+            signals.append("Bugün güncellendi")
+        }
+
+        return Array(signals.prefix(2))
+    }
+
+    @ViewBuilder
+    private func liveSignalsRow(_ signals: [String]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(signals, id: \.self) { signal in
+                    Text(signal)
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(DS.Colors.accent.opacity(0.12))
+                        .foregroundStyle(DS.Colors.accent)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+    }
+
+    private func isRecentCareRequestUpdate(_ value: String) -> Bool {
+        guard let date = parseISODate(value) else { return false }
+        return Calendar.current.isDateInToday(date) || Date().timeIntervalSince(date) < 12 * 60 * 60
+    }
+
     private func parentSuggestedNextStep(for request: CareRequestItem) -> String {
         if request.isMatched {
             return "Önerilen adım: Rezervasyon ve ödeme detaylarını kontrol et."
@@ -1567,6 +1610,10 @@ private struct ParentCareRequestsListView: View {
                                         .clipShape(Capsule())
                                 }
 
+                                if !liveSignals(for: request).isEmpty {
+                                    liveSignalsRow(liveSignals(for: request))
+                                }
+
                                 if !request.note.isEmpty {
                                     Text(request.note)
                                         .font(.subheadline)
@@ -1688,6 +1735,45 @@ private struct ParentCareRequestsListView: View {
                 }
             }
         }
+    }
+
+    private func liveSignals(for request: CareRequestItem) -> [String] {
+        var signals: [String] = []
+
+        if request.isOpen, let latestCandidate = request.candidates.max(by: { $0.appliedAt < $1.appliedAt }),
+           isRecentUpdate(latestCandidate.appliedAt) {
+            signals.append("Yeni aday var")
+        }
+
+        if !request.isMatched, !request.candidates.isEmpty {
+            signals.append("Karar bekliyor")
+        } else if isRecentUpdate(request.createdAt) {
+            signals.append("Bugün güncellendi")
+        }
+
+        return Array(signals.prefix(2))
+    }
+
+    @ViewBuilder
+    private func liveSignalsRow(_ signals: [String]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(signals, id: \.self) { signal in
+                    Text(signal)
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(DS.Colors.accent.opacity(0.12))
+                        .foregroundStyle(DS.Colors.accent)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+    }
+
+    private func isRecentUpdate(_ value: String) -> Bool {
+        guard let date = parseISODate(value) else { return false }
+        return Calendar.current.isDateInToday(date) || Date().timeIntervalSince(date) < 12 * 60 * 60
     }
 
     private var resultsSummary: some View {
