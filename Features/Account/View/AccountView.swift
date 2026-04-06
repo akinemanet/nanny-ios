@@ -771,17 +771,17 @@ struct AccountView: View {
 
             HStack(spacing: 12) {
                 preferencePill(
-                    title: pushAlerts ? "Push Acik" : "Push Kapali",
+                    title: pushAlerts ? "Push Açık" : "Push Kapalı",
                     systemImage: pushAlerts ? "bell.badge.fill" : "bell.slash",
                     tint: pushAlerts ? DS.Colors.primary : DS.Colors.textSecondary
                 )
                 preferencePill(
-                    title: newsletter ? "Bulten Acik" : "Bulten Kapali",
+                    title: newsletter ? "Bülten Açık" : "Bülten Kapalı",
                     systemImage: newsletter ? "envelope.fill" : "envelope.open",
                     tint: newsletter ? DS.Colors.accent : DS.Colors.textSecondary
                 )
                 preferencePill(
-                    title: quietHoursEnabled ? "Sessiz Saatler Acik" : "Sessiz Saatler Kapali",
+                    title: quietHoursEnabled ? "Sessiz Saatler Açık" : "Sessiz Saatler Kapalı",
                     systemImage: quietHoursEnabled ? "moon.fill" : "moon",
                     tint: quietHoursEnabled ? .indigo : DS.Colors.textSecondary
                 )
@@ -793,7 +793,7 @@ struct AccountView: View {
             }
 
             HStack(spacing: 12) {
-                accountInfoCard("Bildirim Kanallari", notificationSummaryText)
+                accountInfoCard("Bildirim Kanalları", notificationSummaryText)
                 accountInfoCard("Durum Bildirimleri", bookingNotificationSummaryText)
             }
         }
@@ -931,7 +931,7 @@ struct AccountView: View {
     private var providerOperationsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Ödeme ve Onboarding")
+                Text("Ödeme ve Hesap Durumu")
                     .font(.headline)
                     .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
@@ -957,7 +957,7 @@ struct AccountView: View {
                 providerStatusCard("Belge Durumu", presentation: providerAssetStatus(for: .criminalRecord))
             }
 
-            Text("Belge durumları mevcut onboarding yanıtından türetiliyor.")
+            Text("Belge durumları hesabındaki güncel bilgilere göre gösteriliyor.")
                 .font(.footnote)
                 .foregroundStyle(DS.Colors.textSecondary)
 
@@ -1200,14 +1200,14 @@ struct AccountView: View {
                 if !remote.aboutFamily.isEmpty {
                     profileAboutFamily = remote.aboutFamily
                 }
-                profileSyncNotice = "Profil backend'den eszamanlandi."
+                profileSyncNotice = "Profil bilgilerin yüklendi."
                 profileSyncError = nil
             }
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 {
-                    profileSyncNotice = "Profil simdilik bu cihazda saklaniyor. Summary endpoint'i hazir degil."
+                    profileSyncNotice = "Profilin bu cihazda hazır. Yeni değişiklikler hesabına geldikçe burada da görünecek."
                 } else {
                     profileSyncError = error.localizedDescription
                     profileSyncNotice = nil
@@ -1236,9 +1236,9 @@ struct AccountView: View {
                     profileEmail = remote.email
                 }
                 profileAboutFamily = remote.aboutFamily
-                profileSyncNotice = "Profil backend ile eszamanlandi."
+                profileSyncNotice = "Profilin güncellendi."
             } else {
-                profileSyncNotice = "Profil cihazda guncellendi. Summary endpoint'i hazir oldugunda backend ile eszamanlanacak."
+                profileSyncNotice = "Profilin güncellendi. Bazı ayrıntılar kısa süre içinde hesabına yansıyabilir."
             }
             profileSyncError = nil
             showProfileEditor = false
@@ -1246,7 +1246,7 @@ struct AccountView: View {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 {
-                    profileSyncNotice = "Profil cihazda guncellendi. Backend profil endpoint'i hazir degil."
+                    profileSyncNotice = "Profilin bu cihazda güncellendi."
                     profileSyncError = nil
                     showProfileEditor = false
                 } else {
@@ -1353,7 +1353,7 @@ struct AccountView: View {
                     if let updatedAccount = updatedSummary.account {
                         providerAccount = updatedAccount
                     }
-                    providerProfileNotice = "Bakıcı profili backend ile eşzamanlandı."
+                    providerProfileNotice = "Bakıcı profilin güncellendi."
                 } else {
                     let existingProfile = providerSummary?.profile ?? ProviderOnboardingProfile()
                     providerSummary = ProviderOnboardingSummary(
@@ -1401,7 +1401,7 @@ struct AccountView: View {
                                 approvalStatus: existingProfile.approvalStatus
                             )
                         )
-                        providerProfileNotice = "Bakıcı profili güncellendi. Profil endpoint'i hazır olmadığından bazı alanlar cihazda tutuluyor."
+                        providerProfileNotice = "Bakıcı profilin güncellendi. Bazı ayrıntılar kısa süre içinde hesabına yansıyabilir."
                     } else {
                         throw error
                     }
@@ -1464,7 +1464,7 @@ struct AccountView: View {
                 if let updatedAccount = updatedSummary.account {
                     providerAccount = updatedAccount
                 }
-                providerProfileNotice = "Profil fotoğrafı ve belge bilgileri backend ile eşzamanlandı."
+                providerProfileNotice = "Profil fotoğrafın ve belge bilgilerin güncellendi."
             } else {
                 providerSummary = ProviderOnboardingSummary(
                     account: providerAccount,
@@ -1511,7 +1511,7 @@ struct AccountView: View {
                             approvalStatus: existingProfile.approvalStatus
                         )
                     )
-                    providerProfileNotice = "Belge alanları güncellendi. Backend endpoint'i hazır olmadığından cihazda tutuluyor."
+                    providerProfileNotice = "Belge bilgilerin güncellendi. Bazı ayrıntılar kısa süre içinde hesabına yansıyabilir."
                     showProviderMediaEditor = false
                 } else {
                     providerAccountError = error.localizedDescription
@@ -2453,13 +2453,13 @@ private struct SettingsView: View {
 
     private var settingsSummaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Bildirim Ozetin")
+            Text("Bildirim Özetin")
                 .font(.headline)
                 .foregroundStyle(DS.Colors.textPrimary)
 
             HStack(spacing: 12) {
                 summaryMetricCard("Aktif Kanal", "\(enabledChannelCount)")
-                summaryMetricCard("Durum Bildirimi", "\(enabledBookingNotificationCount)/3 acik")
+                summaryMetricCard("Rezervasyon Bildirimi", "\(enabledBookingNotificationCount)/3 açık")
             }
 
             Text("Konum: \(selectedLocationName)")
@@ -2468,7 +2468,7 @@ private struct SettingsView: View {
                 .lineLimit(2)
 
             if isSyncingPreferences {
-                Text("Tercihler eszamanlaniyor...")
+                Text("Tercihlerin güncelleniyor...")
                     .font(.footnote)
                     .foregroundStyle(DS.Colors.textSecondary)
             } else if let syncNotice {
@@ -2596,14 +2596,14 @@ private struct SettingsView: View {
                 selectedLocationName = remote.locationName
                 selectedLatitude = remote.locationLatitude
                 selectedLongitude = remote.locationLongitude
-                syncNotice = "Tercihler backend'den eszamanlandi."
+                syncNotice = "Ayarların yüklendi."
                 syncError = nil
             }
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 {
-                    syncNotice = "Tercihler bu cihazda kaydediliyor. Backend ayar endpoint'i hazir degil."
+                    syncNotice = "Ayarların bu cihazda saklanıyor."
                 } else {
                     syncError = error.localizedDescription
                     syncNotice = nil
@@ -2625,13 +2625,13 @@ private struct SettingsView: View {
 
         do {
             try await preferenceService.savePreferences(preferenceSnapshot)
-            syncNotice = "Tercihler backend ile eszamanlandi."
+            syncNotice = "Ayarların güncellendi."
             syncError = nil
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 {
-                    syncNotice = "Tercihler cihazda guncellendi. Backend ayar endpoint'i hazir degil."
+                    syncNotice = "Ayarların bu cihazda güncellendi."
                 } else {
                     syncError = error.localizedDescription
                     syncNotice = nil
