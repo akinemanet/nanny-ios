@@ -34,6 +34,7 @@ struct HomeView: View {
     @State private var careRequestNotice: String?
     @State private var isLoadingCareRequests = false
     @State private var showCreateCareRequest = false
+    @State private var showAllCareRequests = false
     @State private var selectedCandidateProvider: BrowseProvider?
 
     @MainActor
@@ -82,6 +83,17 @@ struct HomeView: View {
             }
             .navigationDestination(isPresented: $showNotifications) {
                 NotificationsView()
+            }
+            .navigationDestination(isPresented: $showAllCareRequests) {
+                ParentCareRequestsListView(
+                    careRequests: $careRequests,
+                    selectedCandidateProvider: $selectedCandidateProvider,
+                    onApprove: { candidate, request in
+                        Task {
+                            await approve(candidate: candidate, for: request)
+                        }
+                    }
+                )
             }
             .navigationDestination(item: $selectedBooking) { booking in
                 BookingDetailView(
@@ -314,6 +326,13 @@ struct HomeView: View {
             HStack {
                 sectionTitle("Hızlı Bakıcı Talebi")
                 Spacer()
+                if careRequests.count > 3 {
+                    Button("Tümünü Gör") {
+                        showAllCareRequests = true
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.Colors.primary)
+                }
                 Button {
                     showCreateCareRequest = true
                 } label: {
@@ -1426,6 +1445,194 @@ final class HomeDashboardViewModel: ObservableObject {
         guard let index = conversations.firstIndex(where: { $0.id == updatedConversation.id }) else { return }
         conversations.remove(at: index)
         conversations.insert(updatedConversation, at: 0)
+    }
+}
+
+private struct ParentCareRequestsListView: View {
+    @Binding var careRequests: [CareRequestItem]
+    @Binding var selectedCandidateProvider: BrowseProvider?
+    let onApprove: (CareRequestCandidate, CareRequestItem) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Aday başvuruları çoğaldığında burada daha rahat karşılaştırıp onay verebilirsin.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.Colors.textSecondary)
+
+                if careRequests.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(careRequests) { request in
+                        AppCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(localizedCareService(request.service))
+                                            .font(.headline)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                        Text("\(formattedDate(request.startAt)) • \(formattedTime(request.startAt)) - \(formattedTime(request.endAt))")
+                                            .font(.subheadline)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                        Text(request.locationName)
+                                            .font(.caption)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    Text(careRequestStatusLabel(for: request))
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(careRequestStatusColor(for: request).opacity(0.14))
+                                        .foregroundStyle(careRequestStatusColor(for: request))
+                                        .clipShape(Capsule())
+                                }
+
+                                if !request.note.isEmpty {
+                                    Text(request.note)
+                                        .font(.subheadline)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+
+                                if request.candidates.isEmpty {
+                                    Text("Henüz aday olan bakıcı yok.")
+                                        .font(.footnote)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                } else {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Aday Olan Bakıcılar")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(DS.Colors.textSecondary)
+
+                                        ForEach(request.candidates) { candidate in
+                                            HStack {
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Button {
+                                                        selectedCandidateProvider = BrowseProvider(
+                                                            id: candidate.providerUserID,
+                                                            displayName: candidate.providerDisplayName,
+                                                            rating: 0,
+                                                            hourlyRate: 0,
+                                                            payoutStatus: "PENDING",
+                                                            age: 0,
+                                                            gender: "",
+                                                            locationName: "",
+                                                            distanceText: "",
+                                                            photoURL: nil,
+                                                            latitude: nil,
+                                                            longitude: nil,
+                                                            categories: [],
+                                                            reviewCount: 0,
+                                                            completedSittings: 0,
+                                                            availableDates: [],
+                                                            availableStartHour: 9,
+                                                            availableEndHour: 18
+                                                        )
+                                                    } label: {
+                                                        Text(candidate.providerDisplayName)
+                                                            .font(.subheadline.weight(.semibold))
+                                                            .foregroundStyle(DS.Colors.primary)
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                    Text("Aday oldu: \(formattedTime(candidate.appliedAt))")
+                                                        .font(.caption)
+                                                        .foregroundStyle(DS.Colors.textSecondary)
+                                                }
+                                                Spacer()
+                                                if request.assignedProviderUserID == candidate.providerUserID {
+                                                    Text("Seçildi")
+                                                        .font(.caption.bold())
+                                                        .foregroundStyle(.green)
+                                                } else if request.isOpen {
+                                                    Button("Onayla") {
+                                                        onApprove(candidate, request)
+                                                    }
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(DS.Colors.primary)
+                                                }
+                                            }
+                                            .padding(10)
+                                            .background(DS.Colors.background)
+                                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .background(DS.Colors.background.ignoresSafeArea())
+        .navigationTitle("Aile Talepleri")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "clock.badge.exclamationmark")
+                .font(.title2)
+                .foregroundStyle(DS.Colors.accent)
+            Text("Henüz acil talep oluşturmadın")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+            Text("Yeni taleplerin ve aday başvuruların burada tam liste halinde görünecek.")
+                .font(.footnote)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(radius: 3)
+    }
+
+    private func localizedCareService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first ?? service
+    }
+
+    private func careRequestStatusLabel(for request: CareRequestItem) -> String {
+        if request.isMatched, let assigned = request.assignedProviderDisplayName {
+            return "Atandı: \(assigned)"
+        }
+        if !request.candidates.isEmpty {
+            return "\(request.candidates.count) aday"
+        }
+        return "Açık"
+    }
+
+    private func careRequestStatusColor(for request: CareRequestItem) -> Color {
+        request.isMatched ? .green : DS.Colors.accent
+    }
+
+    private func formattedDate(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "tr_TR")
+        output.dateStyle = .medium
+        return output.string(from: date)
+    }
+
+    private func formattedTime(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "tr_TR")
+        output.timeStyle = .short
+        return output.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
     }
 }
 
