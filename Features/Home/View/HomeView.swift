@@ -398,6 +398,15 @@ struct HomeView: View {
                                     .foregroundStyle(DS.Colors.textSecondary)
                             }
 
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(DS.Colors.primary)
+                                Text(parentSuggestedNextStep(for: request))
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(DS.Colors.primary)
+                            }
+                            .padding(.horizontal, 2)
+
                             if request.candidates.isEmpty {
                                 Text("Henüz aday olan bakıcı yok.")
                                     .font(.footnote)
@@ -460,6 +469,24 @@ struct HomeView: View {
                                         .padding(10)
                                         .background(DS.Colors.background)
                                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    }
+                                }
+                            }
+
+                            HStack(spacing: 10) {
+                                secondaryActionButton(
+                                    title: "Talebi Aç",
+                                    systemImage: "list.bullet.rectangle"
+                                ) {
+                                    showAllCareRequests = true
+                                }
+
+                                if !request.candidates.isEmpty, request.isOpen {
+                                    secondaryActionButton(
+                                        title: "Adayları İncele",
+                                        systemImage: "person.2"
+                                    ) {
+                                        showAllCareRequests = true
                                     }
                                 }
                             }
@@ -1311,6 +1338,16 @@ struct HomeView: View {
 
     private func careRequestStatusColor(for request: CareRequestItem) -> Color {
         request.isMatched ? .green : DS.Colors.accent
+    }
+
+    private func parentSuggestedNextStep(for request: CareRequestItem) -> String {
+        if request.isMatched {
+            return "Önerilen adım: Rezervasyon ve ödeme detaylarını kontrol et."
+        }
+        if !request.candidates.isEmpty {
+            return "Önerilen adım: Adayları karşılaştırıp en uygun kişiyi seç."
+        }
+        return "Önerilen adım: Başvuruları takip et, istersen yeni bir saat aralığı da aç."
     }
 }
 

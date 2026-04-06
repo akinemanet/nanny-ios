@@ -467,6 +467,15 @@ struct ProviderDashboardView: View {
                                 careRequestMetaCard("Not", request.note)
                             }
 
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(DS.Colors.primary)
+                                Text(providerSuggestedNextStep(for: request))
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(DS.Colors.primary)
+                            }
+                            .padding(.horizontal, 2)
+
                             if request.assignedProviderUserID == currentProviderID {
                                 careRequestMetaCard("Durum", "Aile bu işi sana atadı.")
                             } else if providerHasApplied(to: request) {
@@ -492,6 +501,24 @@ struct ProviderDashboardView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(requestActionInFlightID == request.id)
+                            }
+
+                            HStack(spacing: 10) {
+                                providerSecondaryActionButton(
+                                    title: "Talebi Aç",
+                                    systemImage: "list.bullet.rectangle"
+                                ) {
+                                    showAllCareRequests = true
+                                }
+
+                                if request.isOpen && !providerHasApplied(to: request) {
+                                    providerSecondaryActionButton(
+                                        title: "Takvimi Kontrol Et",
+                                        systemImage: "calendar.badge.clock"
+                                    ) {
+                                        showAvailabilityManager = true
+                                    }
+                                }
                             }
                         }
                     }
@@ -776,6 +803,16 @@ struct ProviderDashboardView: View {
 
     private func providerHasApplied(to request: CareRequestItem) -> Bool {
         request.candidates.contains(where: { $0.providerUserID == currentProviderID })
+    }
+
+    private func providerSuggestedNextStep(for request: CareRequestItem) -> String {
+        if request.assignedProviderUserID == currentProviderID {
+            return "Önerilen adım: Detayı açıp aileyle iletişime geç."
+        }
+        if providerHasApplied(to: request) {
+            return "Önerilen adım: Ailenin kararını beklerken takvimini güncel tut."
+        }
+        return "Önerilen adım: Uygunsan aday ol, değilse önce takvimini kontrol et."
     }
 
     private func apply(to request: CareRequestItem) async {
@@ -1083,6 +1120,27 @@ struct ProviderDashboardView: View {
             }
         }
         .shadow(radius: 3)
+    }
+
+    private func providerSecondaryActionButton(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                Text(title)
+                    .lineLimit(1)
+            }
+            .font(.subheadline.weight(.semibold))
+            .frame(maxWidth: .infinity)
+            .frame(height: 42)
+            .background(DS.Colors.background)
+            .foregroundStyle(DS.Colors.primary)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private func todayActionLabel(title: String, bookingID: String) -> some View {
