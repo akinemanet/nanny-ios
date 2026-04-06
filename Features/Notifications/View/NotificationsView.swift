@@ -28,6 +28,7 @@ struct NotificationsView: View {
     @State private var isSubmittingReadState = false
     @State private var showBookingList = false
     @State private var showChatList = false
+    @State private var showCareRequests = false
     @State private var selectedConversation: ConversationItem?
     @State private var selectedConversationContextBadge: String?
     @State private var selectedBooking: BookingItem?
@@ -201,6 +202,9 @@ struct NotificationsView: View {
             }
             .navigationDestination(isPresented: $showChatList) {
                 ChatListView()
+            }
+            .navigationDestination(isPresented: $showCareRequests) {
+                NotificationCareRequestsView()
             }
             .navigationDestination(item: $selectedBooking) { booking in
                 BookingDetailView(
@@ -377,6 +381,10 @@ struct NotificationsView: View {
             selectedConversationContextBadge = nil
             selectedBookingContextBadge = nil
             showChatList = true
+        case .careRequests:
+            selectedConversationContextBadge = nil
+            selectedBookingContextBadge = nil
+            showCareRequests = true
         case .notifications:
             break
         }
@@ -392,6 +400,8 @@ struct NotificationsView: View {
             return "calendar"
         case .chatList:
             return "bubble.left.and.bubble.right"
+        case .careRequests:
+            return "list.bullet.rectangle"
         case .notifications:
             return "clock"
         }
@@ -592,6 +602,214 @@ struct NotificationsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)
+    }
+}
+
+private struct NotificationCareRequestsView: View {
+    @EnvironmentObject private var session: SessionStore
+    @State private var parentRequests: [CareRequestItem] = []
+    @State private var providerRequests: [CareRequestItem] = []
+    @State private var errorMessage: String?
+    @State private var isLoading = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(isProvider
+                     ? "Burada ailelerden gelen açık talepleri daha rahat inceleyebilirsin."
+                     : "Burada aday başvurularını ve açık taleplerini tek ekranda görebilirsin.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.Colors.textSecondary)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                } else if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                } else if visibleRequests.isEmpty {
+                    emptyState(
+                        title: isProvider ? "Açık talep yok" : "Gösterilecek talep yok",
+                        systemImage: "tray",
+                        description: isProvider
+                            ? "Aileler yeni talep oluşturduğunda burada görünecek."
+                            : "Yeni adaylar geldiğinde burada görünecek."
+                    )
+                    .frame(maxWidth: .infinity)
+                } else {
+                    ForEach(visibleRequests) { request in
+                        AppCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(localizedCareService(request.service))
+                                            .font(.headline)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                        Text("\(formattedDate(request.startAt)) • \(formattedTime(request.startAt)) - \(formattedTime(request.endAt))")
+                                            .font(.subheadline)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                        Text(request.locationName)
+                                            .font(.caption)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    Text(statusLabel(for: request))
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(statusColor(for: request).opacity(0.14))
+                                        .foregroundStyle(statusColor(for: request))
+                                        .clipShape(Capsule())
+                                }
+
+                                if !request.note.isEmpty {
+                                    Text(request.note)
+                                        .font(.subheadline)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+
+                                if isProvider {
+                                    infoRow(title: "Aday", value: "\(request.candidates.count)")
+                                } else if request.candidates.isEmpty {
+                                    infoRow(title: "Durum", value: "Henüz aday olan bakıcı yok.")
+                                } else {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Aday Olan Bakıcılar")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(DS.Colors.textSecondary)
+
+                                        ForEach(request.candidates) { candidate in
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(candidate.providerDisplayName)
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .foregroundStyle(DS.Colors.textPrimary)
+                                                Text("Başvuru zamanı: \(formattedTime(candidate.appliedAt))")
+                                                    .font(.caption)
+                                                    .foregroundStyle(DS.Colors.textSecondary)
+                                            }
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(10)
+                                            .background(DS.Colors.background)
+                                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .background(DS.Colors.background.ignoresSafeArea())
+        .navigationTitle(isProvider ? "Aile Talepleri" : "Aile Talepleri")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await loadCareRequests()
+        }
+        .refreshable {
+            await loadCareRequests()
+        }
+    }
+
+    private var isProvider: Bool {
+        session.me?.user.role == "PROVIDER"
+    }
+
+    private var visibleRequests: [CareRequestItem] {
+        (isProvider ? providerRequests : parentRequests).sorted { lhs, rhs in
+            lhs.startAt < rhs.startAt
+        }
+    }
+
+    private func loadCareRequests() async {
+        guard let userID = session.me?.user.id else { return }
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            if isProvider {
+                providerRequests = try await session.deps.bookingService.listProviderCareRequests(providerUserID: userID)
+                parentRequests = []
+            } else {
+                parentRequests = try await session.deps.bookingService.listParentCareRequests(parentUserID: userID)
+                providerRequests = []
+            }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+            parentRequests = []
+            providerRequests = []
+        }
+    }
+
+    private func localizedCareService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first
+            ?? service.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func statusLabel(for request: CareRequestItem) -> String {
+        if request.isMatched {
+            return "Eşleşti"
+        }
+        if !request.candidates.isEmpty && !isProvider {
+            return "\(request.candidates.count) aday"
+        }
+        return "Açık"
+    }
+
+    private func statusColor(for request: CareRequestItem) -> Color {
+        if request.isMatched {
+            return .green
+        }
+        if !request.candidates.isEmpty && !isProvider {
+            return DS.Colors.primary
+        }
+        return .orange
+    }
+
+    private func infoRow(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(DS.Colors.textSecondary)
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(DS.Colors.textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(DS.Colors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func formattedDate(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+
+    private func formattedTime(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
     }
 }
 

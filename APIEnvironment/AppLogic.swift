@@ -18,6 +18,7 @@ enum DashboardNotificationDestination: Equatable {
     case bookingDetail(String)
     case bookings
     case chatList
+    case careRequests
     case notifications
 }
 
@@ -537,6 +538,10 @@ enum DashboardRouting {
             return .bookingDetail(bookingID)
         }
 
+        if prefersCareRequestsDestination(notification) {
+            return .careRequests
+        }
+
         if prefersBookingsDestination(notification) {
             return .bookings
         }
@@ -560,6 +565,17 @@ enum DashboardRouting {
             || text.contains("onay")
             || text.contains("booking")
             || text.contains("takvim")
+    }
+
+    static func prefersCareRequestsDestination(_ notification: AppNotification) -> Bool {
+        let text = normalizedText(notification.title + " " + notification.body + " " + (notification.type ?? ""))
+        return text.contains("aday")
+            || text.contains("basvuru")
+            || text.contains("başvuru")
+            || text.contains("hizli bakici talebi")
+            || text.contains("hızlı bakıcı talebi")
+            || text.contains("aile talebi")
+            || text.contains("care request")
     }
 
     static func prefersChatDestination(_ notification: AppNotification) -> Bool {

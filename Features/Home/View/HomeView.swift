@@ -1173,6 +1173,9 @@ struct HomeView: View {
         case .chatList:
             clearNotificationContext()
             showChatList = true
+        case .careRequests:
+            clearNotificationContext()
+            showAllCareRequests = true
         case .notifications:
             clearNotificationContext()
             showNotifications = true
