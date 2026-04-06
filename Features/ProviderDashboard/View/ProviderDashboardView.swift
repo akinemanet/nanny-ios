@@ -1633,6 +1633,7 @@ private struct ProviderCareRequestsListView: View {
                     .foregroundStyle(DS.Colors.textSecondary)
 
                 sortBar
+                resultsSummary
 
                 if visibleRequests.isEmpty {
                     emptyState
@@ -1741,6 +1742,33 @@ private struct ProviderCareRequestsListView: View {
                     .buttonStyle(.plain)
                 }
             }
+        }
+    }
+
+    private var resultsSummary: some View {
+        HStack(spacing: 8) {
+            Text("\(visibleRequests.count) talep")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            Text("•")
+                .font(.footnote)
+                .foregroundStyle(DS.Colors.textSecondary)
+
+            Text(sortDescription)
+                .font(.footnote)
+                .foregroundStyle(DS.Colors.textSecondary)
+        }
+    }
+
+    private var sortDescription: String {
+        switch selectedSort {
+        case .soonest:
+            return "en yakın saatli talepler üstte"
+        case .newest:
+            return "en yeni ilanlar üstte"
+        case .mostCandidates:
+            return "adayı çok olanlar üstte"
         }
     }
 

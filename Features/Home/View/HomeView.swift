@@ -1537,6 +1537,7 @@ private struct ParentCareRequestsListView: View {
                     .foregroundStyle(DS.Colors.textSecondary)
 
                 sortBar
+                resultsSummary
 
                 if careRequests.isEmpty {
                     emptyState
@@ -1686,6 +1687,33 @@ private struct ParentCareRequestsListView: View {
                     .buttonStyle(.plain)
                 }
             }
+        }
+    }
+
+    private var resultsSummary: some View {
+        HStack(spacing: 8) {
+            Text("\(sortedRequests.count) talep")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            Text("•")
+                .font(.footnote)
+                .foregroundStyle(DS.Colors.textSecondary)
+
+            Text(sortDescription)
+                .font(.footnote)
+                .foregroundStyle(DS.Colors.textSecondary)
+        }
+    }
+
+    private var sortDescription: String {
+        switch selectedSort {
+        case .newest:
+            return "en yeni başvurular üstte"
+        case .mostCandidates:
+            return "adayı çok olanlar üstte"
+        case .openFirst:
+            return "önce açık talepler gösteriliyor"
         }
     }
 
