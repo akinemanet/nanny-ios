@@ -68,6 +68,17 @@ struct NannyProfileView: View {
                                     .foregroundStyle(.white)
                                 Text("\(resolvedLocationName) • \(resolvedDistanceText)")
                                     .foregroundStyle(.white.opacity(0.9))
+                                if !heroSignals.isEmpty {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ForEach(Array(heroSignals.chunked(into: 2).enumerated()), id: \.offset) { _, row in
+                                            HStack(spacing: 8) {
+                                                ForEach(row) { signal in
+                                                    heroSignalChip(signal)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -357,6 +368,29 @@ struct NannyProfileView: View {
         return badges
     }
 
+    private var heroSignals: [ProfileTrustBadge] {
+        var signals: [ProfileTrustBadge] = []
+
+        if let distance = nearbyDistanceKilometers {
+            let title = distance <= 3 ? "Yakın Konum" : "Ulaşımı Uygun"
+            let detail = distance <= 3
+                ? String(format: "%.1f km mesafede", distance)
+                : String(format: "%.1f km uzakta", distance)
+            signals.append(ProfileTrustBadge(
+                title: title,
+                detail: detail,
+                systemImage: "location.fill",
+                tint: .white
+            ))
+        }
+
+        if let availabilitySignal {
+            signals.append(availabilitySignal)
+        }
+
+        return signals
+    }
+
     private var trustBadgeFlow: some View {
         VStack(spacing: 10) {
             ForEach(Array(trustBadges.chunked(into: 2).enumerated()), id: \.offset) { _, row in
@@ -414,6 +448,25 @@ struct NannyProfileView: View {
         .padding(12)
         .background(DS.Colors.background)
         .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func heroSignalChip(_ signal: ProfileTrustBadge) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: signal.systemImage)
+                .font(.caption.bold())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(signal.title)
+                    .font(.caption.bold())
+                Text(signal.detail)
+                    .font(.caption2)
+                    .opacity(0.92)
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.16))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func loadDetail() async {
@@ -532,6 +585,56 @@ struct NannyProfileView: View {
     private var isVerifiedProfile: Bool {
         let status = (detail?.payoutStatus ?? provider.payoutStatus).uppercased()
         return status == "APPROVED" || status == "ACTIVE"
+    }
+
+    private var nearbyDistanceKilometers: Double? {
+        StoredLocation.distanceInKilometers(
+            from: selectedLatitude,
+            originLongitude: selectedLongitude,
+            to: detail?.latitude ?? provider.latitude,
+            destinationLongitude: detail?.longitude ?? provider.longitude
+        )
+    }
+
+    private var availabilitySignal: ProfileTrustBadge? {
+        let availableDays = (detail?.availability ?? []).filter { $0.status.uppercased() == "AVAILABLE" }
+        guard !availableDays.isEmpty else { return nil }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        let upcomingDays = availableDays.compactMap { formatter.date(from: $0.date) }
+            .filter { $0 >= today }
+            .sorted()
+
+        guard let nextAvailableDate = upcomingDays.first else {
+            return ProfileTrustBadge(
+                title: "Takvim Paylaşıldı",
+                detail: "\(availableDays.count) uygun gün var",
+                systemImage: "calendar.badge.checkmark",
+                tint: .white
+            )
+        }
+
+        let dayDiff = Calendar.current.dateComponents([.day], from: today, to: nextAvailableDate).day ?? 0
+        let detailText: String
+        if dayDiff == 0 {
+            detailText = "Bugün için uygunluk var"
+        } else if dayDiff == 1 {
+            detailText = "Yarın için uygunluk var"
+        } else if dayDiff <= 3 {
+            detailText = "\(dayDiff) gün içinde uygun"
+        } else {
+            detailText = "\(availableDays.count) uygun gün paylaşılmış"
+        }
+
+        return ProfileTrustBadge(
+            title: "Yakında Müsait",
+            detail: detailText,
+            systemImage: "clock.badge.checkmark",
+            tint: .white
+        )
     }
 
     private var profileAvatarGradient: LinearGradient {
