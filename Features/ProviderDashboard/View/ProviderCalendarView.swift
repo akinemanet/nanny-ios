@@ -300,7 +300,7 @@ struct ProviderCalendarView: View {
                             .foregroundStyle(DS.Colors.textSecondary)
                     }
                     if isSyncingSelections {
-                        Text("Müsaitlik backend ile eşzamanlanıyor...")
+                        Text("Müsaitlik bilgilerin güncelleniyor...")
                             .font(.footnote)
                             .foregroundStyle(DS.Colors.textSecondary)
                     } else if let syncNotice {
@@ -312,7 +312,7 @@ struct ProviderCalendarView: View {
                             .font(.footnote)
                             .foregroundStyle(.red)
                     } else {
-                        Text("Seçimlerin cihazda kaydediliyor. Backend müsaitlik API'si geldiyse otomatik eşzamanlanacak.")
+                        Text("Seçimlerin güvenle saklanıyor. İnternet bağlantısı uygunsa diğer cihazlarında da güncel kalır.")
                             .font(.footnote)
                             .foregroundStyle(DS.Colors.textSecondary)
                     }
@@ -475,14 +475,14 @@ struct ProviderCalendarView: View {
             if let remoteSelections = try await availabilityService.fetchSelections(), !remoteSelections.isEmpty {
                 storedSelections = ProviderAvailabilityLogic.encodeSelections(remoteSelections)
                 loadSlotsForSelectedDate()
-                syncNotice = "Müsaitlik backend'den eşzamanlandı."
+                syncNotice = "Müsaitlik bilgilerin güncellendi."
                 syncError = nil
             }
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 || code >= 500 {
-                    syncNotice = "Müsaitlik bu cihazda kaydediliyor. Backend şu anda yanıt vermiyor."
+                    syncNotice = "Müsaitlik bu cihazda saklanıyor. İnternet yeniden hazır olduğunda tekrar denenecek."
                     syncError = nil
                 } else {
                     syncError = "Müsaitlik bilgileri şu anda alınamadı."
@@ -505,24 +505,24 @@ struct ProviderCalendarView: View {
 
         do {
             try await availabilityService.saveSelections(selections)
-            syncNotice = "Müsaitlik backend ile eşzamanlandı."
+            syncNotice = "Müsaitlik bilgilerin kaydedildi."
             syncError = nil
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 || code >= 500 {
-                    syncNotice = "Müsaitlik cihazda güncellendi. Backend şu anda yanıt vermiyor."
+                    syncNotice = "Müsaitlik bu cihazda kaydedildi. Bağlantı normale dönünce tekrar güncellenecek."
                     syncError = nil
                 } else {
-                    syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
+                    syncError = "Müsaitlik şu anda kaydedilemedi."
                     syncNotice = nil
                 }
             default:
-                syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
+                syncError = "Müsaitlik şu anda kaydedilemedi."
                 syncNotice = nil
             }
         } catch {
-            syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
+            syncError = "Müsaitlik şu anda kaydedilemedi."
             syncNotice = nil
         }
     }

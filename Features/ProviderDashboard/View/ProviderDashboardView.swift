@@ -14,6 +14,12 @@ private enum ProviderRequestFilter: String, CaseIterable {
     case nearbyFamilies = "Yakındaki Aileler"
 }
 
+private enum ProviderCareRequestSort: String, CaseIterable {
+    case soonest = "En Yakın Saat"
+    case newest = "En Yeni"
+    case mostCandidates = "En Çok Aday"
+}
+
 struct ProviderDashboardView: View {
     @EnvironmentObject private var session: SessionStore
     @Environment(\.scenePhase) private var scenePhase
@@ -1539,6 +1545,7 @@ private struct ProviderCareRequestsListView: View {
     let currentProviderID: String
     let requestActionInFlightID: String?
     let onApply: (CareRequestItem) -> Void
+    @State private var selectedSort: ProviderCareRequestSort = .soonest
 
     var body: some View {
         ScrollView {
@@ -1546,6 +1553,8 @@ private struct ProviderCareRequestsListView: View {
                 Text("Yeni talepleri burada daha rahat inceleyip hangi aileye aday olacağına karar verebilirsin.")
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
+
+                sortBar
 
                 if visibleRequests.isEmpty {
                     emptyState
@@ -1621,7 +1630,40 @@ private struct ProviderCareRequestsListView: View {
     }
 
     private var visibleRequests: [CareRequestItem] {
-        requests.sorted { $0.startAt < $1.startAt }
+        switch selectedSort {
+        case .soonest:
+            return requests.sorted { $0.startAt < $1.startAt }
+        case .newest:
+            return requests.sorted { $0.createdAt > $1.createdAt }
+        case .mostCandidates:
+            return requests.sorted {
+                if $0.candidates.count == $1.candidates.count {
+                    return $0.startAt < $1.startAt
+                }
+                return $0.candidates.count > $1.candidates.count
+            }
+        }
+    }
+
+    private var sortBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(ProviderCareRequestSort.allCases, id: \.self) { option in
+                    Button {
+                        selectedSort = option
+                    } label: {
+                        Text(option.rawValue)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(selectedSort == option ? DS.Colors.primary : .white)
+                            .foregroundStyle(selectedSort == option ? .white : DS.Colors.textPrimary)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private var emptyState: some View {

@@ -7,6 +7,12 @@
 import SwiftUI
 import Combine
 
+private enum ParentCareRequestSort: String, CaseIterable {
+    case newest = "En Yeni"
+    case mostCandidates = "En Çok Aday"
+    case openFirst = "Önce Açık Olanlar"
+}
+
 struct HomeView: View {
     @EnvironmentObject private var session: SessionStore
     @Environment(\.scenePhase) private var scenePhase
@@ -1452,6 +1458,7 @@ private struct ParentCareRequestsListView: View {
     @Binding var careRequests: [CareRequestItem]
     @Binding var selectedCandidateProvider: BrowseProvider?
     let onApprove: (CareRequestCandidate, CareRequestItem) -> Void
+    @State private var selectedSort: ParentCareRequestSort = .newest
 
     var body: some View {
         ScrollView {
@@ -1460,10 +1467,12 @@ private struct ParentCareRequestsListView: View {
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
 
+                sortBar
+
                 if careRequests.isEmpty {
                     emptyState
                 } else {
-                    ForEach(careRequests) { request in
+                    ForEach(sortedRequests) { request in
                         AppCard {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(alignment: .top) {
@@ -1567,6 +1576,48 @@ private struct ParentCareRequestsListView: View {
         .background(DS.Colors.background.ignoresSafeArea())
         .navigationTitle("Aile Talepleri")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var sortedRequests: [CareRequestItem] {
+        switch selectedSort {
+        case .newest:
+            return careRequests.sorted { $0.createdAt > $1.createdAt }
+        case .mostCandidates:
+            return careRequests.sorted {
+                if $0.candidates.count == $1.candidates.count {
+                    return $0.createdAt > $1.createdAt
+                }
+                return $0.candidates.count > $1.candidates.count
+            }
+        case .openFirst:
+            return careRequests.sorted {
+                if $0.isOpen == $1.isOpen {
+                    return $0.createdAt > $1.createdAt
+                }
+                return $0.isOpen && !$1.isOpen
+            }
+        }
+    }
+
+    private var sortBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(ParentCareRequestSort.allCases, id: \.self) { option in
+                    Button {
+                        selectedSort = option
+                    } label: {
+                        Text(option.rawValue)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(selectedSort == option ? DS.Colors.primary : .white)
+                            .foregroundStyle(selectedSort == option ? .white : DS.Colors.textPrimary)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private var emptyState: some View {
