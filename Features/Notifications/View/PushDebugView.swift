@@ -8,6 +8,9 @@ struct PushDebugView: View {
     @State private var authorizationStatus: UNAuthorizationStatus = .notDetermined
     @AppStorage("pushHasAPNSToken") private var hasAPNSToken = false
     @AppStorage("pushLastAPNSErrorMessage") private var lastAPNSErrorMessage = ""
+    @AppStorage("pushLastAPNsAttemptAt") private var lastAPNsAttemptAt = ""
+    @AppStorage("pushLastAPNsCallbackAt") private var lastAPNsCallbackAt = ""
+    @AppStorage("pushLastAPNsStatus") private var lastAPNsStatus = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -25,6 +28,24 @@ struct PushDebugView: View {
             Text("Bundle ID: \(Bundle.main.bundleIdentifier ?? "-")")
                 .font(.footnote.monospaced())
                 .foregroundStyle(.secondary)
+
+            if !lastAPNsStatus.isEmpty {
+                Text("Son APNs durumu: \(lastAPNsStatus)")
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+
+            if !lastAPNsAttemptAt.isEmpty {
+                Text("Son deneme: \(formattedDebugDate(lastAPNsAttemptAt))")
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+
+            if !lastAPNsCallbackAt.isEmpty {
+                Text("Son callback: \(formattedDebugDate(lastAPNsCallbackAt))")
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+            }
 
             if !hasAPNSToken, !lastAPNSErrorMessage.isEmpty {
                 Text("APNs hata detayı:")
@@ -89,6 +110,7 @@ struct PushDebugView: View {
         if authorizationStatus == .authorized
             || authorizationStatus == .provisional
             || authorizationStatus == .ephemeral {
+            AppDelegate.recordAPNsAttempt(context: "debug_refresh")
             UIApplication.shared.registerForRemoteNotifications()
         }
 
@@ -111,6 +133,7 @@ struct PushDebugView: View {
         ) { granted, _ in
             DispatchQueue.main.async {
                 if granted {
+                    AppDelegate.recordAPNsAttempt(context: "debug_permission_button")
                     UIApplication.shared.registerForRemoteNotifications()
                 }
                 Task { await refreshStatus() }
@@ -129,5 +152,19 @@ struct PushDebugView: View {
                 continuation.resume(returning: settings)
             }
         }
+    }
+
+    private func formattedDebugDate(_ value: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: value) {
+            return date.formatted(
+                .dateTime
+                    .locale(Locale(identifier: "tr_TR"))
+                    .hour()
+                    .minute()
+                    .second()
+            )
+        }
+        return value
     }
 }

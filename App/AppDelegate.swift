@@ -7,6 +7,9 @@ private enum PushTokenStorageKeys {
     static let currentFCMToken = "pushCurrentFCMToken"
     static let hasAPNSToken = "pushHasAPNSToken"
     static let lastAPNSErrorMessage = "pushLastAPNSErrorMessage"
+    static let lastAPNsAttemptAt = "pushLastAPNsAttemptAt"
+    static let lastAPNsCallbackAt = "pushLastAPNsCallbackAt"
+    static let lastAPNsStatus = "pushLastAPNsStatus"
 }
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
@@ -18,6 +21,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
+        recordAPNsAttempt(context: "launch")
         application.registerForRemoteNotifications()
 
         return true
@@ -30,6 +34,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         Messaging.messaging().apnsToken = deviceToken
         UserDefaults.standard.set(true, forKey: PushTokenStorageKeys.hasAPNSToken)
         UserDefaults.standard.removeObject(forKey: PushTokenStorageKeys.lastAPNSErrorMessage)
+        UserDefaults.standard.set(ISO8601DateFormatter().string(from: Date()), forKey: PushTokenStorageKeys.lastAPNsCallbackAt)
+        UserDefaults.standard.set("success", forKey: PushTokenStorageKeys.lastAPNsStatus)
+        print("APNs registration succeeded. Token bytes: \(deviceToken.count)")
         NotificationCenter.default.post(name: .didReceiveAPNSToken, object: nil)
     }
 
@@ -39,6 +46,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) {
         UserDefaults.standard.set(false, forKey: PushTokenStorageKeys.hasAPNSToken)
         UserDefaults.standard.set(error.localizedDescription, forKey: PushTokenStorageKeys.lastAPNSErrorMessage)
+        UserDefaults.standard.set(ISO8601DateFormatter().string(from: Date()), forKey: PushTokenStorageKeys.lastAPNsCallbackAt)
+        UserDefaults.standard.set("failure", forKey: PushTokenStorageKeys.lastAPNsStatus)
+        print("APNs registration failed: \(error.localizedDescription)")
+    }
+
+    static func recordAPNsAttempt(context: String) {
+        let formatter = ISO8601DateFormatter()
+        UserDefaults.standard.set(formatter.string(from: Date()), forKey: PushTokenStorageKeys.lastAPNsAttemptAt)
+        UserDefaults.standard.set("attempt:\(context)", forKey: PushTokenStorageKeys.lastAPNsStatus)
+        print("APNs registration attempt triggered from \(context)")
     }
 }
 
