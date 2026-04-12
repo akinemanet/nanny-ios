@@ -14,6 +14,27 @@ private enum ProviderNotificationFilter: String, CaseIterable {
     case system = "Sistem"
 }
 
+private func notificationsEmptyState(title: String, systemImage: String, description: String) -> some View {
+    VStack(spacing: 12) {
+        Image(systemName: systemImage)
+            .font(.system(size: 42))
+            .foregroundStyle(DS.Colors.accent)
+        Text(title)
+            .font(.title3.bold())
+            .foregroundStyle(DS.Colors.textPrimary)
+        Text(description)
+            .font(.subheadline)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(DS.Colors.textSecondary)
+        Text("Önerilen adım: Yeni gelişmeler oldukça bu ekran otomatik olarak dolacak.")
+            .font(.footnote.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .foregroundStyle(DS.Colors.primary)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 48)
+}
+
 struct NotificationsView: View {
     @EnvironmentObject private var session: SessionStore
     @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
@@ -83,7 +104,7 @@ struct NotificationsView: View {
                     }
 
                     if filteredItems.isEmpty, errorMessage == nil {
-                        emptyState(
+                        notificationsEmptyState(
                             title: isProvider ? "Bildirim yok" : "Bildirim yok",
                             systemImage: "bell",
                             description: isProvider
@@ -608,27 +629,6 @@ struct NotificationsView: View {
 
         return .system
     }
-
-    private func emptyState(title: String, systemImage: String, description: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 42))
-                .foregroundStyle(DS.Colors.accent)
-            Text(title)
-                .font(.title3.bold())
-                .foregroundStyle(DS.Colors.textPrimary)
-            Text(description)
-                .font(.subheadline)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(DS.Colors.textSecondary)
-            Text("Önerilen adım: Yeni gelişmeler oldukça bu ekran otomatik olarak dolacak.")
-                .font(.footnote.weight(.semibold))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(DS.Colors.primary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
-    }
 }
 
 private struct NotificationCareRequestsView: View {
@@ -656,7 +656,7 @@ private struct NotificationCareRequestsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 24)
                 } else if visibleRequests.isEmpty {
-                    emptyState(
+                    notificationsEmptyState(
                         title: isProvider ? "Açık talep yok" : "Gösterilecek talep yok",
                         systemImage: "tray",
                         description: isProvider
