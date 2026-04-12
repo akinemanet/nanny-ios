@@ -771,17 +771,17 @@ struct AccountView: View {
 
             HStack(spacing: 12) {
                 preferencePill(
-                    title: pushAlerts ? "Push Acik" : "Push Kapali",
+                    title: pushAlerts ? "Push Açık" : "Push Kapalı",
                     systemImage: pushAlerts ? "bell.badge.fill" : "bell.slash",
                     tint: pushAlerts ? DS.Colors.primary : DS.Colors.textSecondary
                 )
                 preferencePill(
-                    title: newsletter ? "Bulten Acik" : "Bulten Kapali",
+                    title: newsletter ? "Bülten Açık" : "Bülten Kapalı",
                     systemImage: newsletter ? "envelope.fill" : "envelope.open",
                     tint: newsletter ? DS.Colors.accent : DS.Colors.textSecondary
                 )
                 preferencePill(
-                    title: quietHoursEnabled ? "Sessiz Saatler Acik" : "Sessiz Saatler Kapali",
+                    title: quietHoursEnabled ? "Sessiz Saatler Açık" : "Sessiz Saatler Kapalı",
                     systemImage: quietHoursEnabled ? "moon.fill" : "moon",
                     tint: quietHoursEnabled ? .indigo : DS.Colors.textSecondary
                 )
@@ -793,7 +793,7 @@ struct AccountView: View {
             }
 
             HStack(spacing: 12) {
-                accountInfoCard("Bildirim Kanallari", notificationSummaryText)
+                accountInfoCard("Bildirim Kanalları", notificationSummaryText)
                 accountInfoCard("Durum Bildirimleri", bookingNotificationSummaryText)
             }
         }
@@ -827,6 +827,11 @@ struct AccountView: View {
                 HStack(spacing: 12) {
                     accountInfoCard("Telefon", providerPhone)
                     accountInfoCard("Eğitim", providerSummary?.profile.educationLevel.isEmpty == false ? providerSummary?.profile.educationLevel ?? "-" : "-")
+                }
+
+                HStack(spacing: 12) {
+                    accountInfoCard("Saatlik Ücret", providerHourlyRateText)
+                    accountInfoCard("Günlük Ücret", providerDailyRateText)
                 }
 
                 if let providerAbout, !providerAbout.isEmpty {
@@ -926,7 +931,7 @@ struct AccountView: View {
     private var providerOperationsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Ödeme ve Onboarding")
+                Text("Ödeme ve Hesap Durumu")
                     .font(.headline)
                     .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
@@ -952,7 +957,7 @@ struct AccountView: View {
                 providerStatusCard("Belge Durumu", presentation: providerAssetStatus(for: .criminalRecord))
             }
 
-            Text("Belge durumları mevcut onboarding yanıtından türetiliyor.")
+            Text("Belge durumları hesabındaki güncel bilgilere göre gösteriliyor.")
                 .font(.footnote)
                 .foregroundStyle(DS.Colors.textSecondary)
 
@@ -1123,6 +1128,16 @@ struct AccountView: View {
         providerSummary?.profile.categories ?? []
     }
 
+    private var providerHourlyRateText: String {
+        guard let rate = providerSummary?.profile.hourlyRate else { return "-" }
+        return CurrencyFormatting.formattedHourlyRate(rate, currencyCode: providerAccount?.currency ?? preferredCurrency)
+    }
+
+    private var providerDailyRateText: String {
+        guard let rate = providerSummary?.profile.dailyRate else { return "-" }
+        return "\(CurrencyFormatting.formattedAmount(rate, currencyCode: providerAccount?.currency ?? preferredCurrency)) / gün"
+    }
+
     private func providerAssetStatus(for kind: ProviderAssetKind) -> ProviderAssetStatusPresentation {
         let hasAsset: Bool
         switch kind {
@@ -1185,14 +1200,14 @@ struct AccountView: View {
                 if !remote.aboutFamily.isEmpty {
                     profileAboutFamily = remote.aboutFamily
                 }
-                profileSyncNotice = "Profil backend'den eszamanlandi."
+                profileSyncNotice = "Profil bilgilerin yüklendi."
                 profileSyncError = nil
             }
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 {
-                    profileSyncNotice = "Profil simdilik bu cihazda saklaniyor. Summary endpoint'i hazir degil."
+                    profileSyncNotice = "Profilin bu cihazda hazır. Yeni değişiklikler hesabına geldikçe burada da görünecek."
                 } else {
                     profileSyncError = error.localizedDescription
                     profileSyncNotice = nil
@@ -1221,9 +1236,9 @@ struct AccountView: View {
                     profileEmail = remote.email
                 }
                 profileAboutFamily = remote.aboutFamily
-                profileSyncNotice = "Profil backend ile eszamanlandi."
+                profileSyncNotice = "Profilin güncellendi."
             } else {
-                profileSyncNotice = "Profil cihazda guncellendi. Summary endpoint'i hazir oldugunda backend ile eszamanlanacak."
+                profileSyncNotice = "Profilin güncellendi. Bazı ayrıntılar kısa süre içinde hesabına yansıyabilir."
             }
             profileSyncError = nil
             showProfileEditor = false
@@ -1231,7 +1246,7 @@ struct AccountView: View {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 {
-                    profileSyncNotice = "Profil cihazda guncellendi. Backend profil endpoint'i hazir degil."
+                    profileSyncNotice = "Profilin bu cihazda güncellendi."
                     profileSyncError = nil
                     showProfileEditor = false
                 } else {
@@ -1276,8 +1291,20 @@ struct AccountView: View {
     }
 
     private func saveProviderProfile(_ payload: ProviderProfileEditPayload) async {
-        guard let currentAccount = providerAccount else {
-            providerAccountError = "Bakıcı hesap bilgileri yüklenmeden profil güncellenemiyor."
+        guard payload.age >= 18 else {
+            providerAccountError = "Lütfen geçerli bir yaş gir."
+            providerProfileNotice = nil
+            return
+        }
+
+        guard payload.hourlyRate >= 100 else {
+            providerAccountError = "Lütfen geçerli bir saatlik ücret gir."
+            providerProfileNotice = nil
+            return
+        }
+
+        guard payload.dailyRate >= payload.hourlyRate else {
+            providerAccountError = "Lütfen geçerli bir günlük ücret gir."
             providerProfileNotice = nil
             return
         }
@@ -1285,44 +1312,96 @@ struct AccountView: View {
         providerAccountError = nil
         providerProfileNotice = nil
 
-        let payoutRequest = UpsertPayoutAccountRequest(
-            address: currentAccount.address,
-            contactName: payload.contactName,
-            contactSurname: payload.contactSurname,
-            email: payload.email,
-            gsmNumber: payload.phone,
-            name: payload.storeName,
-            iban: currentAccount.iban,
-            identityNumber: currentAccount.identityNumber
-        )
+        let fullName = [payload.contactName, payload.contactSurname]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
 
-        let profileRequest = UpsertProviderOnboardingProfileRequest(
+        let profileRequest = UpsertProviderProfileRequest(
+            fullName: fullName,
             educationLevel: payload.educationLevel,
             about: payload.about,
-            categories: payload.categories,
+            experience: payload.experience,
+            categories: ProviderCategoryMapper.backendServices(from: payload.categories),
+            age: payload.age,
+            hourlyRate: payload.hourlyRate,
+            dailyRate: payload.dailyRate,
             profilePhotoName: providerSummary?.profile.profilePhotoName ?? "",
             criminalRecordFileName: providerSummary?.profile.criminalRecordFileName ?? ""
         )
 
         do {
-            let payoutResponse = try await session.deps.providerService.upsertPayoutAccount(payoutRequest)
-            providerAccount = payoutResponse.account
+            if let currentAccount = providerAccount {
+                let payoutRequest = UpsertPayoutAccountRequest(
+                    address: currentAccount.address,
+                    contactName: payload.contactName,
+                    contactSurname: payload.contactSurname,
+                    email: payload.email,
+                    gsmNumber: payload.phone,
+                    name: payload.storeName,
+                    iban: currentAccount.iban,
+                    identityNumber: currentAccount.identityNumber
+                )
+                let payoutResponse = try await session.deps.providerService.upsertPayoutAccount(payoutRequest)
+                providerAccount = payoutResponse.account
+            }
 
             do {
-                if let updatedSummary = try await session.deps.providerService.upsertOnboardingProfile(profileRequest) {
+                let response = try await session.deps.providerService.upsertProviderProfile(profileRequest)
+                if let updatedSummary = response.summary {
                     providerSummary = updatedSummary
                     if let updatedAccount = updatedSummary.account {
                         providerAccount = updatedAccount
                     }
-                    providerProfileNotice = "Bakıcı profili backend ile eşzamanlandı."
+                    providerProfileNotice = "Bakıcı profilin güncellendi."
                 } else {
-                    providerProfileNotice = "Bakıcı profili güncellendi. Profil endpoint'i hazır olduğunda ek alanlar da backend'e taşınacak."
+                    let existingProfile = providerSummary?.profile ?? ProviderOnboardingProfile()
+                    providerSummary = ProviderOnboardingSummary(
+                        account: providerAccount,
+                        profile: ProviderOnboardingProfile(
+                            educationLevel: payload.educationLevel,
+                            about: payload.about,
+                            experience: payload.experience,
+                            categories: ProviderCategoryMapper.backendServices(from: payload.categories),
+                            age: payload.age,
+                            hourlyRate: payload.hourlyRate,
+                            dailyRate: payload.dailyRate,
+                            profilePhotoName: existingProfile.profilePhotoName,
+                            profilePhotoUrl: existingProfile.profilePhotoUrl,
+                            criminalRecordFileName: existingProfile.criminalRecordFileName,
+                            criminalRecordUrl: existingProfile.criminalRecordUrl,
+                            profilePhotoStatus: existingProfile.profilePhotoStatus,
+                            criminalRecordStatus: existingProfile.criminalRecordStatus,
+                            approvalStatus: existingProfile.approvalStatus
+                        )
+                    )
+                    providerProfileNotice = "Bakıcı profili ve fiyat bilgisi güncellendi."
                 }
             } catch let error as APIError {
                 switch error {
                 case .http(let code, _):
                     if code == 404 || code == 405 {
-                        providerProfileNotice = "Bakıcı profili güncellendi. Profil endpoint'i hazır olmadığından bazı alanlar cihazda tutuluyor."
+                        let existingProfile = providerSummary?.profile ?? ProviderOnboardingProfile()
+                        providerSummary = ProviderOnboardingSummary(
+                            account: providerAccount,
+                            profile: ProviderOnboardingProfile(
+                                educationLevel: payload.educationLevel,
+                                about: payload.about,
+                                experience: payload.experience,
+                                categories: ProviderCategoryMapper.backendServices(from: payload.categories),
+                                age: payload.age,
+                                hourlyRate: payload.hourlyRate,
+                                dailyRate: payload.dailyRate,
+                                profilePhotoName: existingProfile.profilePhotoName,
+                                profilePhotoUrl: existingProfile.profilePhotoUrl,
+                                criminalRecordFileName: existingProfile.criminalRecordFileName,
+                                criminalRecordUrl: existingProfile.criminalRecordUrl,
+                                profilePhotoStatus: existingProfile.profilePhotoStatus,
+                                criminalRecordStatus: existingProfile.criminalRecordStatus,
+                                approvalStatus: existingProfile.approvalStatus
+                            )
+                        )
+                        providerProfileNotice = "Bakıcı profilin güncellendi. Bazı ayrıntılar kısa süre içinde hesabına yansıyabilir."
                     } else {
                         throw error
                     }
@@ -1341,33 +1420,69 @@ struct AccountView: View {
 
     private func saveProviderMedia(_ payload: ProviderMediaEditPayload) async {
         let existingProfile = providerSummary?.profile ?? ProviderOnboardingProfile()
-        let profileRequest = UpsertProviderOnboardingProfileRequest(
-            educationLevel: existingProfile.educationLevel,
-            about: existingProfile.about,
-            categories: existingProfile.categories,
-            profilePhotoName: payload.profilePhotoName,
-            criminalRecordFileName: payload.criminalRecordFileName
-        )
+        var profilePhotoName = payload.profilePhotoName
+        var profilePhotoURL = existingProfile.profilePhotoUrl
+        var criminalRecordFileName = payload.criminalRecordFileName
+        var criminalRecordURL = existingProfile.criminalRecordUrl
 
         providerAccountError = nil
         providerProfileNotice = nil
 
         do {
+            if let profilePhoto = payload.profilePhotoUpload {
+                let uploaded = try await session.deps.providerService.uploadDocument(
+                    kind: .profilePhoto,
+                    fileName: profilePhoto.fileName,
+                    data: profilePhoto.data,
+                    mimeType: profilePhoto.mimeType
+                )
+                profilePhotoName = uploaded.profile?.profilePhotoName ?? profilePhotoName
+                profilePhotoURL = uploaded.profile?.profilePhotoUrl ?? uploaded.url ?? profilePhotoURL
+            }
+
+            if let criminalRecord = payload.criminalRecordUpload {
+                let uploaded = try await session.deps.providerService.uploadDocument(
+                    kind: .criminalRecord,
+                    fileName: criminalRecord.fileName,
+                    data: criminalRecord.data,
+                    mimeType: criminalRecord.mimeType
+                )
+                criminalRecordFileName = uploaded.profile?.criminalRecordFileName ?? criminalRecordFileName
+                criminalRecordURL = uploaded.profile?.criminalRecordUrl ?? uploaded.url ?? criminalRecordURL
+            }
+
+            let profileRequest = UpsertProviderOnboardingProfileRequest(
+                educationLevel: existingProfile.educationLevel,
+                about: existingProfile.about,
+                categories: existingProfile.categories,
+                profilePhotoName: profilePhotoName,
+                criminalRecordFileName: criminalRecordFileName
+            )
+
             if let updatedSummary = try await session.deps.providerService.upsertOnboardingProfile(profileRequest) {
                 providerSummary = updatedSummary
                 if let updatedAccount = updatedSummary.account {
                     providerAccount = updatedAccount
                 }
-                providerProfileNotice = "Profil fotoğrafı ve belge bilgileri backend ile eşzamanlandı."
+                providerProfileNotice = "Profil fotoğrafın ve belge bilgilerin güncellendi."
             } else {
                 providerSummary = ProviderOnboardingSummary(
                     account: providerAccount,
                     profile: ProviderOnboardingProfile(
                         educationLevel: existingProfile.educationLevel,
                         about: existingProfile.about,
+                        experience: existingProfile.experience,
                         categories: existingProfile.categories,
-                        profilePhotoName: payload.profilePhotoName,
-                        criminalRecordFileName: payload.criminalRecordFileName
+                        age: existingProfile.age,
+                        hourlyRate: existingProfile.hourlyRate,
+                        dailyRate: existingProfile.dailyRate,
+                        profilePhotoName: profilePhotoName,
+                        profilePhotoUrl: profilePhotoURL,
+                        criminalRecordFileName: criminalRecordFileName,
+                        criminalRecordUrl: criminalRecordURL,
+                        profilePhotoStatus: profilePhotoName.isEmpty ? "MISSING" : "PENDING",
+                        criminalRecordStatus: criminalRecordFileName.isEmpty ? "MISSING" : "PENDING",
+                        approvalStatus: existingProfile.approvalStatus
                     )
                 )
                 providerProfileNotice = "Profil fotoğrafı ve belge bilgileri güncellendi."
@@ -1382,12 +1497,21 @@ struct AccountView: View {
                         profile: ProviderOnboardingProfile(
                             educationLevel: existingProfile.educationLevel,
                             about: existingProfile.about,
+                            experience: existingProfile.experience,
                             categories: existingProfile.categories,
-                            profilePhotoName: payload.profilePhotoName,
-                            criminalRecordFileName: payload.criminalRecordFileName
+                            age: existingProfile.age,
+                            hourlyRate: existingProfile.hourlyRate,
+                            dailyRate: existingProfile.dailyRate,
+                            profilePhotoName: profilePhotoName,
+                            profilePhotoUrl: profilePhotoURL,
+                            criminalRecordFileName: criminalRecordFileName,
+                            criminalRecordUrl: criminalRecordURL,
+                            profilePhotoStatus: profilePhotoName.isEmpty ? "MISSING" : "PENDING",
+                            criminalRecordStatus: criminalRecordFileName.isEmpty ? "MISSING" : "PENDING",
+                            approvalStatus: existingProfile.approvalStatus
                         )
                     )
-                    providerProfileNotice = "Belge alanları güncellendi. Backend endpoint'i hazır olmadığından cihazda tutuluyor."
+                    providerProfileNotice = "Belge bilgilerin güncellendi. Bazı ayrıntılar kısa süre içinde hesabına yansıyabilir."
                     showProviderMediaEditor = false
                 } else {
                     providerAccountError = error.localizedDescription
@@ -1409,12 +1533,24 @@ private struct ProviderProfileEditPayload {
     let phone: String
     let educationLevel: String
     let about: String
+    let experience: String
     let categories: [String]
+    let age: Int
+    let hourlyRate: Int
+    let dailyRate: Int
 }
 
 private struct ProviderMediaEditPayload {
+    struct PendingUpload {
+        let fileName: String
+        let mimeType: String
+        let data: Data
+    }
+
     let profilePhotoName: String
     let criminalRecordFileName: String
+    let profilePhotoUpload: PendingUpload?
+    let criminalRecordUpload: PendingUpload?
 }
 
 private struct ProfileEditView: View {
@@ -1521,7 +1657,11 @@ private struct ProviderProfileEditView: View {
     @State private var phone: String
     @State private var educationLevel: String
     @State private var about: String
+    @State private var experience: String
     @State private var selectedCategories: [String]
+    @State private var age: String
+    @State private var hourlyRate: String
+    @State private var dailyRate: String
     @State private var isSaving = false
 
     private let educationOptions = [
@@ -1556,7 +1696,33 @@ private struct ProviderProfileEditView: View {
         _phone = State(initialValue: account?.gsmNumber ?? "")
         _educationLevel = State(initialValue: profile?.educationLevel ?? "")
         _about = State(initialValue: profile?.about ?? "")
-        _selectedCategories = State(initialValue: profile?.categories ?? [])
+        _experience = State(initialValue: profile?.experience ?? "")
+        _selectedCategories = State(initialValue: ProviderCategoryMapper.displayLabels(from: profile?.categories ?? []))
+        _age = State(initialValue: profile?.age.map(String.init) ?? "")
+        _hourlyRate = State(initialValue: profile?.hourlyRate.map(String.init) ?? "")
+        _dailyRate = State(initialValue: profile?.dailyRate.map(String.init) ?? "")
+    }
+
+    private func applyIncomingValues() {
+        if let account {
+            if contactName.isEmpty { contactName = account.contactName }
+            if contactSurname.isEmpty { contactSurname = account.contactSurname }
+            if storeName.isEmpty { storeName = account.name }
+            if email.isEmpty { email = account.email }
+            if phone.isEmpty { phone = account.gsmNumber }
+        }
+
+        if let profile {
+            if educationLevel.isEmpty { educationLevel = profile.educationLevel }
+            if about.isEmpty { about = profile.about }
+            if experience.isEmpty { experience = profile.experience }
+            if selectedCategories.isEmpty {
+                selectedCategories = ProviderCategoryMapper.displayLabels(from: profile.categories)
+            }
+            if age.isEmpty, let value = profile.age, value > 0 { age = String(value) }
+            if hourlyRate.isEmpty, let value = profile.hourlyRate, value > 0 { hourlyRate = String(value) }
+            if dailyRate.isEmpty, let value = profile.dailyRate, value > 0 { dailyRate = String(value) }
+        }
     }
 
     var body: some View {
@@ -1571,6 +1737,9 @@ private struct ProviderProfileEditView: View {
                 AppTextField(placeholder: "Profil / Mağaza Adı", text: $storeName)
                 AppTextField(placeholder: "E-posta", text: $email, keyboardType: .emailAddress)
                 AppTextField(placeholder: "Telefon", text: $phone, keyboardType: .phonePad)
+                AppTextField(placeholder: "Yaş", text: $age, keyboardType: .numberPad)
+                AppTextField(placeholder: "Saatlik Ücret (TL)", text: $hourlyRate, keyboardType: .numberPad)
+                AppTextField(placeholder: "Günlük Ücret (TL)", text: $dailyRate, keyboardType: .numberPad)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Eğitim Durumu")
@@ -1604,6 +1773,17 @@ private struct ProviderProfileEditView: View {
                     AppTextArea(
                         placeholder: "Deneyimini, yaklaşımını ve ailelere sunduğun desteği anlat.",
                         text: $about,
+                        minHeight: 140
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Deneyim")
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    AppTextArea(
+                        placeholder: "Çalıştığın yaş grupları ve bakım deneyimini anlat.",
+                        text: $experience,
                         minHeight: 140
                     )
                 }
@@ -1649,7 +1829,11 @@ private struct ProviderProfileEditView: View {
                                 phone: phone.trimmingCharacters(in: .whitespacesAndNewlines),
                                 educationLevel: educationLevel,
                                 about: about.trimmingCharacters(in: .whitespacesAndNewlines),
-                                categories: selectedCategories
+                                experience: experience.trimmingCharacters(in: .whitespacesAndNewlines),
+                                categories: selectedCategories,
+                                age: Int(age.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+                                hourlyRate: Int(hourlyRate.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+                                dailyRate: Int(dailyRate.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
                             )
                         )
                         isSaving = false
@@ -1682,6 +1866,13 @@ private struct ProviderProfileEditView: View {
                 .foregroundStyle(DS.Colors.primary)
             }
         }
+        .onAppear(perform: applyIncomingValues)
+        .onChange(of: account?.contactName) { _, _ in
+            applyIncomingValues()
+        }
+        .onChange(of: profile?.educationLevel) { _, _ in
+            applyIncomingValues()
+        }
     }
 
     private func toggleCategory(_ category: String) {
@@ -1702,6 +1893,8 @@ private struct ProviderMediaEditView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showPDFPicker = false
     @State private var isSaving = false
+    @State private var profilePhotoUpload: ProviderMediaEditPayload.PendingUpload?
+    @State private var criminalRecordUpload: ProviderMediaEditPayload.PendingUpload?
 
     init(
         profilePhotoName: String,
@@ -1769,7 +1962,9 @@ private struct ProviderMediaEditView: View {
                         await onSave(
                             ProviderMediaEditPayload(
                                 profilePhotoName: profilePhotoName,
-                                criminalRecordFileName: criminalRecordFileName
+                                criminalRecordFileName: criminalRecordFileName,
+                                profilePhotoUpload: profilePhotoUpload,
+                                criminalRecordUpload: criminalRecordUpload
                             )
                         )
                         isSaving = false
@@ -1803,8 +1998,10 @@ private struct ProviderMediaEditView: View {
             }
         }
         .onChange(of: selectedPhotoItem) { _, newItem in
-            guard newItem != nil else { return }
-            profilePhotoName = "profil-fotografi-guncel.jpg"
+            guard let newItem else { return }
+            Task {
+                await loadImage(from: newItem)
+            }
         }
         .fileImporter(
             isPresented: $showPDFPicker,
@@ -1813,10 +2010,47 @@ private struct ProviderMediaEditView: View {
         ) { result in
             switch result {
             case .success(let urls):
-                criminalRecordFileName = urls.first?.lastPathComponent ?? criminalRecordFileName
+                guard let url = urls.first else { return }
+                let didAccess = url.startAccessingSecurityScopedResource()
+                defer {
+                    if didAccess {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+                do {
+                    let data = try Data(contentsOf: url)
+                    criminalRecordFileName = url.lastPathComponent
+                    criminalRecordUpload = .init(
+                        fileName: url.lastPathComponent,
+                        mimeType: "application/pdf",
+                        data: data
+                    )
+                } catch {
+                }
             case .failure:
                 break
             }
+        }
+    }
+
+    private func loadImage(from item: PhotosPickerItem) async {
+        do {
+            if let data = try await item.loadTransferable(type: Data.self) {
+                let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
+                let mimeType: String
+                if item.supportedContentTypes.first?.conforms(to: .png) == true {
+                    mimeType = "image/png"
+                } else if item.supportedContentTypes.first?.conforms(to: .heic) == true {
+                    mimeType = "image/heic"
+                } else {
+                    mimeType = "image/jpeg"
+                }
+
+                let fileName = "profil-fotografi-guncel.\(ext)"
+                profilePhotoName = fileName
+                profilePhotoUpload = .init(fileName: fileName, mimeType: mimeType, data: data)
+            }
+        } catch {
         }
     }
 }
@@ -2219,13 +2453,13 @@ private struct SettingsView: View {
 
     private var settingsSummaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Bildirim Ozetin")
+            Text("Bildirim Özetin")
                 .font(.headline)
                 .foregroundStyle(DS.Colors.textPrimary)
 
             HStack(spacing: 12) {
                 summaryMetricCard("Aktif Kanal", "\(enabledChannelCount)")
-                summaryMetricCard("Durum Bildirimi", "\(enabledBookingNotificationCount)/3 acik")
+                summaryMetricCard("Rezervasyon Bildirimi", "\(enabledBookingNotificationCount)/3 açık")
             }
 
             Text("Konum: \(selectedLocationName)")
@@ -2234,7 +2468,7 @@ private struct SettingsView: View {
                 .lineLimit(2)
 
             if isSyncingPreferences {
-                Text("Tercihler eszamanlaniyor...")
+                Text("Tercihlerin güncelleniyor...")
                     .font(.footnote)
                     .foregroundStyle(DS.Colors.textSecondary)
             } else if let syncNotice {
@@ -2362,14 +2596,14 @@ private struct SettingsView: View {
                 selectedLocationName = remote.locationName
                 selectedLatitude = remote.locationLatitude
                 selectedLongitude = remote.locationLongitude
-                syncNotice = "Tercihler backend'den eszamanlandi."
+                syncNotice = "Ayarların yüklendi."
                 syncError = nil
             }
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 {
-                    syncNotice = "Tercihler bu cihazda kaydediliyor. Backend ayar endpoint'i hazir degil."
+                    syncNotice = "Ayarların bu cihazda saklanıyor."
                 } else {
                     syncError = error.localizedDescription
                     syncNotice = nil
@@ -2391,13 +2625,13 @@ private struct SettingsView: View {
 
         do {
             try await preferenceService.savePreferences(preferenceSnapshot)
-            syncNotice = "Tercihler backend ile eszamanlandi."
+            syncNotice = "Ayarların güncellendi."
             syncError = nil
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 {
-                    syncNotice = "Tercihler cihazda guncellendi. Backend ayar endpoint'i hazir degil."
+                    syncNotice = "Ayarların bu cihazda güncellendi."
                 } else {
                     syncError = error.localizedDescription
                     syncNotice = nil

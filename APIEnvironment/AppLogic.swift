@@ -9,6 +9,8 @@ import Foundation
 
 extension Notification.Name {
     static let appDidOpenRemoteNotification = Notification.Name("appDidOpenRemoteNotification")
+    static let didReceivePushRegistrationToken = Notification.Name("didReceivePushRegistrationToken")
+    static let didReceiveAPNSToken = Notification.Name("didReceiveAPNSToken")
 }
 
 enum DashboardNotificationDestination: Equatable {
@@ -16,6 +18,7 @@ enum DashboardNotificationDestination: Equatable {
     case bookingDetail(String)
     case bookings
     case chatList
+    case careRequests
     case notifications
 }
 
@@ -310,20 +313,20 @@ struct BookingStatusNotificationContent: Equatable {
         switch status.uppercased() {
         case "CONFIRMED":
             return BookingStatusNotificationContent(
-                title: "Bakici Onay Verdi",
-                body: "\(providerName), \(context) talebini onayladi.",
+                title: "Bakıcı Onay Verdi",
+                body: "\(providerName), \(context) talebini onayladı.",
                 type: "booking_confirmed"
             )
         case "CANCELED":
             return BookingStatusNotificationContent(
-                title: "Bakici Reddetti",
+                title: "Bakıcı Reddetti",
                 body: "\(providerName), \(context) talebini reddetti.",
                 type: "booking_rejected"
             )
         default:
             return BookingStatusNotificationContent(
-                title: "Hizmet Tamamlandi",
-                body: "\(providerName), \(context) hizmetini tamamladigini bildirdi.",
+                title: "Hizmet Tamamlandı",
+                body: "\(providerName), \(context) hizmetini tamamladığını bildirdi.",
                 type: "booking_completed"
             )
         }
@@ -380,8 +383,8 @@ struct FamilyNotificationPresentation: Equatable {
             return FamilyNotificationPresentation(
                 tintKey: "green",
                 icon: "checkmark.seal.fill",
-                badgeText: "Hizli Donus",
-                highlightText: "Bakicin talebine hizli yanit verdi."
+                badgeText: "Hızlı Dönüş",
+                highlightText: "Bakıcın talebine hızlı yanıt verdi."
             )
         case "booking_rejected":
             return FamilyNotificationPresentation(
@@ -535,6 +538,10 @@ enum DashboardRouting {
             return .bookingDetail(bookingID)
         }
 
+        if prefersCareRequestsDestination(notification) {
+            return .careRequests
+        }
+
         if prefersBookingsDestination(notification) {
             return .bookings
         }
@@ -558,6 +565,17 @@ enum DashboardRouting {
             || text.contains("onay")
             || text.contains("booking")
             || text.contains("takvim")
+    }
+
+    static func prefersCareRequestsDestination(_ notification: AppNotification) -> Bool {
+        let text = normalizedText(notification.title + " " + notification.body + " " + (notification.type ?? ""))
+        return text.contains("aday")
+            || text.contains("basvuru")
+            || text.contains("başvuru")
+            || text.contains("hizli bakici talebi")
+            || text.contains("hızlı bakıcı talebi")
+            || text.contains("aile talebi")
+            || text.contains("care request")
     }
 
     static func prefersChatDestination(_ notification: AppNotification) -> Bool {
@@ -714,6 +732,34 @@ enum QuietHoursLogic {
 }
 
 enum ProviderAvailabilityLogic {
+    static func decodeWeeklyTemplates(_ rawValue: String) -> [Int: [String]] {
+        guard let data = rawValue.data(using: .utf8) else { return [:] }
+
+        if let decoded = try? JSONDecoder().decode([Int: [String]].self, from: data) {
+            return decoded
+        }
+
+        guard let fallback = try? JSONDecoder().decode([String: [String]].self, from: data) else {
+            return [:]
+        }
+
+        return fallback.reduce(into: [:]) { partial, item in
+            guard let weekday = Int(item.key) else { return }
+            partial[weekday] = item.value
+        }
+    }
+
+    static func encodeWeeklyTemplates(_ templates: [Int: [String]]) -> String {
+        guard
+            let data = try? JSONEncoder().encode(templates),
+            let string = String(data: data, encoding: .utf8)
+        else {
+            return "{}"
+        }
+
+        return string
+    }
+
     static func decodeSelections(_ rawValue: String) -> [String: [String]] {
         guard let data = rawValue.data(using: .utf8) else { return [:] }
         return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
@@ -740,6 +786,12 @@ enum ProviderAvailabilityLogic {
         }
     }
 
+    static func totalTemplateCount(in templates: [Int: [String]]) -> Int {
+        templates.values.reduce(0) { partial, slots in
+            partial + Set(slots).count
+        }
+    }
+
     static func nextAvailableDate(
         in selections: [String: [String]],
         from now: Date = Date()
@@ -753,6 +805,88 @@ enum ProviderAvailabilityLogic {
             .first { key in
                 key >= today && !(selections[key] ?? []).isEmpty
             }
+    }
+
+    static func weekday(for date: Date, calendar: Calendar = .current) -> Int {
+        calendar.component(.weekday, from: date)
+    }
+
+    static func weekdayTitle(for weekday: Int, locale: Locale = Locale(identifier: "tr_TR")) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = locale
+
+        let weekdaySymbols = calendar.weekdaySymbols
+        guard weekday > 0, weekday <= weekdaySymbols.count else { return "Bu gün" }
+        return weekdaySymbols[weekday - 1].capitalized(with: locale)
+    }
+
+    static func nextDate(
+        for weekday: Int,
+        from date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date? {
+        guard (1...7).contains(weekday) else { return nil }
+
+        let currentWeekday = calendar.component(.weekday, from: date)
+        let delta = (weekday - currentWeekday + 7) % 7
+        return calendar.date(byAdding: .day, value: delta, to: date)
+    }
+
+    static func selectionsApplyingWeeklyRule(
+        currentSelections: [String: [String]],
+        currentTemplates: [Int: [String]],
+        selectedDate: Date,
+        selectedSlots: [String],
+        appliesWeeklyTemplate: Bool,
+        horizonInWeeks: Int = 8,
+        calendar: Calendar = .current
+    ) -> (selections: [String: [String]], templates: [Int: [String]]) {
+        var updatedSelections = currentSelections
+        var updatedTemplates = currentTemplates
+
+        let normalizedSlots = sortedSlots(selectedSlots)
+        let selectedWeekday = weekday(for: selectedDate, calendar: calendar)
+
+        if appliesWeeklyTemplate {
+            updatedTemplates[selectedWeekday] = normalizedSlots
+
+            guard horizonInWeeks > 0 else {
+                return (updatedSelections, updatedTemplates)
+            }
+
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+
+            for offset in 0..<horizonInWeeks {
+                guard let candidateDate = calendar.date(byAdding: .weekOfYear, value: offset, to: selectedDate) else {
+                    continue
+                }
+                let key = formatter.string(from: candidateDate)
+                updatedSelections[key] = normalizedSlots
+            }
+        } else {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+            updatedSelections[formatter.string(from: selectedDate)] = normalizedSlots
+        }
+
+        return (updatedSelections, updatedTemplates)
+    }
+
+    static func copyTemplate(
+        from sourceWeekday: Int,
+        to destinationWeekdays: [Int],
+        using templates: [Int: [String]]
+    ) -> [Int: [String]] {
+        guard let sourceSlots = templates[sourceWeekday], !sourceSlots.isEmpty else {
+            return templates
+        }
+
+        var updated = templates
+        for weekday in destinationWeekdays where weekday != sourceWeekday {
+            updated[weekday] = sortedSlots(sourceSlots)
+        }
+        return updated
     }
 }
 
@@ -1074,12 +1208,12 @@ struct BookingStatusPresentation {
         switch status.uppercased() {
         case "ACCEPTED", "CONFIRMED":
             base = BookingStatusPresentation(
-                localizedStatus: "Onaylandi",
+                localizedStatus: "Onaylandı",
                 statusTone: .primary,
-                paymentSummaryText: "Odeme adimi hazir",
+                paymentSummaryText: "Sıradaki adım ödeme",
                 paymentSummaryTone: .primary,
-                paymentLabel: "Hazir",
-                paymentDescription: "Rezervasyon onaylandi. Uygunsa simdi checkout adimina gecip odemeyi tamamlayabilirsin.",
+                paymentLabel: "Hazır",
+                paymentDescription: "Rezervasyon onaylandı. Hazırsan şimdi ödeme adımına geçip rezervasyonu tamamlayabilirsin.",
                 paymentTone: .primary,
                 paymentIcon: "creditcard",
                 canPay: true,
@@ -1093,7 +1227,7 @@ struct BookingStatusPresentation {
                 paymentSummaryText: "Hizmet aktif",
                 paymentSummaryTone: .primary,
                 paymentLabel: "Aktif",
-                paymentDescription: "Rezervasyon baslatildi. Hizmet tamamlandiginda kaydi tamamlanmis olarak isaretleyebilirsin.",
+                paymentDescription: "Hizmet başladı. İş bittiğinde bu kaydı tamamlandı olarak işaretleyebilirsin.",
                 paymentTone: .primary,
                 paymentIcon: "figure.walk",
                 canPay: false,
@@ -1104,10 +1238,10 @@ struct BookingStatusPresentation {
             base = BookingStatusPresentation(
                 localizedStatus: "Beklemede",
                 statusTone: .accent,
-                paymentSummaryText: "Odeme beklemede",
+                paymentSummaryText: "Onay bekleniyor",
                 paymentSummaryTone: .accent,
                 paymentLabel: "Beklemede",
-                paymentDescription: "Rezervasyon talebin alindi. Onay sureci tamamlanirken odeme henuz beklemede.",
+                paymentDescription: "Rezervasyon talebin alındı. Karşı taraf onay verdiğinde ödeme adımı açılacak.",
                 paymentTone: .accent,
                 paymentIcon: "clock.badge",
                 canPay: true,
@@ -1116,12 +1250,12 @@ struct BookingStatusPresentation {
             )
         case "COMPLETED":
             base = BookingStatusPresentation(
-                localizedStatus: "Tamamlandi",
+                localizedStatus: "Tamamlandı",
                 statusTone: .primary,
-                paymentSummaryText: "Odeme tamamlandi",
+                paymentSummaryText: "Ödeme tamamlandı",
                 paymentSummaryTone: .primary,
-                paymentLabel: "Tamamlandi",
-                paymentDescription: "Bu rezervasyon tamamlanmis gorunuyor. Gerekirse ayni bakici ile yeni bir rezervasyon olusturabilirsin.",
+                paymentLabel: "Tamamlandı",
+                paymentDescription: "Bu rezervasyon tamamlanmış görünüyor. Gerekirse aynı bakıcı ile yeni bir rezervasyon oluşturabilirsin.",
                 paymentTone: .primary,
                 paymentIcon: "checkmark.circle",
                 canPay: false,
@@ -1130,12 +1264,12 @@ struct BookingStatusPresentation {
             )
         case "CANCELED", "CANCELLED":
             base = BookingStatusPresentation(
-                localizedStatus: "Iptal Edildi",
+                localizedStatus: "İptal Edildi",
                 statusTone: .danger,
-                paymentSummaryText: "Odeme kapatildi",
+                paymentSummaryText: "Ödeme kapatıldı",
                 paymentSummaryTone: .danger,
-                paymentLabel: "Kapatildi",
-                paymentDescription: "Bu rezervasyon kapatildi. Tekrar ihtiyacin olursa ayni bakici icin yeni bir takvim sec.",
+                paymentLabel: "Kapatıldı",
+                paymentDescription: "Bu rezervasyon kapatıldı. Tekrar ihtiyacın olursa aynı bakıcı için yeni bir takvim seç.",
                 paymentTone: .danger,
                 paymentIcon: "xmark.circle",
                 canPay: false,
@@ -1146,10 +1280,10 @@ struct BookingStatusPresentation {
             base = BookingStatusPresentation(
                 localizedStatus: status,
                 statusTone: .neutral,
-                paymentSummaryText: "Odeme durumu bilinmiyor",
+                paymentSummaryText: "Ödeme durumu bilinmiyor",
                 paymentSummaryTone: .neutral,
                 paymentLabel: "Bilinmiyor",
-                paymentDescription: "Odeme durumu backend tarafindan netlestiginde burada daha ayrintili bilgi gorunecek.",
+                paymentDescription: "Ödeme durumunu şu anda net okuyamadık. Birkaç saniye sonra tekrar kontrol edebilirsin.",
                 paymentTone: .neutral,
                 paymentIcon: "questionmark.circle",
                 canPay: false,
@@ -1166,34 +1300,34 @@ struct BookingStatusPresentation {
         switch paymentStatus.uppercased() {
         case "PAID", "SUCCEEDED", "SUCCESS":
             return withPayment(
-                summary: "Odeme tamamlandi",
+                summary: "Ödeme tamamlandı",
                 tone: .primary,
-                label: "Tamamlandi",
-                description: "Odeme backend tarafinda basarili gorunuyor.",
+                label: "Tamamlandı",
+                description: "Ödeme tamamlandı. Rezervasyonun planlandığı şekilde devam edecek.",
                 icon: "checkmark.circle.fill"
             )
         case "PENDING", "PROCESSING":
             return withPayment(
-                summary: "Odeme isleniyor",
+                summary: "Ödeme işleniyor",
                 tone: .accent,
-                label: "Isleniyor",
-                description: "Odeme baslatildi. Son durum backend onayi geldikce guncellenecek.",
+                label: "İşleniyor",
+                description: "Ödeme alındı ve işleniyor. Sonuç kesinleştiğinde burada güncellenecek.",
                 icon: "hourglass"
             )
         case "REQUIRES_ACTION", "REQUIRES_PAYMENT_METHOD", "UNPAID":
             return withPayment(
-                summary: "Odeme aksiyonu gerekiyor",
+                summary: "Ödeme aksiyonu gerekiyor",
                 tone: .accent,
                 label: "Aksiyon Gerekli",
-                description: "Odemenin tamamlanmasi icin checkout adimina geri donulmesi gerekiyor.",
+                description: "Ödemenin tamamlanması için checkout adımına geri dönülmesi gerekiyor.",
                 icon: "exclamationmark.circle"
             )
         case "FAILED", "CANCELED", "CANCELLED":
             return withPayment(
-                summary: "Odeme basarisiz",
+                summary: "Ödeme başarısız",
                 tone: .danger,
-                label: "Basarisiz",
-                description: "Odeme backend tarafinda basarisiz ya da iptal edilmis gorunuyor.",
+                label: "Başarısız",
+                description: "Ödeme tamamlanmadı. İstersen tekrar deneyebilir ya da başka bir ödeme yöntemi seçebilirsin.",
                 icon: "xmark.octagon"
             )
         default:

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct BrowseView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(StoredLocationKeys.name) private var selectedLocationName = StoredLocation.fallback.name
     @AppStorage(StoredLocationKeys.latitude) private var selectedLatitude = StoredLocation.fallback.latitude
     @AppStorage(StoredLocationKeys.longitude) private var selectedLongitude = StoredLocation.fallback.longitude
@@ -110,8 +111,16 @@ struct BrowseView: View {
                 CategoriesBrowseView(selectedCategory: $selectedCategory)
             }
             .task {
-                guard providers.isEmpty else { return }
                 await loadProviders()
+            }
+            .refreshable {
+                await loadProviders()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                Task {
+                    await loadProviders()
+                }
             }
         }
     }
@@ -214,7 +223,9 @@ struct BrowseView: View {
             providers = try await session.deps.providerService.listProviders().providers
             errorMessage = nil
         } catch {
-            errorMessage = "Bakıcılar yüklenemedi."
+            if providers.isEmpty {
+                errorMessage = "Bakıcılar yüklenemedi."
+            }
         }
     }
 
@@ -326,10 +337,10 @@ struct BrowseView: View {
     private func providerWithCalculatedDistance(_ provider: BrowseProvider) -> BrowseProvider {
         let calculatedDistance = computedDistance(for: provider)
         let formattedDistance: String
-        if calculatedDistance.isFinite {
+        if calculatedDistance.isFinite, calculatedDistance < 10_000 {
             formattedDistance = String(format: "%.1f km uzaklikta", calculatedDistance)
         } else {
-            formattedDistance = provider.distanceText
+            formattedDistance = sanitizedDistanceText(provider.distanceText)
         }
 
         return BrowseProvider(
@@ -342,6 +353,7 @@ struct BrowseView: View {
             gender: provider.gender,
             locationName: provider.locationName,
             distanceText: formattedDistance,
+            photoURL: provider.photoURL,
             latitude: provider.latitude,
             longitude: provider.longitude,
             categories: provider.categories,
@@ -358,7 +370,16 @@ struct BrowseView: View {
             .replacingOccurrences(of: " km uzaklıkta", with: "")
             .replacingOccurrences(of: " km uzaklikta", with: "")
             .replacingOccurrences(of: ",", with: ".")
-        return Double(normalized) ?? .greatestFiniteMagnitude
+        return Double(normalized) ?? .infinity
+    }
+
+    private func sanitizedDistanceText(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Mesafe bilgisi yakinda" }
+        if trimmed.count > 40 { return "Mesafe bilgisi yakinda" }
+        let digitCount = trimmed.filter(\.isNumber).count
+        if digitCount > max(8, trimmed.count / 2) { return "Mesafe bilgisi yakinda" }
+        return trimmed
     }
 
     private var discoverDateString: String {

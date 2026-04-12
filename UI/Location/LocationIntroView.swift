@@ -13,13 +13,13 @@ struct StoredLocation: Equatable {
     let longitude: Double
 
     static let fallback = StoredLocation(
-        name: "Kadikoy, Istanbul",
+        name: "Kadıköy, İstanbul",
         latitude: 41.015137,
         longitude: 28.979530
     )
 
     static func fromDefaults(_ defaults: UserDefaults = .standard) -> StoredLocation {
-        let name = defaults.string(forKey: StoredLocationKeys.name) ?? fallback.name
+        let name = localizedDisplayName(defaults.string(forKey: StoredLocationKeys.name) ?? fallback.name)
         let latitude = defaults.object(forKey: StoredLocationKeys.latitude) as? Double ?? fallback.latitude
         let longitude = defaults.object(forKey: StoredLocationKeys.longitude) as? Double ?? fallback.longitude
 
@@ -27,9 +27,18 @@ struct StoredLocation: Equatable {
     }
 
     static func save(_ location: StoredLocation, defaults: UserDefaults = .standard) {
-        defaults.set(location.name, forKey: StoredLocationKeys.name)
+        defaults.set(localizedDisplayName(location.name), forKey: StoredLocationKeys.name)
         defaults.set(location.latitude, forKey: StoredLocationKeys.latitude)
         defaults.set(location.longitude, forKey: StoredLocationKeys.longitude)
+    }
+
+    static func localizedDisplayName(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "Kadikoy", with: "Kadıköy")
+            .replacingOccurrences(of: "Istanbul", with: "İstanbul")
+            .replacingOccurrences(of: "Besiktas", with: "Beşiktaş")
+            .replacingOccurrences(of: "Izmir", with: "İzmir")
+            .replacingOccurrences(of: "Cankaya", with: "Çankaya")
     }
 
     static func coordinateLabel(latitude: Double, longitude: Double) -> String {

@@ -8,7 +8,6 @@ import Foundation
 
 final class ProviderService {
     private let api: APIClient
-    private static var seededProviderIDs: [String: SeededProviderProfile] = [:]
 
     init(api: APIClient) {
         self.api = api
@@ -16,85 +15,27 @@ final class ProviderService {
 
     func listProviders() async throws -> ProvidersResponse {
         struct Empty: Encodable {}
-        do {
-            let response: ProvidersResponse = try await api.request("v1/providers", method: "GET", body: Optional<Empty>.none, needsAuth: false)
-            let seeded = response.providers.enumerated().map { index, provider in
-                makeBrowseProvider(
-                    id: provider.id,
-                    payoutStatus: provider.payoutStatus,
-                    seed: Self.seedProfiles[index % Self.seedProfiles.count]
-                )
-            }
-            if seeded.isEmpty {
-                return ProvidersResponse(providers: Self.seedProfiles.enumerated().map { index, seed in
-                    makeBrowseProvider(
-                        id: "seed-provider-\(index)",
-                        payoutStatus: "APPROVED",
-                        seed: seed
-                    )
-                })
-            }
-            return ProvidersResponse(providers: seeded)
-        } catch {
-            return ProvidersResponse(providers: Self.seedProfiles.enumerated().map { index, seed in
-                makeBrowseProvider(
-                    id: "seed-provider-\(index)",
-                    payoutStatus: "APPROVED",
-                    seed: seed
-                )
-            })
-        }
+        let response: ProvidersResponse = try await api.request(
+            "v1/providers",
+            method: "GET",
+            body: Optional<Empty>.none,
+            needsAuth: false,
+            cachePolicy: .reloadIgnoringLocalCacheData
+        )
+        return ProvidersResponse(providers: response.providers.map(normalizeBrowseProvider))
     }
 
     func getProviderDetail(id: String) async throws -> ProviderDetailResponse {
         struct Empty: Encodable {}
-        let seed = Self.seededProviderIDs[id] ?? Self.seedProfiles.first!
 
-        do {
-            let response: ProviderDetailResponse = try await api.request("v1/providers/\(id)", method: "GET", body: Optional<Empty>.none, needsAuth: false)
-            let provider = response.provider
-            return ProviderDetailResponse(
-                provider: ProviderDetail(
-                    id: provider.id,
-                    displayName: seed.displayName,
-                    rating: seed.rating,
-                    hourlyRate: seed.hourlyRate,
-                    payoutStatus: provider.payoutStatus,
-                    about: seed.about,
-                    experienceYears: seed.experienceYears,
-                    age: seed.age,
-                    completedSittings: seed.completedSittings,
-                    locationName: seed.locationName,
-                    distanceText: seed.distanceText,
-                    latitude: seed.latitude,
-                    longitude: seed.longitude,
-                    skills: seed.skills,
-                    reviews: seed.reviews,
-                    availability: provider.availability.isEmpty ? seed.availability : provider.availability
-                )
-            )
-        } catch {
-            return ProviderDetailResponse(
-                provider: ProviderDetail(
-                    id: id,
-                    displayName: seed.displayName,
-                    rating: seed.rating,
-                    hourlyRate: seed.hourlyRate,
-                    payoutStatus: "APPROVED",
-                    about: seed.about,
-                    experienceYears: seed.experienceYears,
-                    age: seed.age,
-                    completedSittings: seed.completedSittings,
-                    locationName: seed.locationName,
-                    distanceText: seed.distanceText,
-                    latitude: seed.latitude,
-                    longitude: seed.longitude,
-                    skills: seed.skills,
-                    reviews: seed.reviews,
-                    availability: seed.availability
-                )
-            )
-        }
+        let response: ProviderDetailResponse = try await api.request(
+            "v1/providers/\(id)",
+            method: "GET",
+            body: Optional<Empty>.none,
+            needsAuth: false,
+            cachePolicy: .reloadIgnoringLocalCacheData
+        )
+        return ProviderDetailResponse(provider: normalizeProviderDetail(response.provider))
     }
 
     func listFavorites() async throws -> FavoritesResponse {
@@ -215,11 +156,28 @@ final class ProviderService {
         throw lastError ?? APIError.invalidURL
     }
 
+    func upsertProviderProfile(_ req: UpsertProviderProfileRequest) async throws -> ProviderProfileMutationResponse {
+        try await api.request("v1/providers/profile", method: "POST", body: req, needsAuth: true)
+    }
+
+    func uploadDocument(kind: ProviderDocumentKind, fileName: String, data: Data, mimeType: String) async throws -> ProviderDocumentUploadResponse {
+        try await api.uploadMultipart(
+            "v1/providers/documents/\(kind.rawValue)",
+            method: "POST",
+            file: APIClient.MultipartFile(
+                fieldName: "file",
+                fileName: fileName,
+                mimeType: mimeType,
+                data: data
+            ),
+            needsAuth: true
+        )
+    }
+
     private func makeBrowseProvider(id: String, payoutStatus: String, seed: SeededProviderProfile) -> BrowseProvider {
-        Self.seededProviderIDs[id] = seed
         return BrowseProvider(
             id: id,
-            displayName: seed.displayName,
+            displayName: sanitizedDisplayName(seed.displayName),
             rating: seed.rating,
             hourlyRate: seed.hourlyRate,
             payoutStatus: payoutStatus,
@@ -227,6 +185,7 @@ final class ProviderService {
             gender: seed.gender,
             locationName: seed.locationName,
             distanceText: seed.distanceText,
+            photoURL: nil,
             latitude: seed.latitude,
             longitude: seed.longitude,
             categories: seed.categories,
@@ -239,23 +198,104 @@ final class ProviderService {
             availableEndHour: seed.availableEndHour
         )
     }
+
+    private func normalizeBrowseProvider(_ provider: BrowseProvider) -> BrowseProvider {
+        BrowseProvider(
+            id: provider.id,
+            displayName: sanitizedDisplayName(provider.displayName),
+            rating: provider.rating,
+            hourlyRate: provider.hourlyRate,
+            payoutStatus: provider.payoutStatus,
+            age: provider.age,
+            gender: provider.gender,
+            locationName: provider.locationName,
+            distanceText: sanitizedDistanceText(provider.distanceText),
+            photoURL: provider.photoURL,
+            latitude: provider.latitude,
+            longitude: provider.longitude,
+            categories: ProviderCategoryMapper.displayLabels(from: provider.categories),
+            reviewCount: provider.reviewCount,
+            completedSittings: provider.completedSittings,
+            availableDates: provider.availableDates,
+            availableStartHour: provider.availableStartHour,
+            availableEndHour: provider.availableEndHour
+        )
+    }
+
+    private func normalizeProviderDetail(_ provider: ProviderDetail) -> ProviderDetail {
+        ProviderDetail(
+            id: provider.id,
+            displayName: sanitizedDisplayName(provider.displayName),
+            rating: provider.rating,
+            hourlyRate: provider.hourlyRate,
+            payoutStatus: provider.payoutStatus,
+            educationLevel: provider.educationLevel,
+            about: provider.about,
+            experience: provider.experience,
+            experienceYears: provider.experienceYears,
+            age: provider.age,
+            completedSittings: provider.completedSittings,
+            locationName: provider.locationName,
+            distanceText: sanitizedDistanceText(provider.distanceText),
+            photoURL: provider.photoURL,
+            latitude: provider.latitude,
+            longitude: provider.longitude,
+            skills: ProviderCategoryMapper.displayLabels(from: provider.skills),
+            reviews: provider.reviews,
+            availability: provider.availability
+        )
+    }
+
+    private func sanitizedDistanceText(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Mesafe bilgisi yakinda" }
+        if trimmed.count > 40 { return "Mesafe bilgisi yakinda" }
+        let digitCount = trimmed.filter(\.isNumber).count
+        if digitCount > max(8, trimmed.count / 2) { return "Mesafe bilgisi yakinda" }
+        return trimmed
+    }
+
+    private func sanitizedDisplayName(_ text: String) -> String {
+        let cleaned = text
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "'", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? "Bakici" : cleaned
+    }
 }
 
 private struct ProviderOnboardingSummaryResponse: Decodable {
     let summary: ProviderOnboardingSummary
 
     enum CodingKeys: String, CodingKey {
+        case summary
         case account
         case profile
         case onboarding
         case categories
+        case age
+        case hourlyRate
+        case dailyRate
         case educationLevel
         case about
+        case experience
         case profilePhotoName
+        case profilePhotoUrl
         case criminalRecordFileName
+        case criminalRecordUrl
+        case profilePhotoStatus
+        case criminalRecordStatus
+        case approvalStatus
     }
 
     init(from decoder: Decoder) throws {
+        if let wrapped = try? decoder.container(keyedBy: CodingKeys.self),
+           wrapped.contains(.summary),
+           let nestedSummary = try wrapped.decodeIfPresent(ProviderOnboardingSummary.self, forKey: .summary) {
+            self.summary = nestedSummary
+            return
+        }
+
         if let nested = try? NestedSummary(from: decoder), let summary = nested.summary {
             self.summary = summary
             return
@@ -265,9 +305,18 @@ private struct ProviderOnboardingSummaryResponse: Decodable {
         let profile = ProviderOnboardingProfile(
             educationLevel: try container.decodeIfPresent(String.self, forKey: .educationLevel) ?? "",
             about: try container.decodeIfPresent(String.self, forKey: .about) ?? "",
+            experience: try container.decodeIfPresent(String.self, forKey: .experience) ?? "",
             categories: try container.decodeIfPresent([String].self, forKey: .categories) ?? [],
+            age: try container.decodeIfPresent(Int.self, forKey: .age),
+            hourlyRate: try container.decodeIfPresent(Int.self, forKey: .hourlyRate),
+            dailyRate: try container.decodeIfPresent(Int.self, forKey: .dailyRate),
             profilePhotoName: try container.decodeIfPresent(String.self, forKey: .profilePhotoName) ?? "",
-            criminalRecordFileName: try container.decodeIfPresent(String.self, forKey: .criminalRecordFileName) ?? ""
+            profilePhotoUrl: try container.decodeIfPresent(String.self, forKey: .profilePhotoUrl) ?? "",
+            criminalRecordFileName: try container.decodeIfPresent(String.self, forKey: .criminalRecordFileName) ?? "",
+            criminalRecordUrl: try container.decodeIfPresent(String.self, forKey: .criminalRecordUrl) ?? "",
+            profilePhotoStatus: try container.decodeIfPresent(String.self, forKey: .profilePhotoStatus) ?? "MISSING",
+            criminalRecordStatus: try container.decodeIfPresent(String.self, forKey: .criminalRecordStatus) ?? "MISSING",
+            approvalStatus: try container.decodeIfPresent(String.self, forKey: .approvalStatus) ?? "PENDING"
         )
         summary = ProviderOnboardingSummary(
             account: try container.decodeIfPresent(ProviderAccount.self, forKey: .account),
@@ -319,6 +368,7 @@ private struct SeededProviderProfile {
     let distanceText: String
     let latitude: Double
     let longitude: Double
+    let educationLevel: String
     let about: String
     let categories: [String]
     let skills: [String]
@@ -342,6 +392,7 @@ private extension ProviderService {
             distanceText: "2.1 km uzaklıkta",
             latitude: 40.9917,
             longitude: 29.0277,
+            educationLevel: "Çocuk Gelişimi Lisans",
             about: "Çocuk gelişimi mezunuyum. Yenidoğan bakımından okul öncesi döneme kadar farklı yaş gruplarıyla deneyimim var. Güvenli rutin kurma, oyun temelli gelişim ve ailelerle düzenli iletişim konularında özenliyim.",
             categories: ["Bebek", "Okul Öncesi"],
             skills: ["Bebek Bakımı", "İlk Yardım", "Oyun Planı", "Uyku Rutini"],
@@ -369,6 +420,7 @@ private extension ProviderService {
             distanceText: "3.4 km uzaklıkta",
             latitude: 41.0430,
             longitude: 29.0094,
+            educationLevel: "Okul Öncesi Öğretmenliği Lisans",
             about: "Okul öncesi öğretmenliği geçmişim var. Yaratıcı etkinlikler, yemek düzeni ve ekran süresi yönetimi konusunda sistemli çalışırım. Ailelerin günlük akışına kolay uyum sağlarım.",
             categories: ["Okul Öncesi", "Anaokulu"],
             skills: ["Okul Öncesi", "Ödev Desteği", "Yemek Hazırlığı", "Etkinlik"],
@@ -396,6 +448,7 @@ private extension ProviderService {
             distanceText: "1.7 km uzaklıkta",
             latitude: 38.4622,
             longitude: 27.2176,
+            educationLevel: "Çocuk Gelişimi Ön Lisans",
             about: "Özellikle hareketli ve meraklı çocuklarla güçlü bağ kuruyorum. Açık hava etkinlikleri, ödev takibi ve günlük bakım rutinlerinde destek sağlıyorum.",
             categories: ["Yürümeye Başlayan", "İlkokul"],
             skills: ["Yürümeye Başlayan", "Açık Hava Etkinliği", "Ödev Desteği", "İletişim"],
@@ -422,6 +475,7 @@ private extension ProviderService {
             distanceText: "4.6 km uzaklıkta",
             latitude: 39.9179,
             longitude: 32.8627,
+            educationLevel: "Çocuk Gelişimi Yüksek Lisans",
             about: "Uzun yıllardır tam zamanlı çocuk bakımında çalışıyorum. Kriz anlarında sakin kalırım; düzen, hijyen ve güvenlik konularında yüksek hassasiyet gösteririm.",
             categories: ["Bebek", "Gece Bakımı"],
             skills: ["Bebek Bakımı", "Gece Bakımı", "İlaç Takibi", "Hijyen"],

@@ -10,6 +10,7 @@ import Combine
 
 struct ChatView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.openURL) private var openURL
     @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
     @AppStorage("accountPreferenceQuietHoursStart") private var quietHoursStart = "22:00"
     @AppStorage("accountPreferenceQuietHoursEnd") private var quietHoursEnd = "07:00"
@@ -23,6 +24,7 @@ struct ChatView: View {
     let onConversationUpdated: ((ConversationItem) -> Void)?
 
     @State private var message = ""
+    @State private var callErrorMessage: String?
     @StateObject private var viewModel: ChatViewModel
 
     init(
@@ -46,22 +48,23 @@ struct ChatView: View {
 
     var body: some View {
         VStack {
+            if let error = viewModel.error {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal)
+            }
+
+            profileContextBanner
+
             if viewModel.messages.isEmpty, viewModel.error == nil {
                 ContentUnavailableView(
                     "Mesaj Yok",
                     systemImage: "message",
                     description: Text("Bu konuşmada henüz mesaj yok.")
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                if let error = viewModel.error {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal)
-                }
-
-                profileContextBanner
-
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(viewModel.messages) { item in
@@ -76,61 +79,80 @@ struct ChatView: View {
                     }
                     .padding()
                 }
-
-                if viewModel.isParticipantTyping {
-                    HStack(spacing: 8) {
-                        Image(systemName: isQuietHoursActive ? "moon.zzz.fill" : "ellipsis.message.fill")
-                            .foregroundStyle(typingIndicatorTint)
-                        Text(isQuietHoursActive ? "Yaziyor, sessiz modda" : "Yaziyor...")
-                            .font(.footnote)
-                            .foregroundStyle(typingIndicatorTint)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(typingIndicatorBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .padding(.horizontal)
-                    .padding(.bottom, 4)
-                    .transition(.opacity)
-                }
-
-                Divider()
-
-                HStack {
-                    Button {
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(DS.Colors.primary)
-                    }
-
-                    TextField("Mesaj...", text: $message)
-                        .textFieldStyle(.roundedBorder)
-                        .onChange(of: message) { _, newValue in
-                            viewModel.userTypingChanged(chatID: chatID, text: newValue.trimmingCharacters(in: .whitespacesAndNewlines))
-                        }
-
-                    Button {
-                        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
-                        Task {
-                            await viewModel.sendMessage(chatID: chatID, text: trimmed)
-                        }
-                        message = ""
-                    } label: {
-                        Image(systemName: "paperplane.fill")
-                    }
-                }
-                .padding()
             }
+
+            if viewModel.isParticipantTyping {
+                HStack(spacing: 8) {
+                    Image(systemName: isQuietHoursActive ? "moon.zzz.fill" : "ellipsis.message.fill")
+                        .foregroundStyle(typingIndicatorTint)
+                    Text(isQuietHoursActive ? "Yazıyor, sessiz modda" : "Yazıyor...")
+                        .font(.footnote)
+                        .foregroundStyle(typingIndicatorTint)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(typingIndicatorBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal)
+                .padding(.bottom, 4)
+                .transition(.opacity)
+            }
+
+            Divider()
+
+            HStack {
+                Button {
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(DS.Colors.primary)
+                }
+
+                TextField("Mesaj...", text: $message)
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: message) { _, newValue in
+                        viewModel.userTypingChanged(chatID: chatID, text: newValue.trimmingCharacters(in: .whitespacesAndNewlines))
+                    }
+
+                Button {
+                    let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    Task {
+                        await viewModel.sendMessage(chatID: chatID, text: trimmed)
+                    }
+                    message = ""
+                } label: {
+                    Image(systemName: "paperplane.fill")
+                }
+            }
+            .padding()
         }
         .navigationTitle(title)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Image(systemName: "video.fill")
-                Image(systemName: "phone.fill")
+                Button {
+                    startCall(using: "facetime")
+                } label: {
+                    Image(systemName: "video.fill")
+                }
+
+                Button {
+                    startCall(using: "tel")
+                } label: {
+                    Image(systemName: "phone.fill")
+                }
             }
+        }
+        .alert("Arama Başlatılamadı", isPresented: Binding(
+            get: { callErrorMessage != nil },
+            set: { if !$0 { callErrorMessage = nil } }
+        )) {
+            Button("Tamam", role: .cancel) {
+                callErrorMessage = nil
+            }
+        } message: {
+            Text(callErrorMessage ?? "")
         }
         .task {
             viewModel.replaceServiceIfNeeded(session.deps.chatService)
@@ -147,6 +169,40 @@ struct ChatView: View {
         .onReceive(viewModel.$latestConversationUpdate.compactMap { $0 }) { conversation in
             onConversationUpdated?(conversation)
         }
+    }
+
+    private func startCall(using scheme: String) {
+        guard let phone = normalizedDialablePhone(from: title) else {
+            callErrorMessage = "Bu kişi için aranabilir bir telefon numarası bulunamadı."
+            return
+        }
+
+        guard let url = URL(string: "\(scheme)://\(phone)") else {
+            callErrorMessage = "Arama bağlantısı oluşturulamadı."
+            return
+        }
+
+        openURL(url) { accepted in
+            if !accepted {
+                callErrorMessage = scheme == "facetime"
+                    ? "FaceTime başlatılamadı. Cihazda FaceTime kapalı olabilir."
+                    : "Telefon araması başlatılamadı."
+                return
+            }
+
+            Task {
+                await viewModel.createCall(
+                    participantName: title,
+                    status: scheme == "facetime" ? "VIDEO" : "VOICE"
+                )
+            }
+        }
+    }
+
+    private func normalizedDialablePhone(from text: String) -> String? {
+        let allowed = Set("+0123456789")
+        let cleaned = String(text.filter { allowed.contains($0) })
+        return cleaned.count >= 10 ? cleaned : nil
     }
 
     private var profileContextBanner: some View {
@@ -179,13 +235,41 @@ struct ChatView: View {
     }
 
     private func formattedTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
-        let out = DateFormatter()
-        out.timeStyle = .short
-        if let date = iso.date(from: value) {
-            return out.string(from: date)
+        guard let date = parseISODate(value) else { return value }
+
+        let now = Date()
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+
+        if calendar.isDate(date, inSameDayAs: now) {
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return formatter.string(from: date)
         }
-        return value
+
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) {
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return "Dün \(formatter.string(from: date))"
+        }
+
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let basic = ISO8601DateFormatter()
+        basic.formatOptions = [.withInternetDateTime]
+        return basic.date(from: value)
     }
 
     private var isQuietHoursActive: Bool {
@@ -208,7 +292,7 @@ struct ChatView: View {
         if !familyDisplayName.isEmpty {
             return "\(familyDisplayName) profili aktif"
         }
-        return "Profil baglami hazir"
+        return "Profil bağlamı hazır"
     }
 
     private var resolvedFamilyBannerSubtitle: String {
@@ -216,6 +300,6 @@ struct ChatView: View {
         if !trimmedAbout.isEmpty {
             return trimmedAbout
         }
-        return familyLocationName
+        return StoredLocation.localizedDisplayName(familyLocationName)
     }
 }

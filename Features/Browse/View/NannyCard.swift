@@ -6,20 +6,15 @@
 //
 
 import SwiftUI
+import UIKit
+import Combine
 
 struct NannyCard: View {
     let provider: BrowseProvider
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(avatarGradient)
-                .frame(width: 80, height: 80)
-                .overlay {
-                    Text(initials)
-                        .font(.title3.bold())
-                        .foregroundStyle(.white)
-                }
+            avatarView
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .top) {
@@ -34,21 +29,28 @@ struct NannyCard: View {
                         .foregroundStyle(Color.pink.opacity(0.75))
                 }
 
-                Text("\(provider.distanceText) • \(provider.age) yaş")
+                Text(subtitleText)
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
+                    .lineLimit(2)
+
+                if !provider.categories.isEmpty {
+                    categoryPills
+                }
 
                 HStack(spacing: 6) {
-                    ForEach(0..<4, id: \.self) { _ in
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundStyle(DS.Colors.accent)
+                    if provider.reviewCount > 0 && provider.rating > 0 {
+                        ForEach(0..<4, id: \.self) { _ in
+                            Image(systemName: "star.fill")
+                                .font(.caption2)
+                                .foregroundStyle(DS.Colors.accent)
+                        }
+                        Text("\(provider.reviewCount)")
+                            .font(.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Text("•")
+                            .foregroundStyle(DS.Colors.textSecondary)
                     }
-                    Text("12")
-                        .font(.caption)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Text("•")
-                        .foregroundStyle(DS.Colors.textSecondary)
                     Text("₺\(provider.hourlyRate)/saat")
                         .font(.subheadline.bold())
                         .foregroundStyle(DS.Colors.textPrimary)
@@ -68,6 +70,21 @@ struct NannyCard: View {
         return parts.compactMap { $0.first.map(String.init) }.joined()
     }
 
+    private var subtitleText: String {
+        if provider.age > 0 {
+            return "\(provider.distanceText) • \(provider.age) yaş"
+        }
+        return provider.distanceText
+    }
+
+    private var visibleCategories: [String] {
+        Array(provider.categories.prefix(3))
+    }
+
+    private var categoryPills: some View {
+        FlexibleTagRow(tags: visibleCategories)
+    }
+
     private var avatarGradient: LinearGradient {
         let gradients: [[Color]] = [
             [Color(red: 0.20, green: 0.54, blue: 0.90), Color(red: 0.49, green: 0.74, blue: 0.98)],
@@ -77,5 +94,135 @@ struct NannyCard: View {
         ]
         let index = abs(provider.displayName.hashValue) % gradients.count
         return LinearGradient(colors: gradients[index], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    @ViewBuilder
+    private var avatarView: some View {
+        if let photoURL = provider.photoURL, let url = URL(string: photoURL) {
+            RemoteImageView(url: url) {
+                avatarPlaceholder
+            }
+            .frame(width: 80, height: 80)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        } else {
+            avatarPlaceholder
+        }
+    }
+
+    private var avatarPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(avatarGradient)
+            .frame(width: 80, height: 80)
+            .overlay {
+                Text(initials)
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+            }
+    }
+}
+
+private struct FlexibleTagRow: View {
+    let tags: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(rowGroups.indices, id: \.self) { rowIndex in
+                HStack(spacing: 6) {
+                    ForEach(rowGroups[rowIndex], id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(DS.Colors.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(DS.Colors.primary.opacity(0.10), in: Capsule())
+                    }
+                }
+            }
+        }
+    }
+
+    private var rowGroups: [[String]] {
+        var rows: [[String]] = [[]]
+        for tag in tags {
+            if let last = rows.last, last.count < 2 {
+                rows[rows.count - 1].append(tag)
+            } else {
+                rows.append([tag])
+            }
+        }
+        return rows
+    }
+}
+
+struct RemoteImageView<Placeholder: View>: View {
+    let url: URL?
+    let contentMode: ContentMode
+    @ViewBuilder let placeholder: () -> Placeholder
+
+    @StateObject private var loader = RemoteImageLoader()
+
+    init(
+        url: URL?,
+        contentMode: ContentMode = .fill,
+        @ViewBuilder placeholder: @escaping () -> Placeholder
+    ) {
+        self.url = url
+        self.contentMode = contentMode
+        self.placeholder = placeholder
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: contentMode)
+            } else {
+                placeholder()
+            }
+        }
+        .task(id: url) {
+            await loader.load(from: url)
+        }
+    }
+}
+
+@MainActor
+final class RemoteImageLoader: ObservableObject {
+    private static let imageCache = NSCache<NSURL, UIImage>()
+
+    @Published var image: UIImage?
+
+    func load(from url: URL?) async {
+        guard let url else {
+            image = nil
+            return
+        }
+
+        if let cachedImage = Self.imageCache.object(forKey: url as NSURL) {
+            image = cachedImage
+            return
+        }
+
+        do {
+            let request = URLRequest(url: url, cachePolicy: .useProtocolCachePolicy)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                image = nil
+                return
+            }
+            guard (200...299).contains(http.statusCode) else {
+                image = nil
+                return
+            }
+            guard let decoded = UIImage(data: data) else {
+                image = nil
+                return
+            }
+            image = decoded
+            Self.imageCache.setObject(decoded, forKey: url as NSURL)
+        } catch {
+            image = nil
+        }
     }
 }

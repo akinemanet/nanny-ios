@@ -100,12 +100,21 @@ struct RootView: View {
 }
 
 private struct ProviderRootView: View {
+    @EnvironmentObject private var session: SessionStore
     let service: ProviderService
 
-    @AppStorage("didCompleteProviderOnboarding") private var didCompleteProviderOnboarding = false
+    @AppStorage("didCompleteProviderOnboardingUserID") private var completedProviderUserID = ""
     @State private var isLoading = true
     @State private var account: ProviderAccount?
     @State private var errorMessage: String?
+
+    private var currentProviderUserID: String {
+        session.me?.user.id ?? ""
+    }
+
+    private var didCompleteProviderOnboarding: Bool {
+        !currentProviderUserID.isEmpty && completedProviderUserID == currentProviderUserID
+    }
 
     var body: some View {
         NavigationStack {
@@ -119,7 +128,9 @@ private struct ProviderRootView: View {
                 } else {
                     ProviderOnboardingView(service: service) { updatedAccount in
                         account = updatedAccount
-                        didCompleteProviderOnboarding = updatedAccount != nil
+                        if updatedAccount != nil {
+                            completedProviderUserID = currentProviderUserID
+                        }
                     }
                 }
             }
@@ -135,7 +146,9 @@ private struct ProviderRootView: View {
         defer { isLoading = false }
         do {
             account = try await service.getOnboardingSummary().account
-            didCompleteProviderOnboarding = account != nil || didCompleteProviderOnboarding
+            if account != nil {
+                completedProviderUserID = currentProviderUserID
+            }
             errorMessage = nil
         } catch {
             account = nil
@@ -145,6 +158,8 @@ private struct ProviderRootView: View {
 }
 
 private struct ProviderMainTabView: View {
+    @EnvironmentObject private var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
     let account: ProviderAccount?
 
     var body: some View {
@@ -161,15 +176,31 @@ private struct ProviderMainTabView: View {
                 Label("Müsaitlik", systemImage: "calendar")
             }
 
-            ChatListView()
-                .tabItem {
-                    Label("Mesajlar", systemImage: "message")
-                }
+            if let messageBadgeValue {
+                ChatListView()
+                    .tabItem {
+                        Label("Mesajlar", systemImage: "message")
+                    }
+                    .badge(messageBadgeValue)
+            } else {
+                ChatListView()
+                    .tabItem {
+                        Label("Mesajlar", systemImage: "message")
+                    }
+            }
 
-            NotificationsView()
-                .tabItem {
-                    Label("Bildirimler", systemImage: "bell")
-                }
+            if let notificationBadgeValue {
+                NotificationsView()
+                    .tabItem {
+                        Label("Bildirimler", systemImage: "bell")
+                    }
+                    .badge(notificationBadgeValue)
+            } else {
+                NotificationsView()
+                    .tabItem {
+                        Label("Bildirimler", systemImage: "bell")
+                    }
+            }
 
             AccountView()
                 .tabItem {
@@ -180,6 +211,23 @@ private struct ProviderMainTabView: View {
         .toolbarBackground(.white, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarColorScheme(.light, for: .tabBar)
+        .task {
+            await session.refreshInboxState()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task {
+                await session.refreshInboxState()
+            }
+        }
+    }
+
+    private var messageBadgeValue: Int? {
+        session.unreadMessageCount > 0 ? session.unreadMessageCount : nil
+    }
+
+    private var notificationBadgeValue: Int? {
+        session.unreadNotificationCount > 0 ? session.unreadNotificationCount : nil
     }
 }
 

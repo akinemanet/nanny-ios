@@ -59,7 +59,7 @@ struct ChatListView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "moon.zzz.fill")
                             .foregroundStyle(.indigo)
-                        Text("Sessiz saatler aktif. Okunmamis sohbetler daha yumuşak vurguyla gösteriliyor.")
+                        Text("Sessiz saatler aktif. Okunmamış sohbetler daha yumuşak vurguyla gösteriliyor.")
                             .font(.footnote)
                             .foregroundStyle(DS.Colors.textSecondary)
                     }
@@ -87,7 +87,7 @@ struct ChatListView: View {
 
                     if selectedTab == 0, filteredConversations.isEmpty, viewModel.error == nil {
                         emptyState(
-                            title: isProvider ? "Aktif konuşma yok" : "Sohbet Yok",
+                            title: isProvider ? "Aktif konuşma yok" : "Sohbet yok",
                             systemImage: "message",
                             description: isProvider
                                 ? "Ailelerle mesajlaştığında konuşmaların burada görünecek."
@@ -99,7 +99,7 @@ struct ChatListView: View {
 
                     if selectedTab == 1, viewModel.calls.isEmpty, viewModel.error == nil {
                         emptyState(
-                            title: "Arama Yok",
+                            title: "Arama yok",
                             systemImage: "phone",
                             description: "Henüz hiç arama geçmişin yok."
                         )
@@ -129,6 +129,15 @@ struct ChatListView: View {
                                     VStack(alignment: .leading) {
                                         Text(chat.participantName)
                                             .font(.headline)
+                                        if let cue = conversationActivityCue(for: chat) {
+                                            Text(cue)
+                                                .font(.caption2.bold())
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(DS.Colors.accent.opacity(0.12))
+                                                .foregroundStyle(DS.Colors.accent)
+                                                .clipShape(Capsule())
+                                        }
                                         Text(chat.lastMessage)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
@@ -137,7 +146,7 @@ struct ChatListView: View {
                                     Spacer()
 
                                     VStack(alignment: .trailing, spacing: 6) {
-                                        Text(chat.lastMessageAt)
+                                        Text(formattedConversationTimestamp(chat.lastMessageAt))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                         if chat.unreadCount > 0 {
@@ -158,24 +167,42 @@ struct ChatListView: View {
                             Button {
                                 showCallScreen = true
                             } label: {
-                                HStack {
+                                HStack(alignment: .top, spacing: 12) {
                                     Circle()
-                                        .fill(Color.gray.opacity(0.3))
+                                        .fill(callStatusColor(for: call).opacity(0.14))
                                         .frame(width: 48, height: 48)
+                                        .overlay {
+                                            Image(systemName: callIcon(for: call))
+                                                .foregroundStyle(callStatusColor(for: call))
+                                        }
 
-                                    VStack(alignment: .leading) {
+                                    VStack(alignment: .leading, spacing: 6) {
                                         Text(call.participantName)
                                             .font(.headline)
-                                        Text(call.direction.capitalized)
-                                            .foregroundStyle(call.status.uppercased() == "MISSED" ? .red : .green)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+
+                                        HStack(spacing: 8) {
+                                            Text(localizedCallDirection(call.direction))
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(DS.Colors.textSecondary)
+
+                                            Text(localizedCallStatus(call.status))
+                                                .font(.caption2.bold())
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(callStatusColor(for: call).opacity(0.14))
+                                                .foregroundStyle(callStatusColor(for: call))
+                                                .clipShape(Capsule())
+                                        }
+
+                                        Text(formattedConversationTimestamp(call.createdAt))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
                                     }
 
                                     Spacer()
-
-                                    Text(call.createdAt)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
                                 }
+                                .padding(.vertical, 4)
                             }
                             .buttonStyle(.plain)
                         }
@@ -238,6 +265,105 @@ struct ChatListView: View {
         isQuietHoursActive ? .indigo : .white
     }
 
+    private func conversationActivityCue(for chat: ConversationItem) -> String? {
+        if chat.unreadCount > 0 {
+            return "Yeni mesaj"
+        }
+
+        guard let date = parseISODate(chat.lastMessageAt) else { return nil }
+        if Date().timeIntervalSince(date) < 6 * 60 * 60 {
+            return "Az önce hareket oldu"
+        }
+
+        return nil
+    }
+
+    private func localizedCallDirection(_ value: String) -> String {
+        switch value.uppercased() {
+        case "INCOMING":
+            return "Gelen"
+        case "OUTGOING":
+            return "Giden"
+        case "MISSED":
+            return "Cevapsız"
+        default:
+            return "Arama"
+        }
+    }
+
+    private func localizedCallStatus(_ value: String) -> String {
+        switch value.uppercased() {
+        case "VIDEO":
+            return "Görüntülü"
+        case "VOICE":
+            return "Sesli"
+        case "MISSED":
+            return "Cevapsız"
+        case "COMPLETED":
+            return "Tamamlandı"
+        default:
+            return value.capitalized
+        }
+    }
+
+    private func callIcon(for call: CallItem) -> String {
+        switch call.status.uppercased() {
+        case "VIDEO":
+            return "video.fill"
+        default:
+            return call.direction.uppercased() == "INCOMING" ? "phone.arrow.down.left.fill" : "phone.fill"
+        }
+    }
+
+    private func callStatusColor(for call: CallItem) -> Color {
+        switch call.status.uppercased() {
+        case "MISSED":
+            return .red
+        case "VIDEO":
+            return .purple
+        default:
+            return .green
+        }
+    }
+
+    private func formattedConversationTimestamp(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+
+        let now = Date()
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+
+        if calendar.isDate(date, inSameDayAs: now) {
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return formatter.string(from: date)
+        }
+
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) {
+            formatter.timeStyle = .short
+            formatter.dateStyle = .none
+            return "Dün \(formatter.string(from: date))"
+        }
+
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let basic = ISO8601DateFormatter()
+        basic.formatOptions = [.withInternetDateTime]
+        return basic.date(from: value)
+    }
+
     private var providerConversationFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
@@ -272,6 +398,10 @@ struct ChatListView: View {
                 .font(.subheadline)
                 .foregroundStyle(DS.Colors.textSecondary)
                 .multilineTextAlignment(.center)
+            Text("Önerilen adım: Yeni bir mesaj ya da arama başladığında burada kolayca devam edebilirsin.")
+                .font(.footnote.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.Colors.primary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)

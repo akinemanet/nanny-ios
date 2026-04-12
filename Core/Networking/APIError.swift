@@ -18,8 +18,19 @@ enum APIError: Error, LocalizedError {
         case .invalidURL:
             return "Geçersiz URL"
         case .http(let code, let data):
-            if let data, let string = String(data: data, encoding: .utf8), !string.isEmpty {
-                return "HTTP \(code): \(string)"
+            if let data {
+                if let payload = try? JSONDecoder().decode(APIErrorPayload.self, from: data) {
+                    if let message = payload.message, !message.isEmpty {
+                        return "HTTP \(code): \(message)"
+                    }
+                    if let error = payload.error, !error.isEmpty {
+                        return "HTTP \(code): \(error)"
+                    }
+                }
+
+                if let string = String(data: data, encoding: .utf8), !string.isEmpty {
+                    return "HTTP \(code): \(string)"
+                }
             }
             return "HTTP Hatası: \(code)"
         case .decoding(let error):
@@ -28,4 +39,10 @@ enum APIError: Error, LocalizedError {
             return "Network Hatası: \(error.localizedDescription)"
         }
     }
+}
+
+private struct APIErrorPayload: Decodable {
+    let message: String?
+    let error: String?
+    let statusCode: Int?
 }

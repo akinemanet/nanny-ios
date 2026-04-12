@@ -60,21 +60,25 @@ struct NannyProfileView: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 14) {
-                            Circle()
-                                .fill(profileAvatarGradient)
-                                .frame(width: 72, height: 72)
-                                .overlay {
-                                    Text(profileInitials)
-                                        .font(.title.bold())
-                                        .foregroundStyle(.white)
-                                }
+                            profileAvatarView
 
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(detail?.displayName ?? provider.displayName)
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.white)
-                                Text("\(detail?.locationName ?? provider.locationName) • \(resolvedDistanceText)")
+                                Text("\(resolvedLocationName) • \(resolvedDistanceText)")
                                     .foregroundStyle(.white.opacity(0.9))
+                                if !heroSignals.isEmpty {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ForEach(Array(heroSignals.chunked(into: 2).enumerated()), id: \.offset) { _, row in
+                                            HStack(spacing: 8) {
+                                                ForEach(row) { signal in
+                                                    heroSignalChip(signal)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -88,21 +92,49 @@ struct NannyProfileView: View {
                 }
 
                 HStack {
-                    profileStat(String(format: "%.1f", detail?.rating ?? provider.rating), "Puan")
-                    profileStat("\(detail?.reviews.count ?? 0)", "Yorum")
-                    profileStat("\(detail?.age ?? 24)", "Yaş")
+                    if reviewCountValue > 0 && ratingValue > 0 {
+                        profileStat(String(format: "%.1f", ratingValue), "Puan")
+                        profileStat("\(reviewCountValue)", "Yorum")
+                    }
+                    profileStat(ageDisplayText, "Yaş")
+                }
+
+                if !trustBadges.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Güven Göstergeleri")
+                            .font(.headline)
+                            .foregroundStyle(DS.Colors.textPrimary)
+
+                        trustBadgeFlow
+                    }
+                    .padding()
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
                 }
 
                 HStack(spacing: 12) {
                     infoCard(title: "Saatlik Ücret", value: "₺\(detail?.hourlyRate ?? provider.hourlyRate) / saat")
-                    infoCard(title: "Tamamlanan", value: "\(detail?.completedSittings ?? 37) oturum")
+                    infoCard(title: "Tamamlanan", value: completedSittingsText)
+                }
+
+                if let educationLevel = detail?.educationLevel, !educationLevel.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Eğitim Durumu")
+                            .font(.headline)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text(educationLevel)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                    }
+                    .padding()
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Deneyim")
                         .font(.headline)
                         .foregroundStyle(DS.Colors.textPrimary)
-                    Text("Yenidoğan ve \(detail?.age ?? 12) yaşına kadar çocuklarla deneyim")
+                    Text(experienceText)
                         .foregroundStyle(DS.Colors.textSecondary)
 
                     HStack {
@@ -149,9 +181,11 @@ struct NannyProfileView: View {
                     }
                 }
 
-                HStack(spacing: 8) {
-                    ForEach(detail?.skills ?? ["İlk Yardım", "Yemek", "Ödev Desteği"], id: \.self) { skill in
-                        SkillPill(title: skill)
+                if !resolvedSkills.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(resolvedSkills, id: \.self) { skill in
+                            SkillPill(title: skill)
+                        }
                     }
                 }
 
@@ -244,8 +278,132 @@ struct NannyProfileView: View {
             originLongitude: selectedLongitude,
             to: detail?.latitude ?? provider.latitude,
             destinationLongitude: detail?.longitude ?? provider.longitude,
-            fallback: detail?.distanceText ?? provider.distanceText
+            fallback: sanitizedDistanceText(detail?.distanceText ?? provider.distanceText)
         )
+    }
+
+    private var resolvedLocationName: String {
+        sanitizedLocationName(detail?.locationName ?? provider.locationName)
+    }
+
+    private var ageDisplayText: String {
+        let age = detail?.age ?? provider.age
+        return age > 0 ? "\(age)" : "-"
+    }
+
+    private var completedSittingsText: String {
+        let count = detail?.completedSittings ?? provider.completedSittings
+        return count > 0 ? "\(count) oturum" : "-"
+    }
+
+    private var ratingValue: Double {
+        detail?.rating ?? provider.rating
+    }
+
+    private var reviewCountValue: Int {
+        detail?.reviews.count ?? provider.reviewCount
+    }
+
+    private var resolvedSkills: [String] {
+        let skills = detail?.skills ?? provider.categories
+        return skills.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
+    private var experienceText: String {
+        let trimmed = detail?.experience.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmed.isEmpty {
+            return trimmed
+        }
+        return "Bakıcı henüz deneyim bilgisini eklemedi."
+    }
+
+    private var trustBadges: [ProfileTrustBadge] {
+        var badges: [ProfileTrustBadge] = []
+
+        if isVerifiedProfile {
+            badges.append(ProfileTrustBadge(
+                title: "Onaylı Profil",
+                detail: "Profil bilgileri tamamlandı",
+                systemImage: "checkmark.shield.fill",
+                tint: .green
+            ))
+        }
+
+        if ratingValue >= 4.7, reviewCountValue >= 3 {
+            badges.append(ProfileTrustBadge(
+                title: "Yüksek Memnuniyet",
+                detail: "\(reviewCountValue) yorumla güçlü puan",
+                systemImage: "star.fill",
+                tint: .orange
+            ))
+        }
+
+        if completedSittingsCount >= 10 {
+            badges.append(ProfileTrustBadge(
+                title: "Tecrübeli",
+                detail: "\(completedSittingsCount) tamamlanan iş",
+                systemImage: "figure.2.and.child.holdinghands",
+                tint: DS.Colors.primary
+            ))
+        }
+
+        if !(detail?.availability ?? []).isEmpty {
+            badges.append(ProfileTrustBadge(
+                title: "Takvimi Güncel",
+                detail: "Uygun günlerini paylaşmış",
+                systemImage: "calendar.badge.checkmark",
+                tint: .indigo
+            ))
+        }
+
+        if resolvedSkills.count >= 2 {
+            badges.append(ProfileTrustBadge(
+                title: "Çok Yönlü Destek",
+                detail: "\(resolvedSkills.count) hizmet alanı",
+                systemImage: "sparkles",
+                tint: DS.Colors.accent
+            ))
+        }
+
+        return badges
+    }
+
+    private var heroSignals: [ProfileTrustBadge] {
+        var signals: [ProfileTrustBadge] = []
+
+        if let distance = nearbyDistanceKilometers {
+            let title = distance <= 3 ? "Yakın Konum" : "Ulaşımı Uygun"
+            let detail = distance <= 3
+                ? String(format: "%.1f km mesafede", distance)
+                : String(format: "%.1f km uzakta", distance)
+            signals.append(ProfileTrustBadge(
+                title: title,
+                detail: detail,
+                systemImage: "location.fill",
+                tint: .white
+            ))
+        }
+
+        if let availabilitySignal {
+            signals.append(availabilitySignal)
+        }
+
+        return signals
+    }
+
+    private var trustBadgeFlow: some View {
+        VStack(spacing: 10) {
+            ForEach(Array(trustBadges.chunked(into: 2).enumerated()), id: \.offset) { _, row in
+                HStack(spacing: 10) {
+                    ForEach(row) { badge in
+                        trustBadgeCard(badge)
+                    }
+                    if row.count == 1 {
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
     }
 
     private func scheduleChip(_ day: String, _ state: String) -> some View {
@@ -263,6 +421,54 @@ struct NannyProfileView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
+    private func trustBadgeCard(_ badge: ProfileTrustBadge) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(badge.tint.opacity(0.14))
+                .frame(width: 36, height: 36)
+                .overlay {
+                    Image(systemName: badge.systemImage)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(badge.tint)
+                }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(badge.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text(badge.detail)
+                    .font(.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(DS.Colors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func heroSignalChip(_ signal: ProfileTrustBadge) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: signal.systemImage)
+                .font(.caption.bold())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(signal.title)
+                    .font(.caption.bold())
+                Text(signal.detail)
+                    .font(.caption2)
+                    .opacity(0.92)
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.16))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
     private func loadDetail() async {
         isLoading = true
         defer { isLoading = false }
@@ -271,6 +477,34 @@ struct NannyProfileView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    @ViewBuilder
+    private var profileAvatarView: some View {
+        if let photoURL = detail?.photoURL ?? provider.photoURL, let url = URL(string: photoURL) {
+            RemoteImageView(url: url) {
+                profileAvatarPlaceholder
+            }
+            .frame(width: 72, height: 72)
+            .clipShape(Circle())
+            .overlay {
+                Circle()
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            }
+        } else {
+            profileAvatarPlaceholder
+        }
+    }
+
+    private var profileAvatarPlaceholder: some View {
+        Circle()
+            .fill(profileAvatarGradient)
+            .frame(width: 72, height: 72)
+            .overlay {
+                Text(profileInitials)
+                    .font(.title.bold())
+                    .foregroundStyle(.white)
+            }
     }
 
     private func loadFavorites() async {
@@ -307,6 +541,26 @@ struct NannyProfileView: View {
         return value
     }
 
+    private func sanitizedLocationName(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return provider.locationName }
+        let lowered = trimmed.lowercased()
+        if lowered.contains("san francisco") || lowered.contains("california") {
+            return provider.locationName
+        }
+        return trimmed
+    }
+
+    private func sanitizedDistanceText(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Mesafe bilgisi yakinda" }
+        let lowered = trimmed.lowercased()
+        if lowered.contains("mi away") || lowered.contains("miles away") {
+            return "Mesafe bilgisi yakinda"
+        }
+        return trimmed
+    }
+
     private func availabilityStatusText(_ value: String) -> String {
         switch value.uppercased() {
         case "AVAILABLE":
@@ -324,6 +578,65 @@ struct NannyProfileView: View {
         return parts.compactMap { $0.first.map(String.init) }.joined()
     }
 
+    private var completedSittingsCount: Int {
+        detail?.completedSittings ?? provider.completedSittings
+    }
+
+    private var isVerifiedProfile: Bool {
+        let status = (detail?.payoutStatus ?? provider.payoutStatus).uppercased()
+        return status == "APPROVED" || status == "ACTIVE"
+    }
+
+    private var nearbyDistanceKilometers: Double? {
+        StoredLocation.distanceInKilometers(
+            from: selectedLatitude,
+            originLongitude: selectedLongitude,
+            to: detail?.latitude ?? provider.latitude,
+            destinationLongitude: detail?.longitude ?? provider.longitude
+        )
+    }
+
+    private var availabilitySignal: ProfileTrustBadge? {
+        let availableDays = (detail?.availability ?? []).filter { $0.status.uppercased() == "AVAILABLE" }
+        guard !availableDays.isEmpty else { return nil }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        let upcomingDays = availableDays.compactMap { formatter.date(from: $0.date) }
+            .filter { $0 >= today }
+            .sorted()
+
+        guard let nextAvailableDate = upcomingDays.first else {
+            return ProfileTrustBadge(
+                title: "Takvim Paylaşıldı",
+                detail: "\(availableDays.count) uygun gün var",
+                systemImage: "calendar.badge.checkmark",
+                tint: .white
+            )
+        }
+
+        let dayDiff = Calendar.current.dateComponents([.day], from: today, to: nextAvailableDate).day ?? 0
+        let detailText: String
+        if dayDiff == 0 {
+            detailText = "Bugün için uygunluk var"
+        } else if dayDiff == 1 {
+            detailText = "Yarın için uygunluk var"
+        } else if dayDiff <= 3 {
+            detailText = "\(dayDiff) gün içinde uygun"
+        } else {
+            detailText = "\(availableDays.count) uygun gün paylaşılmış"
+        }
+
+        return ProfileTrustBadge(
+            title: "Yakında Müsait",
+            detail: detailText,
+            systemImage: "clock.badge.checkmark",
+            tint: .white
+        )
+    }
+
     private var profileAvatarGradient: LinearGradient {
         let gradients: [[Color]] = [
             [Color(red: 0.20, green: 0.54, blue: 0.90), Color(red: 0.49, green: 0.74, blue: 0.98)],
@@ -334,5 +647,22 @@ struct NannyProfileView: View {
         let name = detail?.displayName ?? provider.displayName
         let index = abs(name.hashValue) % gradients.count
         return LinearGradient(colors: gradients[index], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
+private struct ProfileTrustBadge: Identifiable {
+    let id = UUID()
+    let title: String
+    let detail: String
+    let systemImage: String
+    let tint: Color
+}
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [self] }
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
     }
 }

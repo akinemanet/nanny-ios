@@ -7,8 +7,15 @@
 import SwiftUI
 import Combine
 
+private enum ParentCareRequestSort: String, CaseIterable {
+    case newest = "En Yeni"
+    case mostCandidates = "En Çok Aday"
+    case openFirst = "Önce Açık Olanlar"
+}
+
 struct HomeView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
     @AppStorage("accountPreferenceQuietHoursStart") private var quietHoursStart = "22:00"
     @AppStorage("accountPreferenceQuietHoursEnd") private var quietHoursEnd = "07:00"
@@ -28,6 +35,13 @@ struct HomeView: View {
     @State private var isLoadingCheckout = false
     @State private var checkoutBookingID: String?
     @State private var showCheckout = false
+    @State private var careRequests: [CareRequestItem] = []
+    @State private var careRequestError: String?
+    @State private var careRequestNotice: String?
+    @State private var isLoadingCareRequests = false
+    @State private var showCreateCareRequest = false
+    @State private var showAllCareRequests = false
+    @State private var selectedCandidateProvider: BrowseProvider?
 
     @MainActor
     init() {
@@ -47,6 +61,7 @@ struct HomeView: View {
                     welcomeCard
                     summaryGrid
                     quickActions
+                    careRequestsSection
                     upcomingSection
                     conversationsSection
                     favoritesSection
@@ -75,6 +90,17 @@ struct HomeView: View {
             .navigationDestination(isPresented: $showNotifications) {
                 NotificationsView()
             }
+            .navigationDestination(isPresented: $showAllCareRequests) {
+                ParentCareRequestsListView(
+                    careRequests: $careRequests,
+                    selectedCandidateProvider: $selectedCandidateProvider,
+                    onApprove: { candidate, request in
+                        Task {
+                            await approve(candidate: candidate, for: request)
+                        }
+                    }
+                )
+            }
             .navigationDestination(item: $selectedBooking) { booking in
                 BookingDetailView(
                     booking: booking,
@@ -99,6 +125,9 @@ struct HomeView: View {
                     }
                 )
             }
+            .navigationDestination(item: $selectedCandidateProvider) { provider in
+                NannyProfileView(provider: provider)
+            }
             .sheet(isPresented: $showCheckout, onDismiss: {
                 Task {
                     await viewModel.load()
@@ -116,6 +145,25 @@ struct HomeView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showCreateCareRequest) {
+                NavigationStack {
+                    ParentCareRequestComposer { draft in
+                        try await createCareRequest(draft)
+                    }
+                }
+            }
+            .onAppear {
+                Task {
+                    viewModel.replaceServicesIfNeeded(
+                        bookingService: session.deps.bookingService,
+                        providerService: session.deps.providerService,
+                        notificationService: session.deps.notificationService,
+                        chatService: session.deps.chatService
+                    )
+                    await viewModel.load()
+                    await loadCareRequests()
+                }
+            }
             .task {
                 viewModel.replaceServicesIfNeeded(
                     bookingService: session.deps.bookingService,
@@ -124,6 +172,7 @@ struct HomeView: View {
                     chatService: session.deps.chatService
                 )
                 await viewModel.load()
+                await loadCareRequests()
             }
             .refreshable {
                 viewModel.replaceServicesIfNeeded(
@@ -133,11 +182,25 @@ struct HomeView: View {
                     chatService: session.deps.chatService
                 )
                 await viewModel.load()
+                await loadCareRequests()
             }
             .onReceive(NotificationCenter.default.publisher(for: .appDidOpenRemoteNotification)) { payload in
                 guard let notification = payload.object as? AppNotification else { return }
                 Task {
                     await handleRemoteNotificationOpen(notification)
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active, session.isLoggedIn else { return }
+                Task {
+                    viewModel.replaceServicesIfNeeded(
+                        bookingService: session.deps.bookingService,
+                        providerService: session.deps.providerService,
+                        notificationService: session.deps.notificationService,
+                        chatService: session.deps.chatService
+                    )
+                    await viewModel.load()
+                    await loadCareRequests()
                 }
             }
         }
@@ -260,6 +323,180 @@ struct HomeView: View {
                     )
                 }
                 .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var careRequestsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                sectionTitle("Hızlı Bakıcı Talebi")
+                Spacer()
+                if careRequests.count > 3 {
+                    Button("Tümünü Gör") {
+                        showAllCareRequests = true
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.Colors.primary)
+                }
+                Button {
+                    showCreateCareRequest = true
+                } label: {
+                    Label("Talep Oluştur", systemImage: "plus.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(DS.Colors.primary)
+            }
+
+            if let careRequestNotice {
+                Text(careRequestNotice)
+                    .font(.footnote)
+                    .foregroundStyle(DS.Colors.primary)
+            }
+
+            if let careRequestError {
+                errorCard(message: careRequestError)
+            } else if isLoadingCareRequests && careRequests.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            } else if careRequests.isEmpty {
+                emptyCard(
+                    title: "Henüz acil talep oluşturmadın",
+                    message: "Akşam için ya da belirli bir gün-saat aralığı için hızlıca talep açabilir, aday olan bakıcıyı onaylayabilirsin.",
+                    systemImage: "clock.badge.exclamationmark"
+                )
+            } else {
+                ForEach(careRequests.prefix(3)) { request in
+                    AppCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(localizedCareService(request.service))
+                                        .font(.headline)
+                                        .foregroundStyle(DS.Colors.textPrimary)
+                                    Text("\(formattedDate(request.startAt)) • \(formattedTime(request.startAt)) - \(formattedTime(request.endAt))")
+                                        .font(.subheadline)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                    Text(request.locationName)
+                                        .font(.caption)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+                                Spacer()
+                                Text(careRequestStatusLabel(for: request))
+                                    .font(.caption.bold())
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(careRequestStatusColor(for: request).opacity(0.14))
+                                    .foregroundStyle(careRequestStatusColor(for: request))
+                                    .clipShape(Capsule())
+                            }
+
+                            if !parentLiveSignals(for: request).isEmpty {
+                                liveSignalsRow(parentLiveSignals(for: request))
+                            }
+
+                            if !request.note.isEmpty {
+                                Text(request.note)
+                                    .font(.subheadline)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                            }
+
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(DS.Colors.primary)
+                                Text(parentSuggestedNextStep(for: request))
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(DS.Colors.primary)
+                            }
+                            .padding(.horizontal, 2)
+
+                            if request.candidates.isEmpty {
+                                Text("Henüz aday olan bakıcı yok.")
+                                    .font(.footnote)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                            } else {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Aday Olan Bakıcılar")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(DS.Colors.textSecondary)
+
+                                    ForEach(request.candidates) { candidate in
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Button {
+                                                    selectedCandidateProvider = BrowseProvider(
+                                                        id: candidate.providerUserID,
+                                                        displayName: candidate.providerDisplayName,
+                                                        rating: 0,
+                                                        hourlyRate: 0,
+                                                        payoutStatus: "PENDING",
+                                                        age: 0,
+                                                        gender: "",
+                                                        locationName: "",
+                                                        distanceText: "",
+                                                        photoURL: nil,
+                                                        latitude: nil,
+                                                        longitude: nil,
+                                                        categories: [],
+                                                        reviewCount: 0,
+                                                        completedSittings: 0,
+                                                        availableDates: [],
+                                                        availableStartHour: 9,
+                                                        availableEndHour: 18
+                                                    )
+                                                } label: {
+                                                    Text(candidate.providerDisplayName)
+                                                        .font(.subheadline.weight(.semibold))
+                                                        .foregroundStyle(DS.Colors.primary)
+                                                }
+                                                .buttonStyle(.plain)
+                                                Text("Aday oldu: \(formattedTime(candidate.appliedAt))")
+                                                    .font(.caption)
+                                                    .foregroundStyle(DS.Colors.textSecondary)
+                                            }
+                                            Spacer()
+                                            if request.assignedProviderUserID == candidate.providerUserID {
+                                                Text("Seçildi")
+                                                    .font(.caption.bold())
+                                                    .foregroundStyle(.green)
+                                            } else if request.isOpen {
+                                                Button("Onayla") {
+                                                    Task {
+                                                        await approve(candidate: candidate, for: request)
+                                                    }
+                                                }
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(DS.Colors.primary)
+                                            }
+                                        }
+                                        .padding(10)
+                                        .background(DS.Colors.background)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    }
+                                }
+                            }
+
+                            HStack(spacing: 10) {
+                                secondaryActionButton(
+                                    title: "Talebi Aç",
+                                    systemImage: "list.bullet.rectangle"
+                                ) {
+                                    showAllCareRequests = true
+                                }
+
+                                if !request.candidates.isEmpty, request.isOpen {
+                                    secondaryActionButton(
+                                        title: "Adayları İncele",
+                                        systemImage: "person.2"
+                                    ) {
+                                        showAllCareRequests = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -387,6 +624,15 @@ struct HomeView: View {
                                             .foregroundStyle(conversationAccent(for: conversation))
                                             .clipShape(Capsule())
                                     }
+                                    if let activityCue = conversationActivityCue(for: conversation) {
+                                        Text(activityCue)
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(DS.Colors.accent.opacity(0.12))
+                                            .foregroundStyle(DS.Colors.accent)
+                                            .clipShape(Capsule())
+                                    }
 
                                     Text(conversation.lastMessage)
                                         .font(.subheadline)
@@ -487,6 +733,15 @@ struct HomeView: View {
                                             .foregroundStyle(dashboardNotificationTint(for: item))
                                             .clipShape(Capsule())
                                     }
+                                    if let activityCue = notificationActivityCue(for: item) {
+                                        Text(activityCue)
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(DS.Colors.accent.opacity(0.12))
+                                            .foregroundStyle(DS.Colors.accent)
+                                            .clipShape(Capsule())
+                                    }
                                     familyContextLine
                                     Text(item.createdAt)
                                         .font(.caption)
@@ -579,6 +834,19 @@ struct HomeView: View {
 
     private func dashboardNotificationProximityBadge(for item: AppNotification) -> String? {
         FamilyNotificationPresentation.proximityBadgeText(from: item.body)
+    }
+
+    private func notificationActivityCue(for item: AppNotification) -> String? {
+        if !item.read {
+            return "Yeni gelişme"
+        }
+
+        guard let date = parseISODate(item.createdAt) else { return nil }
+        if Date().timeIntervalSince(date) < 6 * 60 * 60 {
+            return "Yakın zamanda geldi"
+        }
+
+        return nil
     }
 
     private var unreadNotificationBackground: Color {
@@ -695,6 +963,22 @@ struct HomeView: View {
                         .clipShape(Capsule())
                 }
 
+                if !bookingActivityCues(for: booking).isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(bookingActivityCues(for: booking), id: \.self) { cue in
+                                Text(cue)
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(DS.Colors.primary.opacity(0.10))
+                                    .foregroundStyle(DS.Colors.primary)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+
                 HStack(spacing: 10) {
                     secondaryActionButton(
                         title: "Rezervasyonu Aç",
@@ -757,6 +1041,10 @@ struct HomeView: View {
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
                     .multilineTextAlignment(.center)
+                Text(emptyCardSuggestedStep(for: title))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(DS.Colors.primary)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
@@ -766,12 +1054,15 @@ struct HomeView: View {
     private func errorCard(message: String) -> some View {
         AppCard {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Veriler yuklenemedi")
+                Text("Şu anda yüklenemedi")
                     .font(.headline)
                     .foregroundStyle(.red)
                 Text(message)
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
+                Text("Önerilen adım: Birkaç saniye sonra tekrar dene. Sorun sürerse ekranı yenile.")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(DS.Colors.primary)
                 Button("Tekrar Dene") {
                     Task {
                         await viewModel.load()
@@ -781,6 +1072,28 @@ struct HomeView: View {
                 .foregroundStyle(DS.Colors.primary)
             }
         }
+    }
+
+    private func emptyCardSuggestedStep(for title: String) -> String {
+        let normalized = title.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "tr_TR")).lowercased()
+
+        if normalized.contains("talep") {
+            return "Önerilen adım: Yeni bir talep oluşturup başvuruları burada takip et."
+        }
+        if normalized.contains("rezervasyon") {
+            return "Önerilen adım: Uygun bakıcıları keşfedip yeni bir rezervasyon başlat."
+        }
+        if normalized.contains("favori") {
+            return "Önerilen adım: Beğendiğin bir profili favorilere ekleyip burada hızlıca ulaş."
+        }
+        if normalized.contains("konusma") || normalized.contains("konuşma") {
+            return "Önerilen adım: Bir bakıcıyla mesajlaşmaya başladığında son konuşmalar burada görünür."
+        }
+        if normalized.contains("bildirim") {
+            return "Önerilen adım: Yeni mesajlar ve rezervasyon gelişmeleri burada toplanır."
+        }
+
+        return "Önerilen adım: İlgili işlemi başlatınca bu alan otomatik olarak dolacak."
     }
 
     private func secondaryActionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
@@ -801,30 +1114,23 @@ struct HomeView: View {
     }
 
     private func formattedDate(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
+        guard let date = parseISODate(value) else { return value }
         let out = DateFormatter()
         out.locale = Locale(identifier: "tr_TR")
         out.dateStyle = .medium
-        if let date = iso.date(from: value) {
-            return out.string(from: date)
-        }
-        return value
+        return out.string(from: date)
     }
 
     private func formattedTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
+        guard let date = parseISODate(value) else { return value }
         let out = DateFormatter()
         out.locale = Locale(identifier: "tr_TR")
         out.timeStyle = .short
-        if let date = iso.date(from: value) {
-            return out.string(from: date)
-        }
-        return value
+        return out.string(from: date)
     }
 
     private func formattedConversationTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
-        guard let date = iso.date(from: value) else { return value }
+        guard let date = parseISODate(value) else { return value }
 
         let calendar = Calendar(identifier: .gregorian)
         let formatter = DateFormatter()
@@ -839,6 +1145,18 @@ struct HomeView: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
     }
 
     private func conversationInitials(for conversation: ConversationItem) -> String {
@@ -863,6 +1181,19 @@ struct HomeView: View {
         return nil
     }
 
+    private func conversationActivityCue(for conversation: ConversationItem) -> String? {
+        if conversation.unreadCount > 0 {
+            return "Yeni mesaj"
+        }
+
+        guard let date = parseISODate(conversation.lastMessageAt) else { return nil }
+        if Date().timeIntervalSince(date) < 6 * 60 * 60 {
+            return "Az önce hareket oldu"
+        }
+
+        return nil
+    }
+
     private func conversationAccent(for conversation: ConversationItem) -> Color {
         if let participantID = conversation.participantID,
            viewModel.activeBookings.contains(where: { $0.provider.id == participantID }) {
@@ -878,15 +1209,32 @@ struct HomeView: View {
     }
 
     private func localizedService(_ service: String) -> String {
-        service
-            .replacingOccurrences(of: "_", with: " ")
-            .capitalized
-            .replacingOccurrences(of: "Babysitting", with: "Bebek Bakimi")
-            .replacingOccurrences(of: "Tutoring", with: "Ozel Ders")
+        ProviderCategoryMapper.displayLabels(from: [service]).first
+            ?? service.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private func bookingPresentation(for booking: BookingItem) -> BookingStatusPresentation {
         BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus)
+    }
+
+    private func bookingActivityCues(for booking: BookingItem) -> [String] {
+        var cues: [String] = []
+
+        if let start = parseISODate(booking.startTime) {
+            if Calendar.current.isDateInToday(start) {
+                cues.append("Bugün")
+            } else if Date().timeIntervalSince(start) < 0, start.timeIntervalSinceNow < 24 * 60 * 60 {
+                cues.append("Yaklaşıyor")
+            }
+        }
+
+        if bookingPresentation(for: booking).canPay {
+            cues.append("Ödeme bekliyor")
+        } else if booking.status.uppercased() == "ACCEPTED" {
+            cues.append("Hazır")
+        }
+
+        return Array(cues.prefix(2))
     }
 
     private func toneColor(for tone: BookingPresentationTone) -> Color {
@@ -923,7 +1271,7 @@ struct HomeView: View {
         } catch {
             let message = error.localizedDescription
             if message.localizedCaseInsensitiveContains("iyzico keys not configured") {
-                checkoutError = "Ödeme şu anda kullanılamıyor. Ödeme sağlayıcısı backend tarafında henüz yapılandırılmamış."
+                checkoutError = "Ödeme şu anda kullanılamıyor. Lütfen kısa süre sonra tekrar dene."
             } else if message.localizedCaseInsensitiveContains("http 500") {
                 checkoutError = "Ödeme bağlantısı şu anda oluşturulamıyor. Lütfen daha sonra tekrar dene."
             } else {
@@ -965,6 +1313,9 @@ struct HomeView: View {
         case .chatList:
             clearNotificationContext()
             showChatList = true
+        case .careRequests:
+            clearNotificationContext()
+            showAllCareRequests = true
         case .notifications:
             clearNotificationContext()
             showNotifications = true
@@ -1001,6 +1352,154 @@ struct HomeView: View {
     private func clearNotificationContext() {
         selectedConversationContextBadge = nil
         selectedBookingContextBadge = nil
+    }
+
+    private func loadCareRequests() async {
+        guard let userID = session.me?.user.id else { return }
+        isLoadingCareRequests = true
+        defer { isLoadingCareRequests = false }
+
+        do {
+            careRequests = try await session.deps.bookingService.listParentCareRequests(parentUserID: userID)
+            careRequestError = nil
+        } catch is CancellationError {
+            return
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            return
+        } catch {
+            careRequestError = error.localizedDescription
+        }
+    }
+
+    private func createCareRequest(_ draft: ParentCareRequestDraft) async throws {
+        guard let user = session.me?.user else {
+            throw APIError.http(401, "Oturum bulunamadı.".data(using: .utf8))
+        }
+
+        let service: String
+        switch draft.serviceLabel {
+        case "Özel Ders":
+            service = "TUTOR"
+        case "Özel Eğitim":
+            service = "SPECIAL_ED"
+        default:
+            service = "BABYSITTER"
+        }
+
+        do {
+            _ = try await session.deps.bookingService.createCareRequest(
+                input: CreateCareRequestInput(
+                    service: service,
+                    note: draft.note,
+                    startAt: draft.startAt,
+                    endAt: draft.endAt,
+                    locationName: familyLocationName
+                ),
+                parent: user,
+                parentDisplayName: resolvedFamilyRequesterName,
+                parentPhone: user.phone,
+                locationName: familyLocationName
+            )
+            careRequestNotice = "Talebin yayınlandı. Bakıcılar başvurdukça burada görüp içlerinden birini seçebilirsin."
+            careRequestError = nil
+            showCreateCareRequest = false
+            await loadCareRequests()
+        } catch {
+            careRequestError = error.localizedDescription
+            throw error
+        }
+    }
+
+    private func approve(candidate: CareRequestCandidate, for request: CareRequestItem) async {
+        guard let userID = session.me?.user.id else { return }
+
+        do {
+            _ = try await session.deps.bookingService.approveCareRequestCandidate(
+                requestID: request.id,
+                candidateProviderUserID: candidate.providerUserID,
+                parentUserID: userID
+            )
+            careRequestNotice = "\(candidate.providerDisplayName) seçildi. Sıradaki adımda rezervasyon ve ödeme detayları açılacak."
+            careRequestError = nil
+            await loadCareRequests()
+        } catch {
+            careRequestError = error.localizedDescription
+        }
+    }
+
+    private var resolvedFamilyRequesterName: String {
+        let trimmedDisplayName = familyDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedDisplayName.isEmpty { return trimmedDisplayName }
+        if let displayName = session.me?.user.displayName, !displayName.isEmpty { return displayName }
+        if let email = session.me?.user.email, !email.isEmpty { return email }
+        return session.me?.user.phone ?? "Aile"
+    }
+
+    private func localizedCareService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first ?? localizedService(service)
+    }
+
+    private func careRequestStatusLabel(for request: CareRequestItem) -> String {
+        if request.isMatched, let assigned = request.assignedProviderDisplayName {
+            return "Atandı: \(assigned)"
+        }
+        if !request.candidates.isEmpty {
+            return "\(request.candidates.count) aday"
+        }
+        return "Açık"
+    }
+
+    private func careRequestStatusColor(for request: CareRequestItem) -> Color {
+        request.isMatched ? .green : DS.Colors.accent
+    }
+
+    private func parentLiveSignals(for request: CareRequestItem) -> [String] {
+        var signals: [String] = []
+
+        if request.isOpen, let latestCandidate = request.candidates.max(by: { $0.appliedAt < $1.appliedAt }),
+           isRecentCareRequestUpdate(latestCandidate.appliedAt) {
+            signals.append("Yeni aday var")
+        }
+
+        if !request.isMatched, !request.candidates.isEmpty {
+            signals.append("Karar bekliyor")
+        } else if isRecentCareRequestUpdate(request.createdAt) {
+            signals.append("Bugün güncellendi")
+        }
+
+        return Array(signals.prefix(2))
+    }
+
+    @ViewBuilder
+    private func liveSignalsRow(_ signals: [String]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(signals, id: \.self) { signal in
+                    Text(signal)
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(DS.Colors.accent.opacity(0.12))
+                        .foregroundStyle(DS.Colors.accent)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+    }
+
+    private func isRecentCareRequestUpdate(_ value: String) -> Bool {
+        guard let date = parseISODate(value) else { return false }
+        return Calendar.current.isDateInToday(date) || Date().timeIntervalSince(date) < 12 * 60 * 60
+    }
+
+    private func parentSuggestedNextStep(for request: CareRequestItem) -> String {
+        if request.isMatched {
+            return "Önerilen adım: Rezervasyon ve ödeme detaylarını kontrol et."
+        }
+        if !request.candidates.isEmpty {
+            return "Önerilen adım: Adayları karşılaştırıp en uygun kişiyi seç."
+        }
+        return "Önerilen adım: Başvuruları takip et, istersen yeni bir saat aralığı da aç."
     }
 }
 
@@ -1096,6 +1595,10 @@ final class HomeDashboardViewModel: ObservableObject {
             favorites = snapshot.favorites
             notifications = snapshot.notifications
             conversations = snapshot.conversations
+        } catch is CancellationError {
+            return
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            return
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1140,5 +1643,422 @@ final class HomeDashboardViewModel: ObservableObject {
         guard let index = conversations.firstIndex(where: { $0.id == updatedConversation.id }) else { return }
         conversations.remove(at: index)
         conversations.insert(updatedConversation, at: 0)
+    }
+}
+
+private struct ParentCareRequestsListView: View {
+    @Binding var careRequests: [CareRequestItem]
+    @Binding var selectedCandidateProvider: BrowseProvider?
+    let onApprove: (CareRequestCandidate, CareRequestItem) -> Void
+    @State private var selectedSort: ParentCareRequestSort = .newest
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Aday başvuruları çoğaldığında burada daha rahat karşılaştırıp onay verebilirsin.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.Colors.textSecondary)
+
+                sortBar
+                resultsSummary
+
+                if careRequests.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(sortedRequests) { request in
+                        AppCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(localizedCareService(request.service))
+                                            .font(.headline)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                        Text("\(formattedDate(request.startAt)) • \(formattedTime(request.startAt)) - \(formattedTime(request.endAt))")
+                                            .font(.subheadline)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                        Text(request.locationName)
+                                            .font(.caption)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    Text(careRequestStatusLabel(for: request))
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(careRequestStatusColor(for: request).opacity(0.14))
+                                        .foregroundStyle(careRequestStatusColor(for: request))
+                                        .clipShape(Capsule())
+                                }
+
+                                if !liveSignals(for: request).isEmpty {
+                                    liveSignalsRow(liveSignals(for: request))
+                                }
+
+                                if !request.note.isEmpty {
+                                    Text(request.note)
+                                        .font(.subheadline)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+
+                                if request.candidates.isEmpty {
+                                    Text("Henüz aday olan bakıcı yok.")
+                                        .font(.footnote)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                } else {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Aday Olan Bakıcılar")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(DS.Colors.textSecondary)
+
+                                        ForEach(request.candidates) { candidate in
+                                            HStack {
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Button {
+                                                        selectedCandidateProvider = BrowseProvider(
+                                                            id: candidate.providerUserID,
+                                                            displayName: candidate.providerDisplayName,
+                                                            rating: 0,
+                                                            hourlyRate: 0,
+                                                            payoutStatus: "PENDING",
+                                                            age: 0,
+                                                            gender: "",
+                                                            locationName: "",
+                                                            distanceText: "",
+                                                            photoURL: nil,
+                                                            latitude: nil,
+                                                            longitude: nil,
+                                                            categories: [],
+                                                            reviewCount: 0,
+                                                            completedSittings: 0,
+                                                            availableDates: [],
+                                                            availableStartHour: 9,
+                                                            availableEndHour: 18
+                                                        )
+                                                    } label: {
+                                                        Text(candidate.providerDisplayName)
+                                                            .font(.subheadline.weight(.semibold))
+                                                            .foregroundStyle(DS.Colors.primary)
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                    Text("Aday oldu: \(formattedTime(candidate.appliedAt))")
+                                                        .font(.caption)
+                                                        .foregroundStyle(DS.Colors.textSecondary)
+                                                }
+                                                Spacer()
+                                                if request.assignedProviderUserID == candidate.providerUserID {
+                                                    Text("Seçildi")
+                                                        .font(.caption.bold())
+                                                        .foregroundStyle(.green)
+                                                } else if request.isOpen {
+                                                    Button("Onayla") {
+                                                        onApprove(candidate, request)
+                                                    }
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(DS.Colors.primary)
+                                                }
+                                            }
+                                            .padding(10)
+                                            .background(DS.Colors.background)
+                                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .background(DS.Colors.background.ignoresSafeArea())
+        .navigationTitle("Aile Talepleri")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var sortedRequests: [CareRequestItem] {
+        switch selectedSort {
+        case .newest:
+            return careRequests.sorted { $0.createdAt > $1.createdAt }
+        case .mostCandidates:
+            return careRequests.sorted {
+                if $0.candidates.count == $1.candidates.count {
+                    return $0.createdAt > $1.createdAt
+                }
+                return $0.candidates.count > $1.candidates.count
+            }
+        case .openFirst:
+            return careRequests.sorted {
+                if $0.isOpen == $1.isOpen {
+                    return $0.createdAt > $1.createdAt
+                }
+                return $0.isOpen && !$1.isOpen
+            }
+        }
+    }
+
+    private var sortBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(ParentCareRequestSort.allCases, id: \.self) { option in
+                    Button {
+                        selectedSort = option
+                    } label: {
+                        Text(option.rawValue)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(selectedSort == option ? DS.Colors.primary : .white)
+                            .foregroundStyle(selectedSort == option ? .white : DS.Colors.textPrimary)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func liveSignals(for request: CareRequestItem) -> [String] {
+        var signals: [String] = []
+
+        if request.isOpen, let latestCandidate = request.candidates.max(by: { $0.appliedAt < $1.appliedAt }),
+           isRecentUpdate(latestCandidate.appliedAt) {
+            signals.append("Yeni aday var")
+        }
+
+        if !request.isMatched, !request.candidates.isEmpty {
+            signals.append("Karar bekliyor")
+        } else if isRecentUpdate(request.createdAt) {
+            signals.append("Bugün güncellendi")
+        }
+
+        return Array(signals.prefix(2))
+    }
+
+    @ViewBuilder
+    private func liveSignalsRow(_ signals: [String]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(signals, id: \.self) { signal in
+                    Text(signal)
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(DS.Colors.accent.opacity(0.12))
+                        .foregroundStyle(DS.Colors.accent)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+    }
+
+    private func isRecentUpdate(_ value: String) -> Bool {
+        guard let date = parseISODate(value) else { return false }
+        return Calendar.current.isDateInToday(date) || Date().timeIntervalSince(date) < 12 * 60 * 60
+    }
+
+    private var resultsSummary: some View {
+        HStack(spacing: 8) {
+            Text("\(sortedRequests.count) talep")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            Text("•")
+                .font(.footnote)
+                .foregroundStyle(DS.Colors.textSecondary)
+
+            Text(sortDescription)
+                .font(.footnote)
+                .foregroundStyle(DS.Colors.textSecondary)
+        }
+    }
+
+    private var sortDescription: String {
+        switch selectedSort {
+        case .newest:
+            return "en yeni başvurular üstte"
+        case .mostCandidates:
+            return "adayı çok olanlar üstte"
+        case .openFirst:
+            return "önce açık talepler gösteriliyor"
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "clock.badge.exclamationmark")
+                .font(.title2)
+                .foregroundStyle(DS.Colors.accent)
+            Text("Henüz acil talep oluşturmadın")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+            Text("Yeni taleplerin ve aday başvuruların burada tam liste halinde görünecek.")
+                .font(.footnote)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(radius: 3)
+    }
+
+    private func localizedCareService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first ?? service
+    }
+
+    private func careRequestStatusLabel(for request: CareRequestItem) -> String {
+        if request.isMatched, let assigned = request.assignedProviderDisplayName {
+            return "Atandı: \(assigned)"
+        }
+        if !request.candidates.isEmpty {
+            return "\(request.candidates.count) aday"
+        }
+        return "Açık"
+    }
+
+    private func careRequestStatusColor(for request: CareRequestItem) -> Color {
+        request.isMatched ? .green : DS.Colors.accent
+    }
+
+    private func formattedDate(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "tr_TR")
+        output.dateStyle = .medium
+        return output.string(from: date)
+    }
+
+    private func formattedTime(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "tr_TR")
+        output.timeStyle = .short
+        return output.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
+    }
+}
+
+private struct ParentCareRequestDraft {
+    let serviceLabel: String
+    let note: String
+    let startAt: Date
+    let endAt: Date
+}
+
+private struct ParentCareRequestComposer: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedService = "Bebek Bakımı"
+    @State private var note = ""
+    @State private var date = Date()
+    @State private var startTime = Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var endTime = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date().addingTimeInterval(3 * 60 * 60)
+    @State private var validationError: String?
+    @State private var isSubmitting = false
+
+    let onSubmit: (ParentCareRequestDraft) async throws -> Void
+
+    private let services = ["Bebek Bakımı", "Özel Ders", "Özel Eğitim"]
+
+    var body: some View {
+        Form {
+            Section("Talep Türü") {
+                Picker("Hizmet", selection: $selectedService) {
+                    ForEach(services, id: \.self) { service in
+                        Text(service).tag(service)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            Section("Zaman") {
+                DatePicker("Tarih", selection: $date, displayedComponents: .date)
+                DatePicker("Başlangıç", selection: $startTime, displayedComponents: .hourAndMinute)
+                DatePicker("Bitiş", selection: $endTime, displayedComponents: .hourAndMinute)
+            }
+
+            Section("Not") {
+                TextEditor(text: $note)
+                    .frame(minHeight: 120)
+                Text("Örn. bugün akşam 18:00-21:00 arası dışarı çıkmam gerekiyor.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let validationError {
+                Section {
+                    Text(validationError)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .navigationTitle("Talep Oluştur")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Vazgeç") { dismiss() }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Yayınla") {
+                    Task {
+                        await submit()
+                    }
+                }
+                .fontWeight(.semibold)
+                .disabled(isSubmitting)
+            }
+        }
+    }
+
+    private func submit() async {
+        let calendar = Calendar.current
+        let mergedStart = merge(date: date, time: startTime, calendar: calendar)
+        let mergedEnd = merge(date: date, time: endTime, calendar: calendar)
+
+        guard mergedEnd > mergedStart else {
+            validationError = "Bitiş saati başlangıçtan sonra olmalı."
+            return
+        }
+
+        validationError = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        do {
+            try await onSubmit(
+                ParentCareRequestDraft(
+                    serviceLabel: selectedService,
+                    note: note,
+                    startAt: mergedStart,
+                    endAt: mergedEnd
+                )
+            )
+            dismiss()
+        } catch {
+            validationError = error.localizedDescription
+        }
+    }
+
+    private func merge(date: Date, time: Date, calendar: Calendar) -> Date {
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: time)
+        return calendar.date(from: DateComponents(
+            year: dayComponents.year,
+            month: dayComponents.month,
+            day: dayComponents.day,
+            hour: timeComponents.hour,
+            minute: timeComponents.minute
+        )) ?? date
     }
 }

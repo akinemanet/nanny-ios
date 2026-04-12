@@ -11,10 +11,12 @@ import UIKit
 
 struct ProviderOnboardingView: View {
     @EnvironmentObject private var session: SessionStore
+    @AppStorage("kvkkAcceptedProviderRegistration") private var kvkkAccepted = false
     @StateObject private var vm: ProviderOnboardingViewModel
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: UIImage?
     @State private var showPDFPicker = false
+    @State private var showKVKKSheet = false
     private let onCompleted: ((ProviderAccount?) -> Void)?
 
     private let educationOptions = [
@@ -47,11 +49,14 @@ struct ProviderOnboardingView: View {
                 statusCard
                 mediaCard
                 basicInfoCard
+                pricingCard
                 educationCard
+                experienceCard
                 aboutCard
                 categoriesCard
                 documentsCard
                 accountCard
+                kvkkCard
                 feedbackCard
                 actionButtons
             }
@@ -70,10 +75,30 @@ struct ProviderOnboardingView: View {
         ) { result in
             switch result {
             case .success(let urls):
-                vm.criminalRecordFileName = urls.first?.lastPathComponent ?? ""
+                guard let url = urls.first else { return }
+                let didAccess = url.startAccessingSecurityScopedResource()
+                defer {
+                    if didAccess {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+
+                do {
+                    let data = try Data(contentsOf: url)
+                    vm.setCriminalRecord(
+                        data: data,
+                        fileName: url.lastPathComponent,
+                        mimeType: "application/pdf"
+                    )
+                } catch {
+                    vm.errorMessage = error.localizedDescription
+                }
             case .failure(let error):
                 vm.errorMessage = error.localizedDescription
             }
+        }
+        .sheet(isPresented: $showKVKKSheet) {
+            KVKKDisclosureSheet()
         }
     }
 
@@ -174,6 +199,8 @@ struct ProviderOnboardingView: View {
             Divider()
             labeledField("Adres", text: $vm.address)
             Divider()
+            labeledField("Yaş", text: $vm.age, keyboardType: .numberPad)
+            Divider()
             labeledField("E-posta", text: $vm.email)
             Divider()
             labeledField("Telefon", text: $vm.gsmNumber)
@@ -205,6 +232,18 @@ struct ProviderOnboardingView: View {
         }
     }
 
+    private var pricingCard: some View {
+        AppCard {
+            Text("Ücretlendirme")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            labeledField("Saatlik Ücret (TL)", text: $vm.hourlyRate, keyboardType: .numberPad)
+            Divider()
+            labeledField("Günlük Ücret (TL)", text: $vm.dailyRate, keyboardType: .numberPad)
+        }
+    }
+
     private var aboutCard: some View {
         AppCard {
             Text("Hakkında")
@@ -214,6 +253,20 @@ struct ProviderOnboardingView: View {
             AppTextArea(
                 placeholder: "Deneyimini, çalışma yaklaşımını ve ailelere neler sunduğunu anlat.",
                 text: $vm.about,
+                minHeight: 140
+            )
+        }
+    }
+
+    private var experienceCard: some View {
+        AppCard {
+            Text("Deneyim")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            AppTextArea(
+                placeholder: "Kaç yıldır çalıştığını, hangi yaş gruplarıyla deneyimin olduğunu ve güçlü yönlerini yaz.",
+                text: $vm.experience,
                 minHeight: 140
             )
         }
@@ -296,6 +349,20 @@ struct ProviderOnboardingView: View {
         }
     }
 
+    private var kvkkCard: some View {
+        AppCard {
+            Text("KVKK Onayı")
+                .font(.headline)
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            KVKKConsentBlock(
+                isAccepted: $kvkkAccepted,
+                showSheet: $showKVKKSheet,
+                accentColor: DS.Colors.primary
+            )
+        }
+    }
+
     @ViewBuilder
     private var feedbackCard: some View {
         if let msg = vm.message {
@@ -323,6 +390,7 @@ struct ProviderOnboardingView: View {
                     }
                 }
             }
+            .disabled(!kvkkAccepted)
 
             Button("Yenile") {
                 Task { await vm.load() }
@@ -343,12 +411,13 @@ struct ProviderOnboardingView: View {
         }
     }
 
-    private func labeledField(_ title: String, text: Binding<String>) -> some View {
+    private func labeledField(_ title: String, text: Binding<String>, keyboardType: UIKeyboardType = .default) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(DS.Colors.textSecondary)
             TextField(title, text: text)
+                .keyboardType(keyboardType)
                 .foregroundStyle(DS.Colors.textPrimary)
         }
     }
@@ -358,10 +427,32 @@ struct ProviderOnboardingView: View {
             if let data = try await item.loadTransferable(type: Data.self),
                let uiImage = UIImage(data: data) {
                 profileImage = uiImage
-                vm.profilePhotoName = "profil-fotografi.jpg"
+                let fileName = preferredImageFileName(for: item)
+                vm.setProfilePhoto(data: data, fileName: fileName, mimeType: preferredImageMimeType(for: item))
             }
         } catch {
             vm.errorMessage = error.localizedDescription
         }
+    }
+
+    private func preferredImageFileName(for item: PhotosPickerItem) -> String {
+        let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
+        return "profil-fotografi.\(ext)"
+    }
+
+    private func preferredImageMimeType(for item: PhotosPickerItem) -> String {
+        guard let type = item.supportedContentTypes.first else {
+            return "image/jpeg"
+        }
+
+        if type.conforms(to: .png) {
+            return "image/png"
+        }
+
+        if type.conforms(to: .heic) {
+            return "image/heic"
+        }
+
+        return "image/jpeg"
     }
 }

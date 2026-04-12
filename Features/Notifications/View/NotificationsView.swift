@@ -14,6 +14,27 @@ private enum ProviderNotificationFilter: String, CaseIterable {
     case system = "Sistem"
 }
 
+private func notificationsEmptyState(title: String, systemImage: String, description: String) -> some View {
+    VStack(spacing: 12) {
+        Image(systemName: systemImage)
+            .font(.system(size: 42))
+            .foregroundStyle(DS.Colors.accent)
+        Text(title)
+            .font(.title3.bold())
+            .foregroundStyle(DS.Colors.textPrimary)
+        Text(description)
+            .font(.subheadline)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(DS.Colors.textSecondary)
+        Text("Önerilen adım: Yeni gelişmeler oldukça bu ekran otomatik olarak dolacak.")
+            .font(.footnote.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .foregroundStyle(DS.Colors.primary)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 48)
+}
+
 struct NotificationsView: View {
     @EnvironmentObject private var session: SessionStore
     @AppStorage("accountPreferenceQuietHoursEnabled") private var quietHoursEnabled = false
@@ -28,6 +49,7 @@ struct NotificationsView: View {
     @State private var isSubmittingReadState = false
     @State private var showBookingList = false
     @State private var showChatList = false
+    @State private var showCareRequests = false
     @State private var selectedConversation: ConversationItem?
     @State private var selectedConversationContextBadge: String?
     @State private var selectedBooking: BookingItem?
@@ -43,7 +65,7 @@ struct NotificationsView: View {
                         .foregroundStyle(DS.Colors.textPrimary)
                     Spacer()
                     if unreadCount > 0 {
-                        Button("Tumunu Okundu Yap") {
+                        Button("Tümünü Okundu Yap") {
                             Task {
                                 await markAllAsRead()
                             }
@@ -82,8 +104,8 @@ struct NotificationsView: View {
                     }
 
                     if filteredItems.isEmpty, errorMessage == nil {
-                        emptyState(
-                            title: isProvider ? "Bildirim yok" : "Bildirim Yok",
+                        notificationsEmptyState(
+                            title: isProvider ? "Bildirim yok" : "Bildirim yok",
                             systemImage: "bell",
                             description: isProvider
                                 ? "Yeni talepler ve operasyon bildirimleri burada görünecek."
@@ -140,6 +162,15 @@ struct NotificationsView: View {
                                             .foregroundStyle(notificationAccentColor(for: item))
                                             .clipShape(Capsule())
                                     }
+                                    if let activityCue = notificationActivityCue(for: item) {
+                                        Text(activityCue)
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(DS.Colors.accent.opacity(0.12))
+                                            .foregroundStyle(DS.Colors.accent)
+                                            .clipShape(Capsule())
+                                    }
 
                                     HStack(spacing: 6) {
                                         Image(systemName: "person.text.rectangle")
@@ -151,7 +182,7 @@ struct NotificationsView: View {
 
                                     HStack(spacing: 6) {
                                         Image(systemName: destinationIcon(for: item))
-                                        Text(item.createdAt)
+                                        Text(formattedNotificationTimestamp(item.createdAt))
                                     }
                                     .font(.caption)
                                     .foregroundStyle(DS.Colors.textSecondary)
@@ -160,8 +191,19 @@ struct NotificationsView: View {
                                 Spacer()
                             }
                             .padding(.vertical, 6)
+                            .padding(.horizontal, 2)
+                            .padding(14)
+                            .background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .stroke(DS.Colors.border.opacity(0.55), lineWidth: 1)
+                            }
                         }
                         .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             if !item.read {
                                 Button("Okundu") {
@@ -173,13 +215,14 @@ struct NotificationsView: View {
                             }
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button("Ac") {
+                            Button("Aç") {
                                 openNotification(item)
                             }
                             .tint(DS.Colors.accent)
                         }
                     }
                 }
+                .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .background(DS.Colors.background)
             }
@@ -189,6 +232,9 @@ struct NotificationsView: View {
             }
             .navigationDestination(isPresented: $showChatList) {
                 ChatListView()
+            }
+            .navigationDestination(isPresented: $showCareRequests) {
+                NotificationCareRequestsView()
             }
             .navigationDestination(item: $selectedBooking) { booking in
                 BookingDetailView(
@@ -365,6 +411,10 @@ struct NotificationsView: View {
             selectedConversationContextBadge = nil
             selectedBookingContextBadge = nil
             showChatList = true
+        case .careRequests:
+            selectedConversationContextBadge = nil
+            selectedBookingContextBadge = nil
+            showCareRequests = true
         case .notifications:
             break
         }
@@ -380,6 +430,8 @@ struct NotificationsView: View {
             return "calendar"
         case .chatList:
             return "bubble.left.and.bubble.right"
+        case .careRequests:
+            return "list.bullet.rectangle"
         case .notifications:
             return "clock"
         }
@@ -448,11 +500,24 @@ struct NotificationsView: View {
         FamilyNotificationPresentation.proximityBadgeText(from: item.body)
     }
 
+    private func notificationActivityCue(for item: AppNotification) -> String? {
+        if !item.read {
+            return "Yeni gelişme"
+        }
+
+        guard let date = parseISODate(item.createdAt) else { return nil }
+        if Date().timeIntervalSince(date) < 6 * 60 * 60 {
+            return "Yakın zamanda geldi"
+        }
+
+        return nil
+    }
+
     private var quietHoursNotice: some View {
         HStack(spacing: 10) {
             Image(systemName: "moon.zzz.fill")
                 .foregroundStyle(.indigo)
-            Text("Sessiz saatler acik. Bildirimler burada görünmeye devam eder, ama dikkat cekici vurgular azaltilir.")
+            Text("Sessiz saatler açık. Bildirimler burada görünmeye devam eder, ama dikkat çekici vurgular azalır.")
                 .font(.footnote)
                 .foregroundStyle(DS.Colors.textSecondary)
         }
@@ -501,6 +566,43 @@ struct NotificationsView: View {
         }
     }
 
+    private func formattedNotificationTimestamp(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+
+        let calendar = Calendar.current
+        let locale = Locale(identifier: "tr_TR")
+
+        if calendar.isDateInToday(date) {
+            return date.formatted(.dateTime.locale(locale).hour().minute())
+        }
+
+        if calendar.isDateInYesterday(date) {
+            let timeText = date.formatted(.dateTime.locale(locale).hour().minute())
+            return "Dün \(timeText)"
+        }
+
+        return date.formatted(
+            .dateTime
+                .locale(locale)
+                .day()
+                .month(.wide)
+                .hour()
+                .minute()
+        )
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractionalFormatter.date(from: value) {
+            return date
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
+    }
+
     private enum ProviderNotificationCategory {
         case requests
         case operations
@@ -527,27 +629,225 @@ struct NotificationsView: View {
 
         return .system
     }
+}
 
-    private func emptyState(title: String, systemImage: String, description: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 42))
-                .foregroundStyle(DS.Colors.accent)
-            Text(title)
-                .font(.title3.bold())
-                .foregroundStyle(DS.Colors.textPrimary)
-            Text(description)
-                .font(.subheadline)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(DS.Colors.textSecondary)
+private struct NotificationCareRequestsView: View {
+    @EnvironmentObject private var session: SessionStore
+    @State private var parentRequests: [CareRequestItem] = []
+    @State private var providerRequests: [CareRequestItem] = []
+    @State private var errorMessage: String?
+    @State private var isLoading = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(isProvider
+                     ? "Burada ailelerden gelen açık talepleri daha rahat inceleyebilirsin."
+                     : "Burada aday başvurularını ve açık taleplerini tek ekranda görebilirsin.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.Colors.textSecondary)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                } else if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                } else if visibleRequests.isEmpty {
+                    notificationsEmptyState(
+                        title: isProvider ? "Açık talep yok" : "Gösterilecek talep yok",
+                        systemImage: "tray",
+                        description: isProvider
+                            ? "Aileler yeni talep oluşturduğunda burada görünecek."
+                            : "Yeni adaylar geldiğinde burada görünecek."
+                    )
+                    .frame(maxWidth: .infinity)
+                } else {
+                    ForEach(visibleRequests) { request in
+                        AppCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(localizedCareService(request.service))
+                                            .font(.headline)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                        Text("\(formattedDate(request.startAt)) • \(formattedTime(request.startAt)) - \(formattedTime(request.endAt))")
+                                            .font(.subheadline)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                        Text(request.locationName)
+                                            .font(.caption)
+                                            .foregroundStyle(DS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    Text(statusLabel(for: request))
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(statusColor(for: request).opacity(0.14))
+                                        .foregroundStyle(statusColor(for: request))
+                                        .clipShape(Capsule())
+                                }
+
+                                if !request.note.isEmpty {
+                                    Text(request.note)
+                                        .font(.subheadline)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+
+                                if isProvider {
+                                    infoRow(title: "Aday", value: "\(request.candidates.count)")
+                                } else if request.candidates.isEmpty {
+                                    infoRow(title: "Durum", value: "Henüz aday olan bakıcı yok.")
+                                } else {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Aday Olan Bakıcılar")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(DS.Colors.textSecondary)
+
+                                        ForEach(request.candidates) { candidate in
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(candidate.providerDisplayName)
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .foregroundStyle(DS.Colors.textPrimary)
+                                                Text("Başvuru zamanı: \(formattedTime(candidate.appliedAt))")
+                                                    .font(.caption)
+                                                    .foregroundStyle(DS.Colors.textSecondary)
+                                            }
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(10)
+                                            .background(DS.Colors.background)
+                                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
+        .background(DS.Colors.background.ignoresSafeArea())
+        .navigationTitle(isProvider ? "Aile Talepleri" : "Aile Talepleri")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await loadCareRequests()
+        }
+        .refreshable {
+            await loadCareRequests()
+        }
+    }
+
+    private var isProvider: Bool {
+        session.me?.user.role == "PROVIDER"
+    }
+
+    private var visibleRequests: [CareRequestItem] {
+        (isProvider ? providerRequests : parentRequests).sorted { lhs, rhs in
+            lhs.startAt < rhs.startAt
+        }
+    }
+
+    private func loadCareRequests() async {
+        guard let userID = session.me?.user.id else { return }
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            if isProvider {
+                providerRequests = try await session.deps.bookingService.listProviderCareRequests(providerUserID: userID)
+                parentRequests = []
+            } else {
+                parentRequests = try await session.deps.bookingService.listParentCareRequests(parentUserID: userID)
+                providerRequests = []
+            }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+            parentRequests = []
+            providerRequests = []
+        }
+    }
+
+    private func localizedCareService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first
+            ?? service.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func statusLabel(for request: CareRequestItem) -> String {
+        if request.isMatched {
+            return "Eşleşti"
+        }
+        if !request.candidates.isEmpty && !isProvider {
+            return "\(request.candidates.count) aday"
+        }
+        return "Açık"
+    }
+
+    private func statusColor(for request: CareRequestItem) -> Color {
+        if request.isMatched {
+            return .green
+        }
+        if !request.candidates.isEmpty && !isProvider {
+            return DS.Colors.primary
+        }
+        return .orange
+    }
+
+    private func infoRow(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(DS.Colors.textSecondary)
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(DS.Colors.textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(DS.Colors.background)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func formattedDate(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+
+    private func formattedTime(_ value: String) -> String {
+        guard let date = parseISODate(value) else { return value }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
     }
 }
 
 final class NotificationService {
     private struct Empty: Encodable {}
+    private struct RegisterPushTokenReq: Encodable {
+        let token: String
+        let platform: String
+    }
+    private struct PushTokenMutationResponse: Decodable {
+        let ok: Bool
+    }
     private let api: APIClient
 
     init(api: APIClient) {
@@ -673,6 +973,15 @@ final class NotificationService {
         }
 
         throw lastError ?? APIError.invalidURL
+    }
+
+    func registerPushToken(_ token: String, platform: String) async throws {
+        let _: PushTokenMutationResponse = try await api.request(
+            "v1/me/push-token",
+            method: "POST",
+            body: RegisterPushTokenReq(token: token, platform: platform),
+            needsAuth: true
+        )
     }
 
     func sendBookingStatusNotification(

@@ -102,6 +102,19 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    func createCall(participantName: String, status: String) async {
+        do {
+            let created = try await service.createCall(
+                participantName: participantName,
+                direction: "OUTGOING",
+                status: status
+            )
+            calls.insert(created, at: 0)
+        } catch {
+            // Call history should not block the native dialer/FaceTime handoff.
+        }
+    }
+
     func markConversationRead(chatID: String) async -> Bool {
         do {
             try await service.markConversationRead(chatID: chatID)
@@ -253,6 +266,16 @@ final class ChatService {
         )
     }
 
+    func startConversation(participantID: String) async throws -> ConversationItem {
+        let response: StartConversationResponse = try await api.request(
+            "v1/chats",
+            method: "POST",
+            body: StartConversationReq(participantUserID: participantID),
+            needsAuth: true
+        )
+        return response.conversation
+    }
+
     func sendMessage(chatID: String, text: String) async throws -> ChatMessage {
         try await api.request(
             "v1/chats/\(chatID)/messages",
@@ -267,6 +290,19 @@ final class ChatService {
             "v1/calls",
             method: "GET",
             body: Optional<Empty>.none,
+            needsAuth: true
+        )
+    }
+
+    func createCall(participantName: String, direction: String, status: String) async throws -> CallItem {
+        try await api.request(
+            "v1/calls",
+            method: "POST",
+            body: CreateCallReq(
+                participantName: participantName,
+                direction: direction,
+                status: status
+            ),
             needsAuth: true
         )
     }
@@ -316,6 +352,24 @@ final class ChatService {
 
         throw lastError ?? APIError.invalidURL
     }
+}
+
+private struct StartConversationReq: Encodable {
+    let participantUserID: String
+
+    enum CodingKeys: String, CodingKey {
+        case participantUserID = "participant_user_id"
+    }
+}
+
+private struct StartConversationResponse: Decodable {
+    let conversation: ConversationItem
+}
+
+private struct CreateCallReq: Encodable {
+    let participantName: String
+    let direction: String
+    let status: String
 }
 
 private struct ChatUnreadSummaryResponse: Decodable {

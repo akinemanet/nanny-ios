@@ -8,6 +8,13 @@
 import Foundation
 
 final class APIClient {
+    struct MultipartFile {
+        let fieldName: String
+        let fileName: String
+        let mimeType: String
+        let data: Data
+    }
+
     private enum APIConfig {
         static let baseURL = URL(string: "https://api.clickajans.net")!
     }
@@ -20,11 +27,52 @@ final class APIClient {
         self.session = session
     }
 
+    func uploadMultipart<T: Decodable>(
+        _ path: String,
+        method: String = "POST",
+        file: MultipartFile,
+        needsAuth: Bool = false
+    ) async throws -> T {
+        guard let url = URL(string: path, relativeTo: APIConfig.baseURL) else {
+            throw APIError.invalidURL
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        if needsAuth, let token = tokenStore.getToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        req.httpBody = makeMultipartBody(boundary: boundary, file: file)
+
+        do {
+            let (data, response) = try await session.data(for: req)
+            guard let http = response as? HTTPURLResponse else { throw APIError.invalidURL }
+            guard (200...299).contains(http.statusCode) else { throw APIError.http(http.statusCode, data) }
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            do {
+                return try decoder.decode(T.self, from: data)
+            } catch {
+                throw APIError.decoding(error)
+            }
+        } catch let err as APIError {
+            throw err
+        } catch {
+            throw APIError.transport(error)
+        }
+    }
+
     func request<T: Decodable, B: Encodable>(
         _ path: String,
         method: String = "GET",
         body: B? = nil,
-        needsAuth: Bool = false
+        needsAuth: Bool = false,
+        cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy
     ) async throws -> T {
         guard let url = URL(string: path, relativeTo: APIConfig.baseURL) else {
             throw APIError.invalidURL
@@ -32,6 +80,7 @@ final class APIClient {
 
         var req = URLRequest(url: url)
         req.httpMethod = method
+        req.cachePolicy = cachePolicy
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -61,5 +110,19 @@ final class APIClient {
         } catch {
             throw APIError.transport(error)
         }
+    }
+
+    private func makeMultipartBody(boundary: String, file: MultipartFile) -> Data {
+        var body = Data()
+        let lineBreak = "\r\n"
+
+        body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(file.fieldName)\"; filename=\"\(file.fileName)\"\(lineBreak)".data(using: .utf8)!)
+        body.append("Content-Type: \(file.mimeType)\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        body.append(file.data)
+        body.append(lineBreak.data(using: .utf8)!)
+        body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
+
+        return body
     }
 }

@@ -29,7 +29,7 @@ struct BookingListView: View {
                 Picker("Durum", selection: $selectedTab) {
                     Text("Aktif").tag(0)
                     Text("Tamamlanan").tag(1)
-                    Text("Iptal").tag(2)
+                    Text("İptal").tag(2)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
@@ -114,31 +114,40 @@ struct BookingListView: View {
     }
 
     private func formattedDate(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
         let out = DateFormatter()
+        out.locale = Locale(identifier: "tr_TR")
         out.dateStyle = .medium
-        if let date = iso.date(from: value) {
+        if let date = parseISODate(value) {
             return out.string(from: date)
         }
         return value
     }
 
     private func formattedTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
         let out = DateFormatter()
+        out.locale = Locale(identifier: "tr_TR")
         out.timeStyle = .short
-        if let date = iso.date(from: value) {
+        if let date = parseISODate(value) {
             return out.string(from: date)
         }
         return value
     }
 
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: value)
+    }
+
     private func localizedService(_ service: String) -> String {
-        service
-            .replacingOccurrences(of: "_", with: " ")
-            .capitalized
-            .replacingOccurrences(of: "Babysitting", with: "Bebek Bakımı")
-            .replacingOccurrences(of: "Tutoring", with: "Özel Ders")
+        ProviderCategoryMapper.displayLabels(from: [service]).first
+            ?? service.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private func localizedStatus(_ status: String) -> String {
@@ -160,41 +169,76 @@ struct BookingListView: View {
         HStack(alignment: .top, spacing: 14) {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(DS.Colors.surface)
-                .frame(width: 72, height: 72)
+                .frame(width: 56, height: 56)
                 .overlay {
                     Image(systemName: "calendar")
-                        .font(.title3)
+                        .font(.headline)
                         .foregroundStyle(DS.Colors.primary)
                 }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(booking.provider.displayName)
-                    .font(.headline)
-                    .foregroundStyle(DS.Colors.textPrimary)
-                Text(localizedService(booking.service))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(DS.Colors.textSecondary)
-                Text(formattedDate(booking.startTime))
+                HStack(alignment: .top, spacing: 8) {
+                    Text(booking.provider.displayName)
+                        .font(.headline)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .layoutPriority(1)
+
+                    Spacer(minLength: 8)
+
+                    statusChip(for: booking.status)
+                        .fixedSize()
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(localizedService(booking.service))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .layoutPriority(1)
+
+                    Spacer(minLength: 8)
+
+                    if booking.totalPrice > 0 {
+                        Text(CurrencyFormatting.formattedAmount(booking.totalPrice, currencyCode: preferredCurrency))
+                            .font(.headline)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                }
+
+                Text("\(formattedDate(booking.startTime)) • \(formattedTime(booking.startTime)) - \(formattedTime(booking.endTime))")
                     .font(.subheadline)
                     .foregroundStyle(DS.Colors.textSecondary)
-                Text("\(formattedTime(booking.startTime)) - \(formattedTime(booking.endTime))")
-                    .font(.subheadline)
-                    .foregroundStyle(DS.Colors.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                if !bookingActivityCues(for: booking).isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(bookingActivityCues(for: booking), id: \.self) { cue in
+                                Text(cue)
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(DS.Colors.primary.opacity(0.10))
+                                    .foregroundStyle(DS.Colors.primary)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+
                 Text(paymentStatusText(for: booking))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(paymentStatusColor(for: booking))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 10) {
-                if booking.totalPrice > 0 {
-                    Text(CurrencyFormatting.formattedAmount(booking.totalPrice, currencyCode: preferredCurrency))
-                        .font(.headline)
-                        .foregroundStyle(DS.Colors.textPrimary)
-                }
-                statusChip(for: booking.status)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
         .background(.white)
@@ -216,6 +260,27 @@ struct BookingListView: View {
 
     private func paymentStatusColor(for booking: BookingItem) -> Color {
         toneColor(for: BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus).paymentSummaryTone)
+    }
+
+    private func bookingActivityCues(for booking: BookingItem) -> [String] {
+        var cues: [String] = []
+
+        if let start = parseISODate(booking.startTime) {
+            if Calendar.current.isDateInToday(start) {
+                cues.append("Bugün")
+            } else if Date().timeIntervalSince(start) < 0, start.timeIntervalSinceNow < 24 * 60 * 60 {
+                cues.append("Yaklaşıyor")
+            }
+        }
+
+        let presentation = BookingStatusPresentation.make(for: booking.status, paymentStatus: booking.paymentStatus)
+        if presentation.canPay {
+            cues.append("Ödeme bekliyor")
+        } else if booking.status.uppercased() == "ACCEPTED" {
+            cues.append("Hazır")
+        }
+
+        return Array(cues.prefix(2))
     }
 
     private func toneColor(for tone: BookingPresentationTone) -> Color {
@@ -242,7 +307,7 @@ struct BookingListView: View {
         case 1:
             return "Tamamlanan Rezervasyon Yok"
         default:
-            return "Iptal Edilen Rezervasyon Yok"
+            return "İptal Edilen Rezervasyon Yok"
         }
     }
 
@@ -260,11 +325,11 @@ struct BookingListView: View {
     private var emptyStateDescription: String {
         switch selectedTab {
         case 0:
-            return "Guncel rezervasyonlarin burada gorunecek."
+            return "Güncel rezervasyonların burada görünecek."
         case 1:
-            return "Tamamlanan rezervasyonlarin burada gorunecek."
+            return "Tamamlanan rezervasyonların burada görünecek."
         default:
-            return "Iptal edilen rezervasyonlarin burada gorunecek."
+            return "İptal edilen rezervasyonların burada görünecek."
         }
     }
 
@@ -306,6 +371,9 @@ struct BookingDetailView: View {
     @State private var localPaymentStatusOverride: String?
     @State private var localStartTimeOverride: String?
     @State private var localEndTimeOverride: String?
+    @State private var conversations: [ConversationItem] = []
+    @State private var selectedConversation: ConversationItem?
+    @State private var showChatList = false
     @State private var cancellationNotice: String?
     @State private var cancellationError: String?
     @State private var rescheduleNotice: String?
@@ -331,16 +399,16 @@ struct BookingDetailView: View {
                 if let contextBadgeText, !contextBadgeText.isEmpty {
                     detailContextBadge(text: contextBadgeText)
                 }
-                detailRow("Hizmet", value: booking.service.replacingOccurrences(of: "_", with: " ").capitalized)
-                detailRow("Bakıcı", value: booking.provider.displayName)
+                detailRow("Hizmet", value: localizedService(booking.service))
+                detailRow("Bakıcı", value: resolvedProviderDisplayName)
                 if let address = booking.address {
                     detailRow("Adres", value: address)
                 }
                 if let cancellationNotice {
-                    infoCard(title: "Durum Guncellendi", message: cancellationNotice)
+                    infoCard(title: "Durum Güncellendi", message: cancellationNotice)
                 }
                 if let rescheduleNotice {
-                    infoCard(title: "Rezervasyon Guncellendi", message: rescheduleNotice)
+                    infoCard(title: "Rezervasyon Güncellendi", message: rescheduleNotice)
                 }
                 if let cancellationError {
                     Text(cancellationError)
@@ -398,7 +466,7 @@ struct BookingDetailView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: DS.Size.buttonHeight)
                             } else {
-                                Text("Tarih ve Saati Degistir")
+                                Text("Tarih ve Saati Değiştir")
                                     .frame(maxWidth: .infinity)
                                     .frame(height: DS.Size.buttonHeight)
                             }
@@ -419,7 +487,7 @@ struct BookingDetailView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: DS.Size.buttonHeight)
                             } else {
-                                Text("Iptal Talebi Olustur")
+                                Text("İptal Talebi Oluştur")
                                     .frame(maxWidth: .infinity)
                                     .frame(height: DS.Size.buttonHeight)
                             }
@@ -432,7 +500,7 @@ struct BookingDetailView: View {
                 }
                 infoCard(
                     title: "Rezervasyon Bilgisi",
-                    message: "Odeme adimini burada tamamlayabilir, gecmis rezervasyonlar icin hizlica yeni bir takvim olusturabilir ve aktif kayitlar icin iptal talebi baslatabilirsin."
+                    message: "Ödeme adımını burada tamamlayabilir, geçmiş rezervasyonlar için hızlıca yeni bir takvim oluşturabilir ve aktif kayıtlar için iptal talebi başlatabilirsin."
                 )
             }
             .padding()
@@ -440,6 +508,12 @@ struct BookingDetailView: View {
         .background(DS.Colors.background.ignoresSafeArea())
         .navigationTitle("Rezervasyon Detayı")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $selectedConversation) { conversation in
+            ChatView(chatID: conversation.id, title: conversation.participantName)
+        }
+        .navigationDestination(isPresented: $showChatList) {
+            ChatListView()
+        }
         .navigationDestination(isPresented: $showRebook) {
             BookingCalendarView(provider: rebookProvider)
         }
@@ -472,15 +546,18 @@ struct BookingDetailView: View {
                 }
             }
         }
-        .alert("Iptal talebi olusturulsun mu?", isPresented: $showCancelConfirmation) {
-            Button("Vazgec", role: .cancel) {}
-            Button("Iptal Talebi Gonder", role: .destructive) {
+        .alert("İptal talebi oluşturulsun mu?", isPresented: $showCancelConfirmation) {
+            Button("Vazgeç", role: .cancel) {}
+            Button("İptal Talebi Gönder", role: .destructive) {
                 Task {
                     await submitCancellationRequest()
                 }
             }
         } message: {
-            Text("Once backend iptal endpoint'i denenecek. Sunucuda bu akış hazir degilse uygulama lokal durum guncellemesiyle devam edecek.")
+            Text("İptal talebin şimdi gönderilecek. İşlem şu anda tamamlanamazsa rezervasyon durumu bu cihazda güncellenecek.")
+        }
+        .task {
+            await loadConversations()
         }
     }
 
@@ -503,7 +580,7 @@ struct BookingDetailView: View {
                     }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(booking.provider.displayName)
+                    Text(resolvedProviderDisplayName)
                         .font(.title2.bold())
                         .foregroundStyle(DS.Colors.textPrimary)
                     Text(localizedStatus(effectiveStatus))
@@ -518,7 +595,15 @@ struct BookingDetailView: View {
                 Spacer()
 
                 HStack(spacing: 10) {
-                    iconCircle("message")
+                    Button {
+                        Task {
+                            await openConversation()
+                        }
+                    } label: {
+                        iconCircle("message")
+                    }
+                    .buttonStyle(.plain)
+
                     iconCircle("phone")
                 }
             }
@@ -596,7 +681,7 @@ struct BookingDetailView: View {
             HStack {
                 Image(systemName: paymentStatusIcon)
                     .foregroundStyle(paymentStatusTint)
-                Text("Odeme Durumu")
+                Text("Ödeme Durumu")
                     .font(.headline)
                     .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
@@ -694,12 +779,37 @@ struct BookingDetailView: View {
             .overlay(Circle().stroke(DS.Colors.border, lineWidth: 1))
     }
 
+    private func loadConversations() async {
+        do {
+            conversations = try await session.deps.chatService.listConversations().conversations
+        } catch {
+            conversations = []
+        }
+    }
+
+    private func openConversation() async {
+        if let conversation = DashboardRouting.conversation(
+            forProviderID: booking.provider.id,
+            participantName: resolvedProviderDisplayName,
+            conversations: conversations
+        ) {
+            selectedConversation = conversation
+        } else {
+            do {
+                let conversation = try await session.deps.chatService.startConversation(participantID: booking.provider.id)
+                conversations.insert(conversation, at: 0)
+                selectedConversation = conversation
+            } catch {
+                showChatList = true
+            }
+        }
+    }
+
     private var hourlyRateText: String {
         guard booking.totalPrice > 0 else { return "-" }
-        let iso = ISO8601DateFormatter()
         guard
-            let start = iso.date(from: booking.startTime),
-            let end = iso.date(from: booking.endTime)
+            let start = parseISODate(booking.startTime),
+            let end = parseISODate(booking.endTime)
         else {
             return "-"
         }
@@ -718,24 +828,28 @@ struct BookingDetailView: View {
     }
 
     private func detailFormattedDate(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
         let out = DateFormatter()
         out.dateFormat = "EEEE,\nd MMM yyyy"
         out.locale = Locale(identifier: "tr_TR")
-        if let date = iso.date(from: value) {
+        if let date = parseISODate(value) {
             return out.string(from: date)
         }
         return value
     }
 
     private func detailFormattedTime(_ value: String) -> String {
-        let iso = ISO8601DateFormatter()
         let out = DateFormatter()
+        out.locale = Locale(identifier: "tr_TR")
         out.timeStyle = .short
-        if let date = iso.date(from: value) {
+        if let date = parseISODate(value) {
             return out.string(from: date)
         }
         return value
+    }
+
+    private func localizedService(_ service: String) -> String {
+        ProviderCategoryMapper.displayLabels(from: [service]).first
+            ?? service.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private func localizedStatus(_ status: String) -> String {
@@ -743,10 +857,9 @@ struct BookingDetailView: View {
     }
 
     private func bookingDuration(_ booking: BookingItem) -> String {
-        let iso = ISO8601DateFormatter()
         guard
-            let start = iso.date(from: booking.startTime),
-            let end = iso.date(from: booking.endTime)
+            let start = parseISODate(booking.startTime),
+            let end = parseISODate(booking.endTime)
         else {
             return "-"
         }
@@ -761,6 +874,26 @@ struct BookingDetailView: View {
             return "\(hours)h"
         }
         return "\(minutes)m"
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: value)
+    }
+
+    private var resolvedProviderDisplayName: String {
+        let trimmed = booking.provider.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed.lowercased() == "provider" || trimmed.lowercased() == "bakici" {
+            return "Bakıcı"
+        }
+        return trimmed
     }
 
     private var canPay: Bool {
@@ -838,14 +971,15 @@ struct BookingDetailView: View {
     private var rebookProvider: BrowseProvider {
         BrowseProvider(
             id: booking.provider.id,
-            displayName: booking.provider.displayName,
+            displayName: resolvedProviderDisplayName,
             rating: 4.8,
             hourlyRate: booking.provider.hourlyRate ?? max(booking.totalPrice, 500),
             payoutStatus: "APPROVED",
             age: 30,
             gender: "Kadın",
-            locationName: booking.address ?? "Konum daha sonra netlesecek",
-            distanceText: "Daha once rezervasyon yapildi",
+            locationName: booking.address ?? "Konum daha sonra netleşecek",
+            distanceText: "Daha önce rezervasyon yapıldı",
+            photoURL: nil,
             latitude: nil,
             longitude: nil,
             categories: ["Tekrar Rezervasyon"],
@@ -869,7 +1003,7 @@ struct BookingDetailView: View {
             let updatedBooking = canceledBooking ?? makeCancelledBooking()
             localStatusOverride = updatedBooking.status
             localPaymentStatusOverride = updatedBooking.paymentStatus
-            cancellationNotice = "Iptal talebin backend tarafina iletildi ve rezervasyon durumu guncellendi."
+            cancellationNotice = "İptal talebin alındı ve rezervasyon durumu güncellendi."
             onBookingUpdated(updatedBooking)
         } catch let error as APIError {
             switch error {
@@ -878,7 +1012,7 @@ struct BookingDetailView: View {
                     let updatedBooking = makeCancelledBooking()
                     localStatusOverride = updatedBooking.status
                     localPaymentStatusOverride = updatedBooking.paymentStatus
-                    cancellationNotice = "Iptal endpoint'i backend tarafinda henuz acik degil. Rezervasyon bu cihazda iptal edildi olarak gosteriliyor."
+                    cancellationNotice = "İptal talebin bu cihazda işlendi. Durum güncellendi."
                     onBookingUpdated(updatedBooking)
                 } else {
                     cancellationError = error.localizedDescription
@@ -936,7 +1070,7 @@ struct BookingDetailView: View {
                     localEndTimeOverride = updatedBooking.endTime
                     localStatusOverride = updatedBooking.status
                     localPaymentStatusOverride = updatedBooking.paymentStatus
-                    rescheduleNotice = "Yeniden planlama endpoint'i backend tarafinda henuz acik degil. Yeni tarih bu cihazda guncellendi olarak gosteriliyor."
+                    rescheduleNotice = "Yeni tarih ve saat bu cihazda güncellendi."
                     onBookingUpdated(updatedBooking)
                     showReschedule = false
                 } else {
@@ -991,7 +1125,7 @@ struct BookingDetailView: View {
         } catch {
             let message = error.localizedDescription
             if message.localizedCaseInsensitiveContains("iyzico keys not configured") {
-                checkoutError = "Ödeme şu anda kullanılamıyor. Ödeme sağlayıcısı henüz backend tarafında yapılandırılmamış."
+                checkoutError = "Ödeme şu anda kullanılamıyor. Lütfen daha sonra tekrar dene."
             } else {
                 checkoutError = message
             }

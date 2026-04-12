@@ -9,6 +9,8 @@ import SwiftUI
 
 private enum ProviderAvailabilityStorageKeys {
     static let selections = "providerAvailabilitySelections"
+    static let weeklyTemplates = "providerAvailabilityWeeklyTemplates"
+    static let focusedDate = "providerAvailabilityFocusedDate"
 }
 
 private final class ProviderAvailabilityService {
@@ -151,7 +153,11 @@ struct ProviderCalendarView: View {
     @EnvironmentObject private var session: SessionStore
     @State private var selectedDate = Date()
     @AppStorage(ProviderAvailabilityStorageKeys.selections) private var storedSelections = "{}"
+    @AppStorage(ProviderAvailabilityStorageKeys.weeklyTemplates) private var storedWeeklyTemplates = "{}"
+    @AppStorage(ProviderAvailabilityStorageKeys.focusedDate) private var focusedDateValue = ""
     @State private var selectedSlots: Set<String> = []
+    @State private var repeatWeeklySelection = false
+    @State private var templateCopyTargets: Set<Int> = []
     @State private var availabilityService: ProviderAvailabilityService?
     @State private var syncError: String?
     @State private var syncNotice: String?
@@ -199,18 +205,102 @@ struct ProviderCalendarView: View {
                     }
                 }
 
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(isOn: $repeatWeeklySelection) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Her hafta tekrarla")
+                                .font(.headline)
+                                .foregroundStyle(DS.Colors.textPrimary)
+                            Text("\(selectedWeekdayTitle) gününe seçtiğin saatleri önümüzdeki 8 hafta boyunca uygula.")
+                                .font(.footnote)
+                                .foregroundStyle(DS.Colors.textSecondary)
+                        }
+                    }
+                    .tint(DS.Colors.primary)
+
+                    if let templateSummary {
+                        Text(templateSummary)
+                            .font(.footnote)
+                            .foregroundStyle(DS.Colors.primary)
+                    } else {
+                        Text("Tek seferlik seçim yaparsan yalnızca seçtiğin tarih güncellenir.")
+                            .font(.footnote)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                    }
+
+                    HStack(spacing: 10) {
+                        Button {
+                            copySelectedDayToThisWeek()
+                        } label: {
+                            Label("Bu haftaya kopyala", systemImage: "calendar.badge.plus")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(DS.Colors.primary)
+
+                        Button(role: .destructive) {
+                            clearWeeklyTemplate()
+                        } label: {
+                            Label("Şablonu temizle", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled((weeklyTemplates[ProviderAvailabilityLogic.weekday(for: selectedDate)] ?? []).isEmpty)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Şablonu diğer günlere uygula")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(DS.Colors.textPrimary)
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                            ForEach(weekdayOptions, id: \.weekday) { option in
+                                Button {
+                                    toggleTemplateTarget(option.weekday)
+                                } label: {
+                                    Text(option.title)
+                                        .font(.footnote.weight(.medium))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 36)
+                                        .background(templateCopyTargets.contains(option.weekday) ? DS.Colors.primary : Color.white)
+                                        .foregroundStyle(templateCopyTargets.contains(option.weekday) ? Color.white : DS.Colors.textPrimary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                }
+                                .disabled(option.weekday == selectedWeekday)
+                                .opacity(option.weekday == selectedWeekday ? 0.45 : 1)
+                            }
+                        }
+
+                        Button {
+                            applyTemplateToSelectedWeekdays()
+                        } label: {
+                            Label("Seçili günlere uygula", systemImage: "arrow.triangle.branch")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(DS.Colors.primary)
+                        .disabled(templateCopyTargets.isEmpty || (weeklyTemplates[selectedWeekday] ?? []).isEmpty)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(DS.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Özet")
                         .font(.headline)
                         .foregroundStyle(DS.Colors.textPrimary)
                     Text("\(selectedSlots.count) zaman aralığı seçildi")
                         .foregroundStyle(DS.Colors.textSecondary)
+                    Text("Haftalık şablonlarda \(ProviderAvailabilityLogic.totalTemplateCount(in: weeklyTemplates)) saat kayıtlı")
+                        .foregroundStyle(DS.Colors.textSecondary)
                     if let nextDate = ProviderAvailabilityLogic.nextAvailableDate(in: decodedSelections) {
                         Text("Sıradaki müsait gün: \(formattedDay(nextDate))")
                             .foregroundStyle(DS.Colors.textSecondary)
                     }
                     if isSyncingSelections {
-                        Text("Müsaitlik backend ile eşzamanlanıyor...")
+                        Text("Müsaitlik bilgilerin güncelleniyor...")
                             .font(.footnote)
                             .foregroundStyle(DS.Colors.textSecondary)
                     } else if let syncNotice {
@@ -222,7 +312,7 @@ struct ProviderCalendarView: View {
                             .font(.footnote)
                             .foregroundStyle(.red)
                     } else {
-                        Text("Seçimlerin cihazda kaydediliyor. Backend müsaitlik API'si geldiyse otomatik eşzamanlanacak.")
+                        Text("Seçimlerin güvenle saklanıyor. İnternet bağlantısı uygunsa diğer cihazlarında da güncel kalır.")
                             .font(.footnote)
                             .foregroundStyle(DS.Colors.textSecondary)
                     }
@@ -240,10 +330,13 @@ struct ProviderCalendarView: View {
         .toolbarBackground(DS.Colors.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .onAppear {
+            applyFocusedDateIfNeeded()
             loadSlotsForSelectedDate()
+            loadRepeatPreferenceForSelectedDate()
         }
         .onChange(of: selectedDate) { _, _ in
             loadSlotsForSelectedDate()
+            loadRepeatPreferenceForSelectedDate()
         }
         .task {
             availabilityService = ProviderAvailabilityService(api: session.deps.api)
@@ -261,17 +354,106 @@ struct ProviderCalendarView: View {
         ProviderAvailabilityLogic.decodeSelections(storedSelections)
     }
 
+    private var weeklyTemplates: [Int: [String]] {
+        ProviderAvailabilityLogic.decodeWeeklyTemplates(storedWeeklyTemplates)
+    }
+
+    private var selectedWeekdayTitle: String {
+        ProviderAvailabilityLogic.weekdayTitle(
+            for: ProviderAvailabilityLogic.weekday(for: selectedDate)
+        )
+    }
+
+    private var selectedWeekday: Int {
+        ProviderAvailabilityLogic.weekday(for: selectedDate)
+    }
+
+    private var weekdayOptions: [(weekday: Int, title: String)] {
+        (1...7).map { weekday in
+            (weekday, ProviderAvailabilityLogic.weekdayTitle(for: weekday))
+        }
+    }
+
+    private var templateSummary: String? {
+        let weekday = ProviderAvailabilityLogic.weekday(for: selectedDate)
+        guard let slots = weeklyTemplates[weekday], !slots.isEmpty else { return nil }
+        return "\(selectedWeekdayTitle) için haftalık şablon: \(slots.joined(separator: ", "))"
+    }
+
     private func loadSlotsForSelectedDate() {
         selectedSlots = Set(decodedSelections[selectedDateKey] ?? [])
     }
 
+    private func applyFocusedDateIfNeeded() {
+        guard !focusedDateValue.isEmpty else { return }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        if let focusedDate = formatter.date(from: focusedDateValue) {
+            selectedDate = focusedDate
+        }
+        focusedDateValue = ""
+    }
+
+    private func loadRepeatPreferenceForSelectedDate() {
+        repeatWeeklySelection = !(weeklyTemplates[selectedWeekday] ?? []).isEmpty
+        templateCopyTargets = []
+    }
+
     private func persistSelection() {
+        let updated = ProviderAvailabilityLogic.selectionsApplyingWeeklyRule(
+            currentSelections: decodedSelections,
+            currentTemplates: weeklyTemplates,
+            selectedDate: selectedDate,
+            selectedSlots: Array(selectedSlots),
+            appliesWeeklyTemplate: repeatWeeklySelection
+        )
+        storedSelections = ProviderAvailabilityLogic.encodeSelections(updated.selections)
+        storedWeeklyTemplates = ProviderAvailabilityLogic.encodeWeeklyTemplates(updated.templates)
+        Task {
+            await syncSelections(updated.selections)
+        }
+    }
+
+    private func copySelectedDayToThisWeek() {
         var updated = decodedSelections
         updated[selectedDateKey] = ProviderAvailabilityLogic.sortedSlots(Array(selectedSlots))
         storedSelections = ProviderAvailabilityLogic.encodeSelections(updated)
+        syncNotice = "Seçili saatler bu haftadaki güne kopyalandı."
+        syncError = nil
+
         Task {
             await syncSelections(updated)
         }
+    }
+
+    private func clearWeeklyTemplate() {
+        var updatedTemplates = weeklyTemplates
+        updatedTemplates[selectedWeekday] = []
+        storedWeeklyTemplates = ProviderAvailabilityLogic.encodeWeeklyTemplates(updatedTemplates)
+        repeatWeeklySelection = false
+        templateCopyTargets = []
+        syncNotice = "\(selectedWeekdayTitle) için haftalık şablon temizlendi."
+        syncError = nil
+    }
+
+    private func toggleTemplateTarget(_ weekday: Int) {
+        if templateCopyTargets.contains(weekday) {
+            templateCopyTargets.remove(weekday)
+        } else {
+            templateCopyTargets.insert(weekday)
+        }
+    }
+
+    private func applyTemplateToSelectedWeekdays() {
+        let updatedTemplates = ProviderAvailabilityLogic.copyTemplate(
+            from: selectedWeekday,
+            to: Array(templateCopyTargets),
+            using: weeklyTemplates
+        )
+        storedWeeklyTemplates = ProviderAvailabilityLogic.encodeWeeklyTemplates(updatedTemplates)
+        syncNotice = "\(selectedWeekdayTitle) şablonu seçili günlere uygulandı."
+        syncError = nil
+        templateCopyTargets = []
     }
 
     private func formattedDay(_ value: String) -> String {
@@ -293,14 +475,14 @@ struct ProviderCalendarView: View {
             if let remoteSelections = try await availabilityService.fetchSelections(), !remoteSelections.isEmpty {
                 storedSelections = ProviderAvailabilityLogic.encodeSelections(remoteSelections)
                 loadSlotsForSelectedDate()
-                syncNotice = "Müsaitlik backend'den eşzamanlandı."
+                syncNotice = "Müsaitlik bilgilerin güncellendi."
                 syncError = nil
             }
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 || code >= 500 {
-                    syncNotice = "Müsaitlik bu cihazda kaydediliyor. Backend şu anda yanıt vermiyor."
+                    syncNotice = "Müsaitlik bu cihazda saklanıyor. İnternet yeniden hazır olduğunda tekrar denenecek."
                     syncError = nil
                 } else {
                     syncError = "Müsaitlik bilgileri şu anda alınamadı."
@@ -323,24 +505,24 @@ struct ProviderCalendarView: View {
 
         do {
             try await availabilityService.saveSelections(selections)
-            syncNotice = "Müsaitlik backend ile eşzamanlandı."
+            syncNotice = "Müsaitlik bilgilerin kaydedildi."
             syncError = nil
         } catch let error as APIError {
             switch error {
             case .http(let code, _):
                 if code == 404 || code == 405 || code >= 500 {
-                    syncNotice = "Müsaitlik cihazda güncellendi. Backend şu anda yanıt vermiyor."
+                    syncNotice = "Müsaitlik bu cihazda kaydedildi. Bağlantı normale dönünce tekrar güncellenecek."
                     syncError = nil
                 } else {
-                    syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
+                    syncError = "Müsaitlik şu anda kaydedilemedi."
                     syncNotice = nil
                 }
             default:
-                syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
+                syncError = "Müsaitlik şu anda kaydedilemedi."
                 syncNotice = nil
             }
         } catch {
-            syncError = "Müsaitlik şu anda backend'e kaydedilemedi."
+            syncError = "Müsaitlik şu anda kaydedilemedi."
             syncNotice = nil
         }
     }

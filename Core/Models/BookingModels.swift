@@ -95,35 +95,35 @@ struct BookingRecord: Decodable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case parentUserID = "parent_user_id"
-        case providerUserID = "provider_user_id"
+        case parentUserID = "parentUserId"
+        case providerUserID = "providerUserId"
         case service
-        case startAt = "start_at"
-        case endAt = "end_at"
-        case bookingType = "booking_type"
+        case startAt
+        case endAt
+        case bookingType
         case status
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-        case totalPrice = "total_price"
+        case createdAt
+        case updatedAt
+        case totalPrice
         case totalPriceAlt = "price_total"
         case totalPriceLegacy = "amount"
         case address
-        case paymentStatus = "payment_status"
+        case paymentStatus
         case paymentStatusAlt = "checkout_status"
         case paymentStatusLegacy = "payment_state"
-        case providerDisplayName = "provider_display_name"
+        case providerDisplayName
         case providerDisplayNameAlt = "provider_name"
-        case providerHourlyRate = "provider_hourly_rate"
+        case providerHourlyRate
         case providerHourlyRateAlt = "hourly_rate"
-        case familyDisplayName = "family_display_name"
+        case familyDisplayName
         case familyDisplayNameAlt = "parent_display_name"
-        case familyAbout = "family_about"
+        case familyAbout
         case familyAboutAlt = "parent_about"
-        case familyLocationName = "family_location_name"
+        case familyLocationName
         case familyLocationNameAlt = "parent_location_name"
-        case familyLocationLatitude = "family_location_latitude"
+        case familyLocationLatitude
         case familyLocationLatitudeAlt = "parent_location_latitude"
-        case familyLocationLongitude = "family_location_longitude"
+        case familyLocationLongitude
         case familyLocationLongitudeAlt = "parent_location_longitude"
         case provider
         case parent
@@ -143,11 +143,11 @@ struct BookingRecord: Decodable, Identifiable {
 
         id = try container.decode(String.self, forKey: .id)
         parentUserID = try container.decodeIfPresent(String.self, forKey: .parentUserID)
-        service = try container.decode(String.self, forKey: .service)
-        startAt = try container.decode(String.self, forKey: .startAt)
-        endAt = try container.decode(String.self, forKey: .endAt)
-        bookingType = try container.decode(String.self, forKey: .bookingType)
-        status = try container.decode(String.self, forKey: .status)
+        service = try container.decodeIfPresent(String.self, forKey: .service) ?? "BABYSITTER"
+        startAt = try container.decodeIfPresent(String.self, forKey: .startAt) ?? ""
+        endAt = try container.decodeIfPresent(String.self, forKey: .endAt) ?? ""
+        bookingType = try container.decodeIfPresent(String.self, forKey: .bookingType) ?? "HOURLY"
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? "PENDING"
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
         updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
         totalPrice =
@@ -167,7 +167,7 @@ struct BookingRecord: Decodable, Identifiable {
             try container.decodeIfPresent(String.self, forKey: .providerUserID)
             ?? providerContainer?.id
             ?? providerContainer?.userID
-            ?? ""
+            ?? "bakici"
         providerDisplayName =
             try container.decodeIfPresent(String.self, forKey: .providerDisplayName)
             ?? container.decodeIfPresent(String.self, forKey: .providerDisplayNameAlt)
@@ -346,6 +346,177 @@ struct BookingProvider: Hashable {
     let hourlyRate: Int?
 }
 
+struct CareRequestCandidate: Codable, Identifiable, Hashable {
+    var id: String { providerUserID }
+    let providerUserID: String
+    let providerDisplayName: String
+    let providerPhone: String?
+    let appliedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case providerUserID = "providerUserId"
+        case providerDisplayName
+        case providerPhone
+        case appliedAt
+    }
+
+    init(
+        providerUserID: String,
+        providerDisplayName: String,
+        providerPhone: String?,
+        appliedAt: String
+    ) {
+        self.providerUserID = providerUserID
+        self.providerDisplayName = providerDisplayName
+        self.providerPhone = providerPhone
+        self.appliedAt = appliedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        providerUserID = try container.decode(String.self, forKey: .providerUserID)
+        providerDisplayName = try container.decodeIfPresent(String.self, forKey: .providerDisplayName) ?? "Bakıcı"
+        providerPhone = try container.decodeIfPresent(String.self, forKey: .providerPhone)
+        appliedAt = try container.decodeIfPresent(String.self, forKey: .appliedAt) ?? ""
+    }
+}
+
+struct CareRequestItem: Codable, Identifiable, Hashable {
+    let id: String
+    let parentUserID: String
+    let parentDisplayName: String
+    let parentPhone: String?
+    let service: String
+    let note: String
+    let startAt: String
+    let endAt: String
+    let locationName: String
+    let createdAt: String
+    var status: String
+    var candidates: [CareRequestCandidate]
+    var assignedProviderUserID: String?
+    var assignedProviderDisplayName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case parentUserID = "parentUserId"
+        case parentDisplayName
+        case parentPhone
+        case service
+        case note
+        case startAt
+        case endAt
+        case locationName
+        case createdAt
+        case status
+        case candidates
+        case assignedProviderUserID = "assignedProviderUserId"
+        case assignedProviderDisplayName
+    }
+
+    init(
+        id: String,
+        parentUserID: String,
+        parentDisplayName: String,
+        parentPhone: String?,
+        service: String,
+        note: String,
+        startAt: String,
+        endAt: String,
+        locationName: String,
+        createdAt: String,
+        status: String,
+        candidates: [CareRequestCandidate],
+        assignedProviderUserID: String?,
+        assignedProviderDisplayName: String?
+    ) {
+        self.id = id
+        self.parentUserID = parentUserID
+        self.parentDisplayName = parentDisplayName
+        self.parentPhone = parentPhone
+        self.service = service
+        self.note = note
+        self.startAt = startAt
+        self.endAt = endAt
+        self.locationName = locationName
+        self.createdAt = createdAt
+        self.status = status
+        self.candidates = candidates
+        self.assignedProviderUserID = assignedProviderUserID
+        self.assignedProviderDisplayName = assignedProviderDisplayName
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        parentUserID = try container.decodeIfPresent(String.self, forKey: .parentUserID) ?? ""
+        parentDisplayName = try container.decodeIfPresent(String.self, forKey: .parentDisplayName) ?? "Aile"
+        parentPhone = try container.decodeIfPresent(String.self, forKey: .parentPhone)
+        service = try container.decodeIfPresent(String.self, forKey: .service) ?? "BABYSITTER"
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+        startAt = try container.decodeIfPresent(String.self, forKey: .startAt) ?? ""
+        endAt = try container.decodeIfPresent(String.self, forKey: .endAt) ?? ""
+        locationName = try container.decodeIfPresent(String.self, forKey: .locationName) ?? ""
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? "OPEN"
+        candidates = try container.decodeIfPresent([CareRequestCandidate].self, forKey: .candidates) ?? []
+        assignedProviderUserID = try container.decodeIfPresent(String.self, forKey: .assignedProviderUserID)
+        assignedProviderDisplayName = try container.decodeIfPresent(String.self, forKey: .assignedProviderDisplayName)
+    }
+
+    var isOpen: Bool {
+        status.uppercased() == "OPEN"
+    }
+
+    var isMatched: Bool {
+        status.uppercased() == "MATCHED"
+    }
+}
+
+struct CreateCareRequestInput: Hashable {
+    let service: String
+    let note: String
+    let startAt: Date
+    let endAt: Date
+    let locationName: String
+}
+
+struct CareRequestsResponse: Decodable {
+    let count: Int
+    let items: [CareRequestItem]
+
+    enum CodingKeys: String, CodingKey {
+        case count
+        case items
+        case requests
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        items =
+            try container.decodeIfPresent([CareRequestItem].self, forKey: .items)
+            ?? container.decodeIfPresent([CareRequestItem].self, forKey: .requests)
+            ?? []
+        count = try container.decodeIfPresent(Int.self, forKey: .count) ?? items.count
+    }
+}
+
+struct CareRequestMutationResponse: Decodable {
+    let request: CareRequestItem
+
+    enum CodingKeys: String, CodingKey {
+        case request
+        case item
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        request =
+            try container.decodeIfPresent(CareRequestItem.self, forKey: .request)
+            ?? container.decode(CareRequestItem.self, forKey: .item)
+    }
+}
+
 struct NotificationsResponse: Decodable {
     let notifications: [AppNotification]
 }
@@ -450,6 +621,17 @@ struct AppNotification: Decodable, Identifiable {
         read = try container.decode(Bool.self, forKey: .read)
         type = try container.decodeIfPresent(String.self, forKey: .type)
         bookingID = try container.decodeIfPresent(String.self, forKey: .bookingID)
+    }
+}
+
+extension AppNotification {
+    var isMessageNotification: Bool {
+        let haystack = "\(title) \(body) \(type ?? "")"
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "tr_TR"))
+            .lowercased()
+        return haystack.contains("mesaj")
+            || haystack.contains("sohbet")
+            || haystack.contains("chat")
     }
 }
 
