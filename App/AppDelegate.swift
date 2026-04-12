@@ -5,6 +5,8 @@ import UserNotifications
 
 private enum PushTokenStorageKeys {
     static let currentFCMToken = "pushCurrentFCMToken"
+    static let hasAPNSToken = "pushHasAPNSToken"
+    static let lastAPNSErrorMessage = "pushLastAPNSErrorMessage"
 }
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
@@ -26,13 +28,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
         Messaging.messaging().apnsToken = deviceToken
+        UserDefaults.standard.set(true, forKey: PushTokenStorageKeys.hasAPNSToken)
+        UserDefaults.standard.removeObject(forKey: PushTokenStorageKeys.lastAPNSErrorMessage)
+        NotificationCenter.default.post(name: .didReceiveAPNSToken, object: nil)
     }
 
     func application(
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        _ = error
+        UserDefaults.standard.set(false, forKey: PushTokenStorageKeys.hasAPNSToken)
+        UserDefaults.standard.set(error.localizedDescription, forKey: PushTokenStorageKeys.lastAPNSErrorMessage)
     }
 }
 
