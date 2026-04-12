@@ -21,7 +21,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
-        recordAPNsAttempt(context: "launch")
+        AppDelegate.recordAPNsAttempt(context: "launch")
         application.registerForRemoteNotifications()
 
         return true
