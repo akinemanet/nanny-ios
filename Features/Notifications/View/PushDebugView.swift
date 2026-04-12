@@ -86,6 +86,12 @@ struct PushDebugView: View {
         let settings = await notificationSettings()
         authorizationStatus = settings.authorizationStatus
 
+        if authorizationStatus == .authorized
+            || authorizationStatus == .provisional
+            || authorizationStatus == .ephemeral {
+            UIApplication.shared.registerForRemoteNotifications()
+        }
+
         guard hasAPNSToken else {
             fcmToken = "Bu cihaz henüz bildirim almaya hazır görünmüyor. Bildirim izni, gerçek cihaz kaydı ve Apple bildirim ayarları tamamlandığında burada jeton görünecek."
             return
